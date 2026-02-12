@@ -1,0 +1,124 @@
+﻿@model RetailERP.Controllers.InvoicesController.InvoiceEditVm
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">@Model.InvoiceNo</h2>
+        <div class="text-muted">
+            @Model.InvoiceDate.ToString("yyyy-MM-dd") • @Model.CustomerName • @Model.WarehouseName
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <span class="badge @(Model.Status == 2 ? "bg-success" : "bg-secondary")">
+            @(Model.Status == 2 ? "Posted" : "Draft")
+        </span>
+
+        @if (Model.Status != 2)
+        {
+            <form asp-action="Post" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="invoiceId" value="@Model.InvoiceId" />
+                <button class="btn btn-success" type="submit">Post (Deduct Stock)</button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (TempData["Ok"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["Err"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">Lines</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Item</th>
+                                <th class="text-end">Qty</th>
+                                <th class="text-end">Unit Price</th>
+                                <th class="text-end">Total</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.Lines.Any())
+                            {
+                                <tr><td colspan="5" class="p-4 text-muted">No lines yet.</td></tr>
+                            }
+                            else
+                            {
+                                foreach (var line in Model.Lines)
+                                {
+                                    <tr>
+                                        <td>@line.ItemName</td>
+                                        <td class="text-end">@line.Qty</td>
+                                        <td class="text-end">@line.UnitPrice.ToString("0.00")</td>
+                                        <td class="text-end">@line.LineTotal.ToString("0.00")</td>
+                                        <td class="text-end">
+                                            @if (Model.Status != 2)
+                                            {
+                                                <form asp-action="RemoveLine" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="invoiceLineId" value="@line.InvoiceLineId" />
+                                                    <input type="hidden" name="invoiceId" value="@Model.InvoiceId" />
+                                                    <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                        <tfoot class="table-light">
+                            <tr>
+                                <th colspan="3" class="text-end">Total</th>
+                                <th class="text-end">@Model.TotalAmount.ToString("0.00")</th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">Add Line</div>
+            <div class="card-body">
+                @if (Model.Status == 2)
+                {
+                    <div class="alert alert-info mb-0">Invoice is posted. Lines are locked.</div>
+                }
+                else
+                {
+                    <form asp-action="AddLine" method="post" class="vstack gap-2">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="InvoiceId" value="@Model.InvoiceId" />
+
+                        <label class="form-label mb-0">Item</label>
+                        <select class="form-select" name="ItemId" asp-items="ViewBag.Items"></select>
+
+                        <label class="form-label mb-0">Qty</label>
+                        <input class="form-control" name="Qty" type="number" step="0.01" value="1" />
+
+                        <label class="form-label mb-0">Unit Price</label>
+                        <input class="form-control" name="UnitPrice" type="number" step="0.01" value="0" />
+
+                        <button class="btn btn-primary" type="submit">Add</button>
+                        <a class="btn btn-outline-secondary" asp-action="Index">Back to Register</a>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>

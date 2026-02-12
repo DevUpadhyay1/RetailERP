@@ -1,0 +1,37 @@
+﻿@model List<RetailERP.Data.Entities.AuditLog>
+@{
+    ViewData["Title"] = "Audit Log";
+}
+
+<div class="container py-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h3 class="mb-0">Audit Log</h3>
+        <span class="text-muted small">Last 200 actions</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th style="width:180px;">Time (UTC)</th>
+                    <th style="width:160px;">Action</th>
+                    <th style="width:140px;">Entity</th>
+                    <th>Entity Id</th>
+                    <th style="width:220px;">User</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var x in Model)
+                {
+                    <tr>
+                        <td class="text-muted">@x.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td><span class="badge text-bg-secondary">@x.Action</span></td>
+                        <td>@x.EntityType</td>
+                        <td class="text-muted">@x.EntityId</td>
+                        <td class="text-muted">@x.ActorEmail</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

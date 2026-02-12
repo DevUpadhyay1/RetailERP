@@ -1,0 +1,104 @@
+﻿@model IEnumerable<RetailERP.Data.Entities.Stock>
+
+@{
+    ViewData["Title"] = "Stock On Hand";
+    var q = (ViewData["q"] as string) ?? "";
+    var count = Model?.Count() ?? 0;
+}
+
+<div class="container-fluid py-3">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h2 class="mb-0">@ViewData["Title"]</h2>
+            <div class="text-muted small">Total: @count record(s)</div>
+        </div>
+
+        <a class="btn btn-primary" asp-action="Create">
+            + Add Stock Row
+        </a>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-center">
+                <div class="col-md-6">
+                    <input name="q" value="@q" class="form-control"
+                           placeholder="Search by Item SKU/Name or Warehouse..." />
+                </div>
+
+                <div class="col-auto">
+                    <button class="btn btn-outline-secondary" type="submit">Search</button>
+                </div>
+
+                <div class="col-auto">
+                    <a class="btn btn-outline-dark" asp-action="Index">Reset</a>
+                </div>
+
+                <div class="col-auto ms-auto">
+                    <span class="badge text-bg-light border">
+                        Updated: @DateTime.Now.ToString("dd-MMM-yyyy")
+                    </span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            @if (count == 0)
+            {
+                <div class="p-4">
+                    <div class="alert alert-warning mb-0">
+                        No stock rows found.
+                        <a asp-action="Create" class="alert-link">Create your first stock row</a>.
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 140px;">SKU</th>
+                                <th>Item</th>
+                                <th style="width: 220px;">Warehouse</th>
+                                <th class="text-end" style="width: 140px;">Quantity</th>
+                                <th class="text-end" style="width: 170px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in Model)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@(s.Item?.SKU ?? "-")</td>
+                                    <td>@(s.Item?.Name ?? "-")</td>
+                                    <td>@(s.Warehouse?.Name ?? "-")</td>
+                                    <td class="text-end">@s.Quantity.ToString("0.##")</td>
+                                    <td class="text-end">
+                                        <div class="btn-group">
+                                            <a class="btn btn-sm btn-outline-success"
+                                               asp-action="Adjust"
+                                               asp-route-id="@s.StockId"
+                                               asp-route-returnUrl="@($"{Context.Request.Path}{Context.Request.QueryString}")">
+                                                Adjust
+                                            </a>
+                                            <a class="btn btn-sm btn-outline-primary"
+                                               asp-action="Edit" asp-route-id="@s.StockId">Edit</a>
+                                            <a class="btn btn-sm btn-outline-secondary"
+                                               asp-action="Details" asp-route-id="@s.StockId">View</a>
+                                            <a class="btn btn-sm btn-outline-danger"
+                                               asp-action="Delete" asp-route-id="@s.StockId">Delete</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+</div>

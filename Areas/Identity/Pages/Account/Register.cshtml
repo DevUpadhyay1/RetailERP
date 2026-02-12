@@ -1,0 +1,105 @@
+﻿@page
+@model RetailERP.Areas.Identity.Pages.Account.RegisterModel
+@{
+    ViewData["Title"] = "Create account";
+}
+
+<div class="container py-5" style="max-width: 980px;">
+    <div class="row justify-content-center g-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4 p-md-5">
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="fw-semibold fs-4">RetailERP</div>
+                            <span class="badge text-bg-light border">Secure</span>
+                        </div>
+                        <div class="text-muted">Create your account to access dashboards and modules.</div>
+                    </div>
+
+                    <h2 class="h5 mb-3">@ViewData["Title"]</h2>
+
+                    <form method="post" class="needs-validation" novalidate>
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Email" class="form-label">Email</label>
+                            <input asp-for="Input.Email" class="form-control" autocomplete="username" placeholder="name@company.com" />
+                            <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Input.Password" class="form-label">Password</label>
+                            <input asp-for="Input.Password" class="form-control" autocomplete="new-password" placeholder="Minimum 6 characters" />
+                            <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="Input.ConfirmPassword" class="form-label">Confirm password</label>
+                            <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="Re-enter your password" />
+                            <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 btn-lg">
+                            Create account
+                        </button>
+
+                        <div class="text-muted small mt-3 text-center">
+                            Already have an account?
+                            <a asp-area="Identity" asp-page="/Account/Login">Sign in</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="text-muted small mt-3 text-center">
+                By creating an account, you’ll be assigned a default role (Cashier) and can be updated by Admin later.
+            </div>
+        </div>
+
+        <div class="col-lg-5 d-none d-lg-block">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4 p-md-5">
+                    <h3 class="h6 mb-3">What you can do after sign-up</h3>
+
+                    <ul class="list-unstyled mb-0">
+                        <li class="d-flex gap-2 mb-3">
+                            <div class="mt-1">•</div>
+                            <div>
+                                <div class="fw-semibold">Sales & invoices</div>
+                                <div class="text-muted small">Create drafts, post invoices, and track totals.</div>
+                            </div>
+                        </li>
+
+                        <li class="d-flex gap-2 mb-3">
+                            <div class="mt-1">•</div>
+                            <div>
+                                <div class="fw-semibold">Inventory control</div>
+                                <div class="text-muted small">View stock on hand by warehouse and item.</div>
+                            </div>
+                        </li>
+
+                        <li class="d-flex gap-2 mb-0">
+                            <div class="mt-1">•</div>
+                            <div>
+                                <div class="fw-semibold">Audit trail</div>
+                                <div class="text-muted small">See who posted invoices and adjusted stock.</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <hr class="my-4" />
+
+                    <div class="text-muted small">
+                        Tip: Admin can assign roles (Admin/Manager/Inventory/Cashier) from the Users page.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

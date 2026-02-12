@@ -1,0 +1,107 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - RetailERP</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/RetailERP.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg bg-white border-bottom shadow-sm">
+            <div class="container-xxl">
+                <a class="navbar-brand fw-semibold" asp-controller="Home" asp-action="Landing">RetailERP</a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNav"
+                        aria-controls="topNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="topNav">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        @if (User?.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Home" asp-action="Dashboard">Dashboard</a>
+                            </li>
+
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark" href="#" role="button" data-bs-toggle="dropdown">
+                                    Modules
+                                </a>
+                                <ul class="dropdown-menu">
+                                    @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Inventory"))
+                                    {
+                                        <li><h6 class="dropdown-header">Inventory</h6></li>
+                                        <li><a class="dropdown-item" asp-controller="Items" asp-action="Index">Items</a></li>
+                                        <li><a class="dropdown-item" asp-controller="Stocks" asp-action="Index">Stock On Hand</a></li>
+                                        <li><a class="dropdown-item" asp-controller="Warehouses" asp-action="Index">Warehouses</a></li>
+                                        <li><a class="dropdown-item" asp-controller="StockTransfers" asp-action="Create">Stock Transfer</a></li>
+                                        <li><hr class="dropdown-divider" /></li>
+                                    }
+
+                                    <li><h6 class="dropdown-header">Sales / CRM</h6></li>
+                                    <li><a class="dropdown-item" asp-controller="Invoices" asp-action="Index">Invoices</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Customers" asp-action="Index">Customers</a></li>
+
+                                    @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("HR"))
+                                    {
+                                        <li><hr class="dropdown-divider" /></li>
+                                        <li><h6 class="dropdown-header">People</h6></li>
+                                        <li><a class="dropdown-item" asp-controller="Employees" asp-action="Index">Employees</a></li>
+                                    }
+                                </ul>
+                            </li>
+
+                            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                            {
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle text-dark" href="#" role="button" data-bs-toggle="dropdown">
+                                        Insights
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" asp-controller="Items" asp-action="LowStock">Low Stock</a></li>
+                                        <li><a class="dropdown-item" asp-controller="Reports" asp-action="Sales">Sales Report</a></li>
+                                        <li><a class="dropdown-item" asp-controller="Audit" asp-action="Index">Audit Log</a></li>
+                                    </ul>
+                                </li>
+                            }
+
+                            @if (User.IsInRole("Admin"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-controller="AdminUsers" asp-action="Index">Admin</a>
+                                </li>
+                            }
+                        }
+                    </ul>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <partial name="_LoginPartial" />
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container-xxl py-3">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container-xxl">
+            &copy; 2026 - RetailERP - <a asp-controller="Home" asp-action="Privacy">Privacy</a>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

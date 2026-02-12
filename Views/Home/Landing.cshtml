@@ -1,0 +1,42 @@
+﻿@{
+    ViewData["Title"] = "Welcome";
+}
+
+<div class="container py-5">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+            <h1 class="display-5 fw-semibold mb-2">RetailERP</h1>
+            <p class="lead text-muted mb-4">
+                A lightweight ERP for shop operations: inventory, sales invoices, and staff management.
+            </p>
+
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-primary btn-lg" asp-area="Identity" asp-page="/Account/Login">Sign in</a>
+                <a class="btn btn-outline-primary btn-lg" asp-area="Identity" asp-page="/Account/Register">Create account</a>
+            </div>
+
+            <div class="mt-4 text-muted small">
+                Note: Business dashboards and reports are available after login.
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">Modules</h5>
+                    <div class="row g-2">
+                        <div class="col-6"><div class="border rounded p-3 bg-light">Inventory</div></div>
+                        <div class="col-6"><div class="border rounded p-3 bg-light">Sales</div></div>
+                        <div class="col-6"><div class="border rounded p-3 bg-light">HR</div></div>
+                        <div class="col-6"><div class="border rounded p-3 bg-light">Finance</div></div>
+                    </div>
+
+                    <hr class="my-4" />
+                    <div class="text-muted small">
+                        Secure access with role-based modules (Admin, Manager, Cashier, Inventory) will be enabled next.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,66 @@
+﻿@model RetailERP.Models.StockTransferVm
+@{
+    ViewData["Title"] = "Stock Transfer";
+}
+
+<div class="container py-4" style="max-width: 820px;">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h3 class="mb-0">Stock Transfer</h3>
+        <span class="text-muted small">Move stock between warehouses</span>
+    </div>
+
+    @if (TempData["Ok"] is string ok)
+    {
+        <div class="alert alert-success">@ok</div>
+    }
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <form method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="FromWarehouseId" class="form-label">From Warehouse</label>
+                        <select asp-for="FromWarehouseId" asp-items="Model.Warehouses" class="form-select"></select>
+                        <span asp-validation-for="FromWarehouseId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="ToWarehouseId" class="form-label">To Warehouse</label>
+                        <select asp-for="ToWarehouseId" asp-items="Model.Warehouses" class="form-select"></select>
+                        <span asp-validation-for="ToWarehouseId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="ItemId" class="form-label">Item</label>
+                        <select asp-for="ItemId" asp-items="Model.Items" class="form-select"></select>
+                        <span asp-validation-for="ItemId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="Qty" class="form-label">Quantity</label>
+                        <input asp-for="Qty" class="form-control" />
+                        <span asp-validation-for="Qty" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-8">
+                        <label asp-for="Reason" class="form-label">Reason (optional)</label>
+                        <input asp-for="Reason" class="form-control" placeholder="e.g., restock branch / relocation" />
+                        <span asp-validation-for="Reason" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex gap-2">
+                    <button class="btn btn-primary">Transfer</button>
+                    <a class="btn btn-outline-secondary" asp-controller="Stocks" asp-action="Index">Back to Stock</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

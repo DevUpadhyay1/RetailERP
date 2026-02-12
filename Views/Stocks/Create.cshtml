@@ -1,0 +1,53 @@
+﻿@model RetailERP.Data.Entities.Stock
+@{
+    ViewData["Title"] = "Create Stock Row";
+}
+
+<div class="container py-4" style="max-width: 820px;">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h3 class="mb-0">Create Stock Row</h3>
+            <div class="text-muted small">Link an item to a warehouse with opening quantity</div>
+        </div>
+        <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <form asp-action="Create" method="post">
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 mb-3"></div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="ItemId" class="form-label">Item</label>
+                        <select asp-for="ItemId" class="form-select" asp-items="ViewBag.ItemId"></select>
+                        <span asp-validation-for="ItemId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="WarehouseId" class="form-label">Warehouse</label>
+                        <select asp-for="WarehouseId" class="form-select" asp-items="ViewBag.WarehouseId"></select>
+                        <span asp-validation-for="WarehouseId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="Quantity" class="form-label"></label>
+                        <input asp-for="Quantity" class="form-control" />
+                        <span asp-validation-for="Quantity" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex gap-2">
+                    <button class="btn btn-primary">Create</button>
+                    <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

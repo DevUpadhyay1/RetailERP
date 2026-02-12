@@ -1,0 +1,35 @@
+﻿@model List<RetailERP.Controllers.ItemsController.LowStockRow>
+@{
+    ViewData["Title"] = "Low Stock";
+}
+
+<div class="container py-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h3 class="mb-0">Low Stock</h3>
+        <span class="text-muted small">Items at or below reorder level</span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th style="width:140px;">SKU</th>
+                    <th>Item</th>
+                    <th class="text-end" style="width:140px;">On Hand</th>
+                    <th class="text-end" style="width:160px;">Reorder Level</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td class="fw-semibold">@r.SKU</td>
+                        <td>@r.Name</td>
+                        <td class="text-end">@r.OnHand.ToString("0.##")</td>
+                        <td class="text-end">@r.ReorderLevel.ToString("0.##")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

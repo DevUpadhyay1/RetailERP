@@ -1,0 +1,50 @@
+﻿@model RetailERP.Models.StockAdjustVm
+@{
+    ViewData["Title"] = "Adjust Stock";
+}
+
+<div class="container py-4" style="max-width: 720px;">
+    <h3 class="mb-3">Adjust Stock</h3>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="text-muted small mb-3">
+                <div><strong>Item:</strong> @Model.ItemLabel</div>
+                <div><strong>Warehouse:</strong> @Model.WarehouseName</div>
+                <div><strong>Current Qty:</strong> @Model.CurrentQty</div>
+            </div>
+
+            <form method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="StockId" />
+                <input type="hidden" asp-for="ReturnUrl" />
+                <input type="hidden" asp-for="ItemLabel" />
+                <input type="hidden" asp-for="WarehouseName" />
+                <input type="hidden" asp-for="CurrentQty" />
+
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="mb-3">
+                    <label asp-for="DeltaQty" class="form-label">Delta Qty (+ add / - remove)</label>
+                    <input asp-for="DeltaQty" class="form-control" />
+                    <span asp-validation-for="DeltaQty" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Reason" class="form-label">Reason (optional)</label>
+                    <input asp-for="Reason" class="form-control" />
+                    <span asp-validation-for="Reason" class="text-danger"></span>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary">Save</button>
+                    <a class="btn btn-outline-secondary" href="@(Model.ReturnUrl ?? Url.Action("Index")!)">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
