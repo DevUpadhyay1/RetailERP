@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -799,5 +799,33 @@ public class PosController : Controller
 
         var pdf = _receiptPdf.Generate(bill, template, company);
         return File(pdf, "application/pdf", $"Receipt_{bill.BillNo}.pdf");
+    }
+
+    // ────────────────────────────────────────────────────────
+    // Sprint 10: PWA Offline — cache all items for offline lookup
+    // ────────────────────────────────────────────────────────
+    [HttpGet]
+    public async Task<IActionResult> AllItems()
+    {
+        var items = await _db.Items.AsNoTracking()
+            .Include(i => i.Unit)
+            .Include(i => i.Category)
+            .Where(i => i.IsActive)
+            .Select(i => new
+            {
+                itemId = i.ItemId,
+                sku = i.SKU,
+                barcode = i.Barcode,
+                name = i.Name,
+                unitPrice = i.UnitPrice,
+                mrp = i.MRP,
+                gstPercent = i.GstPercent,
+                hsnCode = i.HsnCode,
+                unitName = i.Unit != null ? i.Unit.Name : null,
+                categoryName = i.Category != null ? i.Category.Name : null
+            })
+            .ToListAsync();
+
+        return Json(items);
     }
 }

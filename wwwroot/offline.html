@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Offline - RetailERP</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5986 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            max-width: 480px;
+        }
+        .icon {
+            font-size: 80px;
+            margin-bottom: 1.5rem;
+            opacity: 0.9;
+        }
+        h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        p { font-size: 1.1rem; opacity: 0.85; margin-bottom: 2rem; line-height: 1.6; }
+        .btn-retry {
+            display: inline-block;
+            padding: 12px 32px;
+            background: #4fc3f7;
+            color: #1e3a5f;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .btn-retry:hover { background: #81d4fa; }
+        .pos-note {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">&#9888;</div>
+        <h1>You're Offline</h1>
+        <p>No internet connection detected. Some features may not be available.</p>
+        <button class="btn-retry" onclick="window.location.reload()">Try Again</button>
+        <div class="pos-note">
+            <strong>POS Offline Mode:</strong> If you were on the POS billing screen,
+            bills created offline will auto-sync when your connection is restored.
+        </div>
+    </div>
+</body>
+</html>
