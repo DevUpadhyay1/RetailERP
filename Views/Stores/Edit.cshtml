@@ -1,0 +1,90 @@
+@model RetailERP.Data.Entities.Store
+@{
+    ViewData["Title"] = "Edit Store";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">Edit Store</h2>
+        <div class="text-muted">Update store details</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="Edit" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="StoreId" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="StoreCode" class="form-label"></label>
+                    <input asp-for="StoreCode" class="form-control" />
+                    <span asp-validation-for="StoreCode" class="text-danger"></span>
+                </div>
+                <div class="col-md-8">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Address" class="form-label"></label>
+                    <input asp-for="Address" class="form-control" />
+                    <span asp-validation-for="Address" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="Phone" class="form-label"></label>
+                    <input asp-for="Phone" class="form-control" type="tel" maxlength="10" pattern="[6-9]\d{9}" placeholder="e.g. 9876543210" />
+                    <span asp-validation-for="Phone" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="City" class="form-label"></label>
+                    <input asp-for="City" class="form-control" />
+                    <span asp-validation-for="City" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="State" class="form-label"></label>
+                    <input asp-for="State" class="form-control" />
+                    <span asp-validation-for="State" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="BusinessType" class="form-label"></label>
+                    <select asp-for="BusinessType" asp-items="Html.GetEnumSelectList<RetailERP.Data.Entities.BusinessType>()" class="form-select"></select>
+                    <span asp-validation-for="BusinessType" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    <div class="form-check">
+                        <input class="form-check-input" asp-for="IsActive" />
+                        <label class="form-check-label" asp-for="IsActive">Active</label>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="GstNo" class="form-label"></label>
+                    <input asp-for="GstNo" class="form-control" maxlength="15" style="text-transform:uppercase" />
+                    <span asp-validation-for="GstNo" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="PanNo" class="form-label"></label>
+                    <input asp-for="PanNo" class="form-control" maxlength="10" style="text-transform:uppercase" />
+                    <span asp-validation-for="PanNo" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">Save changes</button>
+                <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

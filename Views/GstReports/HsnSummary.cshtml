@@ -1,0 +1,105 @@
+@model List<RetailERP.Services.HsnSummaryRow>
+@{
+    ViewData["Title"] = "HSN Summary";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-hash me-2"></i>HSN-wise Summary</h2>
+        <div class="text-muted small">@(((DateTime)ViewBag.From).ToString("dd MMM yyyy")) — @(((DateTime)ViewBag.To).ToString("dd MMM yyyy"))</div>
+    </div>
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-end">
+        <div>
+            <label class="form-label mb-1">From</label>
+            <input type="date" name="from" class="form-control" value="@(((DateTime)ViewBag.From).ToString("yyyy-MM-dd"))" />
+        </div>
+        <div>
+            <label class="form-label mb-1">To</label>
+            <input type="date" name="to" class="form-control" value="@(((DateTime)ViewBag.To).ToString("yyyy-MM-dd"))" />
+        </div>
+        <button class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
+    </form>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-start border-4 border-primary h-100">
+            <div class="card-body">
+                <div class="text-muted small">Unique HSN Codes</div>
+                <div class="fs-3 fw-semibold">@Model.Count</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+                <div class="text-muted small">Total Taxable Value</div>
+                <div class="fs-3 fw-semibold">₹@Model.Sum(r => r.TaxableValue).ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-start border-4 border-warning h-100">
+            <div class="card-body">
+                <div class="text-muted small">Total Tax</div>
+                <div class="fs-3 fw-semibold">₹@Model.Sum(r => r.TotalTax).ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-dark text-white fw-semibold">HSN-wise Tax Breakdown</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>HSN Code</th>
+                        <th class="text-end">Qty</th>
+                        <th class="text-end">Taxable Value</th>
+                        <th class="text-end">GST Rate</th>
+                        <th class="text-end">CGST</th>
+                        <th class="text-end">SGST</th>
+                        <th class="text-end">IGST</th>
+                        <th class="text-end">Total Tax</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr><td colspan="8" class="p-4 text-muted text-center">No HSN data found for this period.</td></tr>
+                    }
+                    @foreach (var r in Model)
+                    {
+                        <tr>
+                            <td class="font-monospace fw-semibold">@r.HsnCode</td>
+                            <td class="text-end">@r.TotalQty.ToString("N2")</td>
+                            <td class="text-end">@r.TaxableValue.ToString("N2")</td>
+                            <td class="text-end">@r.GstRate.ToString("N1")%</td>
+                            <td class="text-end">@r.CgstAmount.ToString("N2")</td>
+                            <td class="text-end">@r.SgstAmount.ToString("N2")</td>
+                            <td class="text-end">@r.IgstAmount.ToString("N2")</td>
+                            <td class="text-end fw-semibold">@r.TotalTax.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+                @if (Model.Any())
+                {
+                    <tfoot class="table-light fw-semibold">
+                        <tr>
+                            <td>Total</td>
+                            <td class="text-end">@Model.Sum(r => r.TotalQty).ToString("N2")</td>
+                            <td class="text-end">@Model.Sum(r => r.TaxableValue).ToString("N2")</td>
+                            <td></td>
+                            <td class="text-end">@Model.Sum(r => r.CgstAmount).ToString("N2")</td>
+                            <td class="text-end">@Model.Sum(r => r.SgstAmount).ToString("N2")</td>
+                            <td class="text-end">@Model.Sum(r => r.IgstAmount).ToString("N2")</td>
+                            <td class="text-end">@Model.Sum(r => r.TotalTax).ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+    </div>
+</div>

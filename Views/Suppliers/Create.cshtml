@@ -1,0 +1,58 @@
+@model RetailERP.Data.Entities.Supplier
+@{
+    ViewData["Title"] = "New Supplier";
+}
+
+<div class="vstack gap-3" style="max-width:860px;">
+    <div class="d-flex justify-content-between align-items-center">
+        <h2 class="mb-0">New Supplier</h2>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index"><i class="bi bi-arrow-left me-1"></i>Back to List</a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="col-md-8">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="IsActive" class="form-label">Active</label>
+                    <select asp-for="IsActive" class="form-select">
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="Phone" class="form-label"></label>
+                    <input asp-for="Phone" class="form-control" type="tel" maxlength="10" pattern="[6-9]\d{9}" placeholder="e.g. 9876543210" />
+                </div>
+
+                <div class="col-md-8">
+                    <label asp-for="Email" class="form-label"></label>
+                    <input asp-for="Email" class="form-control" type="email" placeholder="e.g. name@example.com" />
+                </div>
+
+                <div class="col-12">
+                    <label asp-for="Address" class="form-label"></label>
+                    <textarea asp-for="Address" class="form-control" rows="3" maxlength="500"></textarea>
+                </div>
+
+                <div class="col-12 d-flex gap-2">
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Save</button>
+                    <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,184 @@
+@model RetailERP.Data.Entities.Promotion
+@{
+    ViewData["Title"] = "Create Promotion";
+}
+
+<h4 class="mb-3"><i class="bi bi-plus-lg me-2"></i>Create Promotion</h4>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <!-- Row 1: Basic Info -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label asp-for="Name" class="form-label">Promotion Name <span class="text-danger">*</span></label>
+                    <input asp-for="Name" class="form-control" placeholder="e.g. Summer Sale 10% Off" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="PromoType" class="form-label">Type <span class="text-danger">*</span></label>
+                    <select asp-for="PromoType" class="form-select" id="promoTypeSelect">
+                        <option value="FlatPercent">Flat Percent</option>
+                        <option value="FlatAmount">Flat Amount</option>
+                        <option value="BOGO">BOGO (Buy One Get One)</option>
+                        <option value="BuyXGetY">Buy X Get Y</option>
+                        <option value="ComboDiscount">Combo Discount</option>
+                        <option value="HappyHour">Happy Hour</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Priority" class="form-label">Priority</label>
+                    <input asp-for="Priority" class="form-control" type="number" min="0" />
+                    <small class="text-muted">Lower = applied first</small>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <label asp-for="Description" class="form-label">Description</label>
+                    <textarea asp-for="Description" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+
+            <!-- Row 2: Discount values (Flat) -->
+            <div class="row mb-3" id="flatSection">
+                <div class="col-md-3">
+                    <label asp-for="DiscountPercent" class="form-label">Discount %</label>
+                    <input asp-for="DiscountPercent" class="form-control" type="number" step="0.01" min="0" max="100" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="DiscountAmount" class="form-label">Discount Amount (₹)</label>
+                    <input asp-for="DiscountAmount" class="form-control" type="number" step="0.01" min="0" />
+                </div>
+            </div>
+
+            <!-- Scope -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label asp-for="ItemId" class="form-label">Specific Item</label>
+                    <select asp-for="ItemId" asp-items="@(ViewBag.Items as SelectList)" class="form-select">
+                        <option value="">— All Items —</option>
+                    </select>
+                    <small class="text-muted">Leave blank to apply to all</small>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="CategoryId" class="form-label">Category</label>
+                    <select asp-for="CategoryId" asp-items="@(ViewBag.Categories as SelectList)" class="form-select">
+                        <option value="">— All Categories —</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- BOGO / BuyXGetY section -->
+            <div id="bogoSection" class="row mb-3" style="display:none;">
+                <div class="col-md-2">
+                    <label asp-for="BuyQty" class="form-label">Buy Qty</label>
+                    <input asp-for="BuyQty" class="form-control" type="number" min="1" />
+                </div>
+                <div class="col-md-2">
+                    <label asp-for="GetQty" class="form-label">Get Qty Free</label>
+                    <input asp-for="GetQty" class="form-control" type="number" min="1" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="FreeItemId" class="form-label">Free Item (for BuyXGetY)</label>
+                    <select asp-for="FreeItemId" asp-items="@(ViewBag.Items as SelectList)" class="form-select">
+                        <option value="">— Same Item —</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Combo section -->
+            <div id="comboSection" class="row mb-3" style="display:none;">
+                <div class="col-md-6">
+                    <label asp-for="ComboItemIds" class="form-label">Combo Item IDs (JSON array)</label>
+                    <textarea asp-for="ComboItemIds" class="form-control" rows="2" placeholder='["guid1","guid2"]'></textarea>
+                    <small class="text-muted">JSON array of item GUIDs that form the combo</small>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="ComboPrice" class="form-label">Combo Price (₹)</label>
+                    <input asp-for="ComboPrice" class="form-control" type="number" step="0.01" min="0" />
+                </div>
+            </div>
+
+            <!-- Validity -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label asp-for="ValidFrom" class="form-label">Valid From <span class="text-danger">*</span></label>
+                    <input asp-for="ValidFrom" class="form-control" type="date" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="ValidTo" class="form-label">Valid To <span class="text-danger">*</span></label>
+                    <input asp-for="ValidTo" class="form-control" type="date" />
+                </div>
+            </div>
+
+            <!-- Happy Hour section -->
+            <div id="happyHourSection" class="row mb-3" style="display:none;">
+                <div class="col-md-3">
+                    <label asp-for="HappyHourStart" class="form-label">Happy Hour Start</label>
+                    <input asp-for="HappyHourStart" class="form-control" type="time" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="HappyHourEnd" class="form-label">Happy Hour End</label>
+                    <input asp-for="HappyHourEnd" class="form-control" type="time" />
+                </div>
+            </div>
+
+            <!-- Constraints -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label asp-for="MinBillAmount" class="form-label">Min Bill Amount (₹)</label>
+                    <input asp-for="MinBillAmount" class="form-control" type="number" step="0.01" min="0" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="MaxUsesTotal" class="form-label">Max Uses (0 = unlimited)</label>
+                    <input asp-for="MaxUsesTotal" class="form-control" type="number" min="0" />
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <div class="form-check">
+                        <input asp-for="IsExclusive" class="form-check-input" />
+                        <label asp-for="IsExclusive" class="form-check-label">Exclusive (no stacking)</label>
+                    </div>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <div class="form-check">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label asp-for="IsActive" class="form-check-label">Active</label>
+                    </div>
+                </div>
+            </div>
+
+            <hr />
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Create</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const sel = document.getElementById('promoTypeSelect');
+            const flat = document.getElementById('flatSection');
+            const bogo = document.getElementById('bogoSection');
+            const combo = document.getElementById('comboSection');
+            const hh = document.getElementById('happyHourSection');
+
+            function toggle() {
+                const t = sel.value;
+                flat.style.display = (t === 'FlatPercent' || t === 'FlatAmount' || t === 'HappyHour') ? '' : 'none';
+                bogo.style.display = (t === 'BOGO' || t === 'BuyXGetY') ? '' : 'none';
+                combo.style.display = (t === 'ComboDiscount') ? '' : 'none';
+                hh.style.display = (t === 'HappyHour') ? '' : 'none';
+            }
+
+            sel.addEventListener('change', toggle);
+            toggle();
+        })();
+    </script>
+}

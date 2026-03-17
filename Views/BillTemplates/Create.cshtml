@@ -1,0 +1,46 @@
+@model RetailERP.Data.Entities.BillTemplate
+@{
+    ViewData["Title"] = "Create Template";
+}
+
+<h2>Create Bill Template</h2>
+
+<form asp-action="Create" method="post" class="mt-3" style="max-width:600px;">
+    <div class="mb-3">
+        <label class="form-label">Template Name</label>
+        <input asp-for="TemplateName" class="form-control" placeholder="e.g. Default Receipt" />
+        <span asp-validation-for="TemplateName" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Template Type</label>
+        <select asp-for="TemplateType" class="form-select">
+            <option value="1">POS Receipt</option>
+            <option value="2">Invoice</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Paper Size</label>
+        <select asp-for="PaperSize" class="form-select">
+            <option value="Thermal58mm">Thermal 58mm</option>
+            <option value="Thermal80mm" selected>Thermal 80mm</option>
+            <option value="A4">A4</option>
+            <option value="A5">A5</option>
+        </select>
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="IsDefault" class="form-check-input" />
+        <label asp-for="IsDefault" class="form-check-label">Set as default template</label>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Create &amp; Open Designer</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

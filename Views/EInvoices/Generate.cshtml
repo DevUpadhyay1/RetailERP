@@ -1,0 +1,105 @@
+@model RetailERP.Controllers.GenerateEInvoiceVm
+@{
+    ViewData["Title"] = "Generate E-Invoice";
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">@TempData["Error"]<button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Generate E-Invoice</h2>
+        <div class="text-muted small">Select a completed POS bill or posted invoice to generate an IRN</div>
+    </div>
+    <a href="@Url.Action("Index")" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+</div>
+
+<!-- POS Bills -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-info text-white fw-semibold">
+        <i class="bi bi-receipt me-1"></i>Completed POS Bills (without active E-Invoice)
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Bill No</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>GSTIN</th>
+                        <th class="text-end">Grand Total</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Bills.Any())
+                    {
+                        <tr><td colspan="6" class="p-4 text-muted text-center">No eligible POS bills.</td></tr>
+                    }
+                    @foreach (var b in Model.Bills)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@b.BillNo</td>
+                            <td class="text-muted">@b.BillDate.ToString("dd/MM/yyyy")</td>
+                            <td>@(b.Customer?.Name ?? "Walk-in")</td>
+                            <td class="font-monospace small">@(b.Customer?.Gstin ?? "—")</td>
+                            <td class="text-end fw-semibold">₹@b.GrandTotal.ToString("N2")</td>
+                            <td>
+                                <form method="post" asp-action="GenerateForBill" asp-route-posBillId="@b.PosBillId" class="d-inline">
+                                    <button class="btn btn-sm btn-success"><i class="bi bi-lightning me-1"></i>Generate</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Invoices -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-primary text-white fw-semibold">
+        <i class="bi bi-file-earmark-text me-1"></i>Posted Invoices (without active E-Invoice)
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Invoice No</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>GSTIN</th>
+                        <th class="text-end">Total</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Invoices.Any())
+                    {
+                        <tr><td colspan="6" class="p-4 text-muted text-center">No eligible invoices.</td></tr>
+                    }
+                    @foreach (var inv in Model.Invoices)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@inv.InvoiceNo</td>
+                            <td class="text-muted">@inv.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                            <td>@(inv.Customer?.Name ?? "—")</td>
+                            <td class="font-monospace small">@(inv.Customer?.Gstin ?? "—")</td>
+                            <td class="text-end fw-semibold">₹@inv.TotalAmount.ToString("N2")</td>
+                            <td>
+                                <form method="post" asp-action="GenerateForInvoice" asp-route-invoiceId="@inv.InvoiceId" class="d-inline">
+                                    <button class="btn btn-sm btn-success"><i class="bi bi-lightning me-1"></i>Generate</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

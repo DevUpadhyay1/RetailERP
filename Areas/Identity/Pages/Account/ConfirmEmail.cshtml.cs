@@ -15,6 +15,7 @@ using RetailERP.Data.Identity;
 
 namespace RetailERP.Areas.Identity.Pages.Account
 {
+    [AllowAnonymous]
     public class ConfirmEmailModel : PageModel
     {
         private readonly UserManager<ApplicationUser> _userManager;

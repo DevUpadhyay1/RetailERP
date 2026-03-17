@@ -1,0 +1,95 @@
+@model RetailERP.Controllers.AdminUsersController.CreateVm
+@{
+    ViewData["Title"] = "Create User";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h2 class="mb-0">Create User</h2>
+        <div class="text-muted">Admin can create staff accounts and assign a role</div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12 col-lg-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <form asp-action="Create" method="post" class="vstack gap-3">
+                    @Html.AntiForgeryToken()
+
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <div>
+                        <label class="form-label" asp-for="DisplayName"></label>
+                        <input class="form-control" asp-for="DisplayName" autocomplete="off" placeholder="e.g., Manager / Cashier / Ali" />
+                        <span class="text-danger" asp-validation-for="DisplayName"></span>
+                        <div class="text-muted small mt-1">This name is shown in the sidebar, dashboard, and header (email stays for login).</div>
+                    </div>
+
+                    <div>
+                        <label class="form-label" asp-for="Email"></label>
+                        <input class="form-control" asp-for="Email" autocomplete="off" />
+                        <span class="text-danger" asp-validation-for="Email"></span>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" asp-for="Password"></label>
+                            <input class="form-control" asp-for="Password" />
+                            <span class="text-danger" asp-validation-for="Password"></span>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" asp-for="ConfirmPassword"></label>
+                            <input class="form-control" asp-for="ConfirmPassword" />
+                            <span class="text-danger" asp-validation-for="ConfirmPassword"></span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="form-label" asp-for="Role"></label>
+                        <select class="form-select" asp-for="Role">
+                            <option value="" selected disabled>-- select role --</option>
+                            @foreach (var role in Model.Roles)
+                            {
+                                <option value="@role">@role</option>
+                            }
+                        </select>
+                        <span class="text-danger" asp-validation-for="Role"></span>
+                        @if (!Model.Roles.Any())
+                        {
+                            <div class="text-muted small mt-1">No roles found. Ensure roles are seeded in the database.</div>
+                        }
+                    </div>
+
+                    @if (Model.Companies.Any())
+                    {
+                        <div>
+                            <label class="form-label" asp-for="CompanyId"></label>
+                            <select class="form-select" asp-for="CompanyId">
+                                <option value="" selected disabled>-- select company --</option>
+                                @foreach (var c in Model.Companies)
+                                {
+                                    <option value="@c.CompanyId">@c.Name</option>
+                                }
+                            </select>
+                            <span class="text-danger" asp-validation-for="CompanyId"></span>
+                        </div>
+                    }
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary" type="submit">Create</button>
+                        <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

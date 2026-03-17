@@ -1,0 +1,455 @@
+@model RetailERP.Controllers.HomeController.PlatformDashboardVm
+@using Microsoft.AspNetCore.Identity
+@using RetailERP.Data.Identity
+@using RetailERP.Data.Entities
+@inject UserManager<ApplicationUser> UserManager
+@{
+    ViewData["Title"] = "Platform Dashboard";
+
+    var currentUser = await UserManager.GetUserAsync(User);
+    var displayName = currentUser?.DisplayName ?? currentUser?.Email ?? "SuperAdmin";
+    var at = displayName.IndexOf("@@");
+    if (at > 0) displayName = displayName[..at];
+    displayName = displayName.Replace('.', ' ').Replace('_', ' ').Trim();
+
+    var inactiveCompanies = Model.TotalCompanies - Model.ActiveCompanies;
+    var inactiveUsers = Model.TotalUsers - Model.ActiveUsers;
+
+    // Business types for filter dropdown
+    var bizTypes = Enum.GetValues<BusinessType>();
+}
+
+@section Styles {
+    <style>
+        .kpi-card { border: none; border-radius: .75rem; transition: transform .15s; }
+        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+        .kpi-number { font-size: 1.8rem; font-weight: 700; line-height: 1.1; }
+        .kpi-label { font-size: .85rem; color: #6c757d; }
+        .kpi-sub { font-size: .75rem; color: #adb5bd; }
+        .kpi-icon { font-size: 2rem; opacity: .15; position: absolute; right: 1rem; top: 1rem; }
+        .section-title { font-weight: 600; font-size: 1.1rem; margin-bottom: .75rem; }
+        .company-row:hover { background: #f8f9fa; }
+        .chart-card { border: none; border-radius: .75rem; }
+        .filter-bar { background: #f8f9fa; border-radius: .5rem; }
+    </style>
+}
+
+<!-- Header -->
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h2 class="mb-0 fw-bold">
+            <i class="bi bi-grid-1x2-fill me-2 text-primary"></i>Platform Dashboard
+        </h2>
+        <div class="text-muted small">
+            @DateTime.Now.ToString("dddd, dd MMMM yyyy") &middot;
+            Role: <span class="badge bg-danger">SuperAdmin</span> &middot;
+            Welcome, @displayName
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-primary" asp-controller="Companies" asp-action="Create">
+            <i class="bi bi-plus-lg me-1"></i>New Company
+        </a>
+        <a class="btn btn-outline-secondary" asp-controller="AdminUsers" asp-action="Index">
+            <i class="bi bi-people-fill me-1"></i>Users
+        </a>
+        <a class="btn btn-outline-secondary" asp-controller="Audit" asp-action="Index">
+            <i class="bi bi-shield-check me-1"></i>Audit Log
+        </a>
+    </div>
+</div>
+
+<!-- ═══════ KPI CARDS ═══════ -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card shadow-sm position-relative" style="border-left: 4px solid #0d6efd;">
+            <div class="card-body">
+                <i class="bi bi-buildings kpi-icon text-primary"></i>
+                <div class="kpi-number text-primary">@Model.TotalCompanies</div>
+                <div class="kpi-label">Companies</div>
+                <div class="kpi-sub">
+                    <span class="text-success">@Model.ActiveCompanies active</span>
+                    @if (inactiveCompanies > 0)
+                    {
+                        <span class="text-danger ms-1">@inactiveCompanies inactive</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card shadow-sm position-relative" style="border-left: 4px solid #198754;">
+            <div class="card-body">
+                <i class="bi bi-people-fill kpi-icon text-success"></i>
+                <div class="kpi-number text-success">@Model.TotalUsers</div>
+                <div class="kpi-label">Platform Users</div>
+                <div class="kpi-sub">
+                    <span class="text-success">@Model.ActiveUsers active</span>
+                    @if (inactiveUsers > 0)
+                    {
+                        <span class="text-secondary ms-1">@inactiveUsers inactive</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card shadow-sm position-relative" style="border-left: 4px solid #6f42c1;">
+            <div class="card-body">
+                <i class="bi bi-shop kpi-icon" style="color: #6f42c1;"></i>
+                <div class="kpi-number" style="color: #6f42c1;">@Model.TotalStores</div>
+                <div class="kpi-label">Total Stores</div>
+                <div class="kpi-sub">across all tenants</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card shadow-sm position-relative" style="border-left: 4px solid #fd7e14;">
+            <div class="card-body">
+                <i class="bi bi-graph-up kpi-icon" style="color: #fd7e14;"></i>
+                @if (Model.TotalCompanies > 0)
+                {
+                    <div class="kpi-number" style="color: #fd7e14;">
+                        @((Model.TotalUsers / (double)Model.TotalCompanies).ToString("F1"))
+                    </div>
+                    <div class="kpi-label">Avg Users / Company</div>
+                    <div class="kpi-sub">
+                        @((Model.TotalStores / (double)Model.TotalCompanies).ToString("F1")) avg stores
+                    </div>
+                }
+                else
+                {
+                    <div class="kpi-number" style="color: #fd7e14;">—</div>
+                    <div class="kpi-label">Avg Users / Company</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════ CHARTS ROW ═══════ -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-7">
+        <div class="card chart-card shadow-sm">
+            <div class="card-header bg-white fw-semibold border-0">
+                <i class="bi bi-bar-chart-line me-2 text-primary"></i>Company Registrations (Last 6 Months)
+            </div>
+            <div class="card-body" style="height: 260px;">
+                <canvas id="registrationChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card chart-card shadow-sm">
+            <div class="card-header bg-white fw-semibold border-0">
+                <i class="bi bi-pie-chart me-2 text-success"></i>Business Type Distribution
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center" style="height: 260px;">
+                <canvas id="bizTypeChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════ COMPANY TABLE WITH SEARCH / FILTER / PAGINATION ═══════ -->
+<div class="card shadow-sm border-0 mb-4" style="border-radius: .75rem;">
+    <div class="card-header bg-white border-0 pb-0">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h5 class="mb-0 fw-semibold">
+                <i class="bi bi-buildings me-2 text-primary"></i>Registered Companies
+                <span class="badge bg-secondary fw-normal ms-2">@Model.FilteredCount</span>
+            </h5>
+            <a class="btn btn-sm btn-primary" asp-controller="Companies" asp-action="Create">
+                <i class="bi bi-plus-lg me-1"></i>Add Company
+            </a>
+        </div>
+
+        <!-- Search & Filter Bar -->
+        <form method="get" asp-action="PlatformDashboard" class="filter-bar p-3 mb-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold mb-1">Search</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" name="search" class="form-control" placeholder="Name, code, email, city..."
+                               value="@Model.Search" />
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">Status</label>
+                    <select name="status" class="form-select form-select-sm">
+                        <option value="">All Status</option>
+                        <option value="active" selected="@(Model.StatusFilter == "active")">Active</option>
+                        <option value="inactive" selected="@(Model.StatusFilter == "inactive")">Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">Business Type</label>
+                    <select name="bizType" class="form-select form-select-sm">
+                        <option value="">All Types</option>
+                        @foreach (var bt in bizTypes)
+                        {
+                            <option value="@bt" selected="@(Model.BizTypeFilter == bt.ToString())">@bt</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-1">
+                    <button type="submit" class="btn btn-sm btn-primary flex-fill">
+                        <i class="bi bi-funnel me-1"></i>Filter
+                    </button>
+                    <a asp-action="PlatformDashboard" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Code</th>
+                        <th>Company Name</th>
+                        <th>Business Type</th>
+                        <th>Location</th>
+                        <th class="text-center">Users</th>
+                        <th class="text-center">Stores</th>
+                        <th class="text-center">Status</th>
+                        <th>Created</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.CompanyRows.Any())
+                    {
+                        <tr>
+                            <td colspan="9" class="p-4 text-muted text-center">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                @if (!string.IsNullOrEmpty(Model.Search) || !string.IsNullOrEmpty(Model.StatusFilter) || !string.IsNullOrEmpty(Model.BizTypeFilter))
+                                {
+                                    <span>No companies match your filters.</span>
+                                    <a asp-action="PlatformDashboard" class="ms-2 text-primary">Clear filters</a>
+                                }
+                                else
+                                {
+                                    <span>No companies registered yet.</span>
+                                    <a asp-controller="Companies" asp-action="Create" class="ms-2 text-primary">Create one</a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var c in Model.CompanyRows)
+                        {
+                            <tr class="company-row">
+                                <td><code>@c.Code</code></td>
+                                <td class="fw-semibold">@c.Name</td>
+                                <td><span class="badge bg-light text-dark border">@c.BusinessType</span></td>
+                                <td class="text-muted small">
+                                    @if (!string.IsNullOrEmpty(c.City) || !string.IsNullOrEmpty(c.State))
+                                    {
+                                        @c.City@((!string.IsNullOrEmpty(c.City) && !string.IsNullOrEmpty(c.State)) ? ", " : "")@c.State
+                                    }
+                                    else
+                                    {
+                                        <span class="text-secondary">—</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary bg-opacity-10 text-primary">@c.UserCount</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light border" style="color: #6f42c1;">@c.StoreCount</span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge @(c.IsActive ? "bg-success" : "bg-secondary")">
+                                        @(c.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td class="text-muted small">@c.CreatedAt.ToString("dd MMM yyyy")</td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        <a class="btn btn-outline-primary" asp-controller="Companies" asp-action="Details" asp-route-id="@c.CompanyId"
+                                           title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a class="btn btn-outline-secondary" asp-controller="Companies" asp-action="Edit" asp-route-id="@c.CompanyId"
+                                           title="Edit Company">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        @if (Model.TotalPages > 1)
+        {
+            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
+                <div class="text-muted small">
+                    Showing @(((Model.Page - 1) * 15) + 1)–@Math.Min(Model.Page * 15, Model.FilteredCount) of @Model.FilteredCount companies
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        @if (Model.Page > 1)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-action="PlatformDashboard"
+                                   asp-route-search="@Model.Search" asp-route-status="@Model.StatusFilter"
+                                   asp-route-bizType="@Model.BizTypeFilter" asp-route-page="@(Model.Page - 1)">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                        }
+
+                        @{
+                            var startPage = Math.Max(1, Model.Page - 2);
+                            var endPage = Math.Min(Model.TotalPages, startPage + 4);
+                            startPage = Math.Max(1, endPage - 4);
+                        }
+
+                        @if (startPage > 1)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-action="PlatformDashboard"
+                                   asp-route-search="@Model.Search" asp-route-status="@Model.StatusFilter"
+                                   asp-route-bizType="@Model.BizTypeFilter" asp-route-page="1">1</a>
+                            </li>
+                            @if (startPage > 2)
+                            {
+                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                            }
+                        }
+
+                        @for (var p = startPage; p <= endPage; p++)
+                        {
+                            <li class="page-item @(p == Model.Page ? "active" : "")">
+                                <a class="page-link" asp-action="PlatformDashboard"
+                                   asp-route-search="@Model.Search" asp-route-status="@Model.StatusFilter"
+                                   asp-route-bizType="@Model.BizTypeFilter" asp-route-page="@p">@p</a>
+                            </li>
+                        }
+
+                        @if (endPage < Model.TotalPages)
+                        {
+                            @if (endPage < Model.TotalPages - 1)
+                            {
+                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                            }
+                            <li class="page-item">
+                                <a class="page-link" asp-action="PlatformDashboard"
+                                   asp-route-search="@Model.Search" asp-route-status="@Model.StatusFilter"
+                                   asp-route-bizType="@Model.BizTypeFilter" asp-route-page="@Model.TotalPages">@Model.TotalPages</a>
+                            </li>
+                        }
+
+                        @if (Model.Page < Model.TotalPages)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-action="PlatformDashboard"
+                                   asp-route-search="@Model.Search" asp-route-status="@Model.StatusFilter"
+                                   asp-route-bizType="@Model.BizTypeFilter" asp-route-page="@(Model.Page + 1)">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- ═══════ RECENT COMPANIES ═══════ -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0" style="border-radius: .75rem;">
+            <div class="card-header bg-white fw-semibold border-0">
+                <i class="bi bi-clock-history me-2 text-warning"></i>Recently Registered Companies
+            </div>
+            <ul class="list-group list-group-flush">
+                @if (!Model.RecentCompanies.Any())
+                {
+                    <li class="list-group-item text-muted">No companies yet.</li>
+                }
+                else
+                {
+                    @foreach (var rc in Model.RecentCompanies)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-building me-2 text-primary"></i>
+                                <span class="fw-semibold">@rc.Name</span>
+                                <span class="text-muted small ms-2">(@rc.Code)</span>
+                                <span class="badge bg-light text-dark border ms-1">@rc.BusinessType</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge @(rc.IsActive ? "bg-success" : "bg-secondary")">
+                                    @(rc.IsActive ? "Active" : "Inactive")
+                                </span>
+                                <span class="text-muted small">@rc.CreatedAtUtc.ToString("dd MMM yyyy")</span>
+                                <a class="btn btn-sm btn-outline-primary" asp-controller="Companies" asp-action="Details" asp-route-id="@rc.CompanyId">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </div>
+                        </li>
+                    }
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const chartColors = ['#0d6efd', '#198754', '#dc3545', '#fd7e14', '#6f42c1', '#0dcaf0', '#d63384', '#20c997', '#ffc107'];
+
+        // Company Registrations (bar chart)
+        new Chart(document.getElementById('registrationChart'), {
+            type: 'bar',
+            data: {
+                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MonthlyLabels)),
+                datasets: [{
+                    label: 'New Companies',
+                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MonthlyRegistrations)),
+                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 }, title: { display: true, text: 'Companies' } }
+                }
+            }
+        });
+
+        // Business Type Doughnut
+        new Chart(document.getElementById('bizTypeChart'), {
+            type: 'doughnut',
+            data: {
+                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.BizTypeDistribution.Select(b => b.Key))),
+                datasets: [{
+                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.BizTypeDistribution.Select(b => b.Value))),
+                    backgroundColor: chartColors.slice(0, @Model.BizTypeDistribution.Count)
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+            }
+        });
+    });
+</script>

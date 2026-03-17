@@ -1,20 +1,58 @@
 ﻿@model RetailERP.Controllers.AdminUsersController.IndexVm
 @{
     ViewData["Title"] = "User Management";
+
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+
+    string ToggleDir(string nextSort)
+    {
+        if (!string.Equals(Model.Sort, nextSort, StringComparison.OrdinalIgnoreCase)) return "asc";
+        return string.Equals(Model.Dir, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+    }
 }
 
-<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
     <div>
         <h2 class="mb-0">User Management</h2>
-        <div class="text-muted">Assign roles to users</div>
+        <div class="text-muted small">Assign roles to users</div>
     </div>
-
-    <form method="get" class="d-flex gap-2">
-        <input class="form-control" name="q" value="@Model.Query" placeholder="Search email/username..." />
-        <button class="btn btn-outline-primary" type="submit">Search</button>
-        <a class="btn btn-outline-secondary" asp-action="Index">Reset</a>
-    </form>
+    <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>Create User</a>
 </div>
+
+<form method="get" class="mb-3">
+    <div class="row g-2 align-items-center">
+        <div class="col-12 col-md-4 col-lg-3">
+            <input class="form-control" name="q" value="@Model.Query" placeholder="Search name/email..." />
+        </div>
+        <div class="col-12 col-md-3 col-lg-2">
+            <select class="form-select" name="role">
+                <option value="">All roles</option>
+                @foreach (var r in Model.Roles)
+                {
+                    <option value="@r" selected="@(string.Equals(Model.Role, r, StringComparison.OrdinalIgnoreCase))">@r</option>
+                }
+            </select>
+        </div>
+        <div class="col-12 col-md-3 col-lg-2">
+            <select class="form-select" name="active">
+                <option value="" selected="@(Model.Active is null)">All statuses</option>
+                <option value="true" selected="@(Model.Active is true)">Active</option>
+                <option value="false" selected="@(Model.Active is false)">Inactive</option>
+            </select>
+        </div>
+
+        <input type="hidden" name="sort" value="@Model.Sort" />
+        <input type="hidden" name="dir" value="@Model.Dir" />
+        <input type="hidden" name="pageSize" value="@Model.PageSize" />
+
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary" type="submit">Apply</button>
+        </div>
+        <div class="col-auto">
+            <a class="btn btn-outline-dark" asp-action="Index">Reset</a>
+        </div>
+    </div>
+</form>
 
 @if (TempData["Ok"] is string ok)
 {
@@ -31,7 +69,13 @@
             <table class="table table-hover mb-0 align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>User</th>
+                        <th>
+                            <a class="text-decoration-none" asp-action="Index"
+                               asp-route-q="@Model.Query" asp-route-role="@Model.Role" asp-route-active="@Model.Active"
+                               asp-route-sort="name" asp-route-dir="@ToggleDir("name")"
+                               asp-route-page="1" asp-route-pageSize="@Model.PageSize">User</a>
+                        </th>
+                        <th style="width: 140px;">Status</th>
                         <th>Current role(s)</th>
                         <th style="width: 360px;">Set role</th>
                     </tr>
@@ -39,14 +83,35 @@
                 <tbody>
                     @if (!Model.Users.Any())
                     {
-                        <tr><td colspan="3" class="p-4 text-muted">No users found.</td></tr>
+                        <tr><td colspan="4" class="p-4 text-muted">No users found.</td></tr>
                     }
                     else
                     {
                         foreach (var u in Model.Users)
                         {
                             <tr>
-                                <td class="fw-semibold">@u.Email</td>
+                                <td>
+                                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(u.DisplayName) ? u.Email : u.DisplayName)</div>
+                                    <div class="text-muted small">@u.Email</div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge @(u.IsActive ? "bg-success" : "bg-secondary")">@(u.IsActive ? "Active" : "Inactive")</span>
+
+                                        <form asp-action="ToggleActive" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="userId" value="@u.UserId" />
+                                            <input type="hidden" name="returnUrl" value="@returnUrl" />
+                                            <button class="btn btn-sm @(u.IsActive ? "btn-outline-danger" : "btn-outline-success")" type="submit" disabled="@(Model.CurrentUserId == u.UserId)">
+                                                @(u.IsActive ? "Deactivate" : "Activate")
+                                            </button>
+                                        </form>
+                                    </div>
+                                    @if (Model.CurrentUserId == u.UserId)
+                                    {
+                                        <div class="text-muted small">Current user</div>
+                                    }
+                                </td>
                                 <td>
                                     @if (!u.Roles.Any())
                                     {
@@ -64,10 +129,11 @@
                                     <form asp-action="SetRole" method="post" class="d-flex gap-2">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="userId" value="@u.UserId" />
+                                        <input type="hidden" name="returnUrl" value="@returnUrl" />
                                         <select class="form-select" name="role">
                                             @foreach (var role in Model.Roles)
                                             {
-                                                <option value="@role">@role</option>
+                                                <option value="@role" selected="@(u.Roles.Contains(role))">@role</option>
                                             }
                                         </select>
                                         <button class="btn btn-primary" type="submit">Update</button>
@@ -78,6 +144,43 @@
                     }
                 </tbody>
             </table>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 border-top">
+            <div class="text-muted small">Showing page @Model.Page of @Model.TotalPages • Total: @Model.TotalCount</div>
+
+            <form method="get" class="d-flex align-items-center gap-2">
+                <input type="hidden" name="q" value="@Model.Query" />
+                <input type="hidden" name="role" value="@Model.Role" />
+                <input type="hidden" name="active" value="@Model.Active" />
+                <input type="hidden" name="sort" value="@Model.Sort" />
+                <input type="hidden" name="dir" value="@Model.Dir" />
+                <input type="hidden" name="page" value="1" />
+                <label class="text-muted small">Rows</label>
+                <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 110px;">
+                    <option value="5" selected="@(Model.PageSize==5)">5</option>
+                    <option value="10" selected="@(Model.PageSize==10)">10</option>
+                    <option value="20" selected="@(Model.PageSize==20)">20</option>
+                    <option value="50" selected="@(Model.PageSize==50)">50</option>
+                </select>
+            </form>
+
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-q="@Model.Query" asp-route-role="@Model.Role" asp-route-active="@Model.Active" asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-page="@(Model.Page-1)" asp-route-pageSize="@Model.PageSize">Prev</a>
+                    </li>
+                    @for (var p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+                    {
+                        <li class="page-item @(p == Model.Page ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-q="@Model.Query" asp-route-role="@Model.Role" asp-route-active="@Model.Active" asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-page="@p" asp-route-pageSize="@Model.PageSize">@p</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-q="@Model.Query" asp-route-role="@Model.Role" asp-route-active="@Model.Active" asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-page="@(Model.Page+1)" asp-route-pageSize="@Model.PageSize">Next</a>
+                    </li>
+                </ul>
+            </nav>
         </div>
     </div>
 </div>

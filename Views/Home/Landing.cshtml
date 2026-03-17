@@ -1,42 +1,213 @@
 ﻿@{
     ViewData["Title"] = "Welcome";
+    Layout = null;
 }
-
-<div class="container py-5">
-    <div class="row align-items-center g-4">
-        <div class="col-lg-7">
-            <h1 class="display-5 fw-semibold mb-2">RetailERP</h1>
-            <p class="lead text-muted mb-4">
-                A lightweight ERP for shop operations: inventory, sales invoices, and staff management.
-            </p>
-
-            <div class="d-flex flex-wrap gap-2">
-                <a class="btn btn-primary btn-lg" asp-area="Identity" asp-page="/Account/Login">Sign in</a>
-                <a class="btn btn-outline-primary btn-lg" asp-area="Identity" asp-page="/Account/Register">Create account</a>
-            </div>
-
-            <div class="mt-4 text-muted small">
-                Note: Business dashboards and reports are available after login.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RetailERP — Modern Retail Management</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        .landing-header { background: #fff; border-bottom: 1px solid #e2e8f0; }
+        .hero-section {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: #fff;
+            padding: 80px 0 60px;
+        }
+        .hero-section h1 { font-weight: 700; letter-spacing: -.02em; }
+        .hero-section .lead { color: rgba(255,255,255,.7); font-size: 1.15rem; }
+        .feature-icon {
+            width: 52px; height: 52px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; flex-shrink: 0;
+        }
+        .features-section { padding: 64px 0; background: #f8fafc; }
+        .cta-section { padding: 56px 0; background: #fff; }
+        .landing-footer { background: #1e293b; color: rgba(255,255,255,.6); padding: 32px 0; font-size: .85rem; }
+        .landing-footer a { color: rgba(255,255,255,.8); text-decoration: none; }
+        .landing-footer a:hover { color: #fff; }
+    </style>
+</head>
+<body>
+    <!-- ═══ HEADER ═══ -->
+    <header class="landing-header sticky-top">
+        <div class="container-xxl d-flex align-items-center justify-content-between py-3">
+            <a class="text-decoration-none d-flex align-items-center gap-2" href="/">
+                <div class="d-flex align-items-center justify-content-center rounded-2"
+                     style="width:36px;height:36px;background:#3b82f6;color:#fff;font-size:1rem;">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <span class="fw-bold fs-5 text-dark">RetailERP</span>
+            </a>
+            <div class="d-flex align-items-center gap-2">
+                <a class="btn btn-outline-secondary btn-sm" asp-area="Identity" asp-page="/Account/Login">Sign in</a>
+                @if (ViewBag.RegistrationOpen == true)
+                {
+                    <a class="btn btn-primary btn-sm" asp-area="Identity" asp-page="/Account/Register">Create account</a>
+                }
             </div>
         </div>
+    </header>
 
-        <div class="col-lg-5">
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
-                    <h5 class="mb-3">Modules</h5>
-                    <div class="row g-2">
-                        <div class="col-6"><div class="border rounded p-3 bg-light">Inventory</div></div>
-                        <div class="col-6"><div class="border rounded p-3 bg-light">Sales</div></div>
-                        <div class="col-6"><div class="border rounded p-3 bg-light">HR</div></div>
-                        <div class="col-6"><div class="border rounded p-3 bg-light">Finance</div></div>
+    <!-- ═══ HERO ═══ -->
+    <section class="hero-section">
+        <div class="container-xxl">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-7">
+                    <div class="badge bg-primary bg-opacity-25 text-white mb-3 px-3 py-2" style="font-size:.78rem;">Open-source ERP for Retail & Grocery</div>
+                    <h1 class="display-5 mb-3">Run your retail store<br>with confidence</h1>
+                    <p class="lead mb-4">Manage inventory, sales, purchases, stock transfers and audit logs — all from one clean dashboard. Built with ASP.NET Core &amp; Bootstrap.</p>
+                    <div class="d-flex flex-wrap gap-3">
+                        <a class="btn btn-primary btn-lg px-4" asp-area="Identity" asp-page="/Account/Login">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Sign in to Dashboard
+                        </a>
+                        @if (ViewBag.RegistrationOpen == true)
+                        {
+                            <a class="btn btn-outline-light btn-lg px-4" asp-area="Identity" asp-page="/Account/Register">Create account</a>
+                        }
                     </div>
-
-                    <hr class="my-4" />
-                    <div class="text-muted small">
-                        Secure access with role-based modules (Admin, Manager, Cashier, Inventory) will be enabled next.
+                </div>
+                <div class="col-lg-5">
+                    <div class="card border-0 shadow-lg" style="background:rgba(255,255,255,.06);backdrop-filter:blur(12px);">
+                        <div class="card-body p-4">
+                            <h6 class="text-white-50 mb-3 text-uppercase" style="font-size:.7rem;letter-spacing:.08em;">Quick Overview</h6>
+                            <div class="vstack gap-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="feature-icon" style="background:rgba(59,130,246,.2);color:#60a5fa;"><i class="bi bi-boxes"></i></div>
+                                    <div>
+                                        <div class="fw-semibold">Inventory</div>
+                                        <div class="text-white-50 small">Stock on hand, ledger, transfers, low stock alerts</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="feature-icon" style="background:rgba(16,185,129,.2);color:#34d399;"><i class="bi bi-receipt"></i></div>
+                                    <div>
+                                        <div class="fw-semibold">Sales & Invoicing</div>
+                                        <div class="text-white-50 small">Create invoices, auto-deduct stock on post</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="feature-icon" style="background:rgba(245,158,11,.2);color:#fbbf24;"><i class="bi bi-people"></i></div>
+                                    <div>
+                                        <div class="fw-semibold">CRM & Suppliers</div>
+                                        <div class="text-white-50 small">Customers, suppliers, employees</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="feature-icon" style="background:rgba(139,92,246,.2);color:#a78bfa;"><i class="bi bi-shield-check"></i></div>
+                                    <div>
+                                        <div class="fw-semibold">Audit & Reports</div>
+                                        <div class="text-white-50 small">Full action log, sales reports, role-based access</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
+    </section>
+
+    <!-- ═══ FEATURES ═══ -->
+    <section class="features-section">
+        <div class="container-xxl">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold">Everything you need to run a retail store</h2>
+                <p class="text-muted">From purchase orders to sales invoices — one integrated system.</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <div class="feature-icon mb-3" style="background:#dbeafe;color:#3b82f6;"><i class="bi bi-bag-check"></i></div>
+                            <h6 class="fw-semibold">Purchases &amp; Receiving</h6>
+                            <p class="text-muted small mb-0">Create purchase orders, receive stock, and automatically update inventory with full ledger tracking.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <div class="feature-icon mb-3" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-receipt-cutoff"></i></div>
+                            <h6 class="fw-semibold">Invoice &amp; Billing</h6>
+                            <p class="text-muted small mb-0">Draft and post invoices with GST support. Stock is deducted automatically when posted.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <div class="feature-icon mb-3" style="background:#fef3c7;color:#d97706;"><i class="bi bi-arrow-left-right"></i></div>
+                            <h6 class="fw-semibold">Stock Transfers</h6>
+                            <p class="text-muted small mb-0">Move stock between warehouses with two-entry ledger tracking and reason logging.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <div class="feature-icon mb-3" style="background:#e0e7ff;color:#4f46e5;"><i class="bi bi-person-gear"></i></div>
+                            <h6 class="fw-semibold">Role-based Access</h6>
+                            <p class="text-muted small mb-0">Admin, Manager, Cashier, Inventory — each sees only their permitted modules.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <div class="feature-icon mb-3" style="background:#fce7f3;color:#db2777;"><i class="bi bi-graph-up-arrow"></i></div>
+                            <h6 class="fw-semibold">Sales Reports</h6>
+                            <p class="text-muted small mb-0">View sales by date range with charts and totals. Track revenue over time.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <div class="feature-icon mb-3" style="background:#f3e8ff;color:#7c3aed;"><i class="bi bi-journal-text"></i></div>
+                            <h6 class="fw-semibold">Audit Log</h6>
+                            <p class="text-muted small mb-0">Every invoice post, purchase receive, and transfer is logged with timestamp and actor.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ CTA ═══ -->
+    <section class="cta-section text-center">
+        <div class="container-xxl">
+            <h3 class="fw-bold mb-3">Ready to get started?</h3>
+            <p class="text-muted mb-4">Sign in now and start managing your retail operations today.</p>
+            <a class="btn btn-primary btn-lg px-5" asp-area="Identity" asp-page="/Account/Login">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Sign in
+            </a>
+        </div>
+    </section>
+
+    <!-- ═══ FOOTER ═══ -->
+    <footer class="landing-footer">
+        <div class="container-xxl">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center gap-2 mb-2 mb-md-0">
+                        <i class="bi bi-box-seam" style="color:#60a5fa;"></i>
+                        <span class="fw-semibold" style="color:rgba(255,255,255,.9);">RetailERP</span>
+                    </div>
+                    <div>&copy; @DateTime.Now.Year RetailERP. Built with ASP.NET Core &amp; Bootstrap.</div>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a asp-controller="Home" asp-action="Privacy" class="me-3">Privacy Policy</a>
+                    <a asp-area="Identity" asp-page="/Account/Login">Sign in</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

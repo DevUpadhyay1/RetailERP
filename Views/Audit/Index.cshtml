@@ -1,37 +1,76 @@
 ﻿@model List<RetailERP.Data.Entities.AuditLog>
 @{
     ViewData["Title"] = "Audit Log";
+
+    static string ToShortName(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return "—";
+        var at = email.IndexOf('@');
+        var s = at > 0 ? email[..at] : email;
+        return System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo
+            .ToTitleCase(s.Replace('.', ' ').Replace('_', ' ').Trim());
+    }
 }
 
-<div class="container py-4">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <h3 class="mb-0">Audit Log</h3>
-        <span class="text-muted small">Last 200 actions</span>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">Audit Log</h2>
+        <div class="text-muted small">Last @Model.Count recorded actions (most recent first)</div>
     </div>
+    <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Dashboard">
+        <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+    </a>
+</div>
 
-    <div class="table-responsive">
-        <table class="table table-striped align-middle">
-            <thead>
-                <tr>
-                    <th style="width:180px;">Time (UTC)</th>
-                    <th style="width:160px;">Action</th>
-                    <th style="width:140px;">Entity</th>
-                    <th>Entity Id</th>
-                    <th style="width:220px;">User</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var x in Model)
-                {
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
                     <tr>
-                        <td class="text-muted">@x.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
-                        <td><span class="badge text-bg-secondary">@x.Action</span></td>
-                        <td>@x.EntityType</td>
-                        <td class="text-muted">@x.EntityId</td>
-                        <td class="text-muted">@x.ActorEmail</td>
+                        <th style="width:170px;">Time (UTC)</th>
+                        <th style="width:160px;">Action</th>
+                        <th style="width:140px;">Entity</th>
+                        <th>Entity ID</th>
+                        <th style="width:220px;">User</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr><td colspan="5" class="p-4 text-muted">No audit log entries yet. Actions like posting invoices, receiving purchases, and transfers are recorded here.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var x in Model)
+                        {
+                            <tr>
+                                <td class="text-muted">@x.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>
+                                    @{
+                                        var badgeClass = x.Action?.ToLowerInvariant() switch
+                                        {
+                                            var a when a != null && a.Contains("post") => "bg-success",
+                                            var a when a != null && a.Contains("receiv") => "bg-primary",
+                                            var a when a != null && a.Contains("transfer") => "bg-info text-dark",
+                                            var a when a != null && a.Contains("delete") => "bg-danger",
+                                            var a when a != null && a.Contains("creat") => "bg-secondary",
+                                            _ => "bg-secondary"
+                                        };
+                                    }
+                                    <span class="badge @badgeClass">@x.Action</span>
+                                </td>
+                                <td class="fw-semibold">@x.EntityType</td>
+                                <td class="text-muted font-monospace small">@x.EntityId</td>
+                                <td>
+                                    <div class="fw-semibold">@ToShortName(x.ActorEmail)</div>
+                                    <div class="text-muted small">@x.ActorEmail</div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>

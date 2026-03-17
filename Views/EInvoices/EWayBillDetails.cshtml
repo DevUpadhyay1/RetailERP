@@ -1,0 +1,160 @@
+@model RetailERP.Data.Entities.EWayBill
+@{
+    ViewData["Title"] = "E-Way Bill Details";
+    string StatusBadge(byte s) => s switch { 1 => "success", 2 => "danger", 3 => "warning", _ => "secondary" };
+    string StatusText(byte s) => s switch { 1 => "Active", 2 => "Cancelled", 3 => "Expired", _ => "Unknown" };
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">@TempData["Success"]<button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">@TempData["Error"]<button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-truck me-2"></i>E-Way Bill: @Model.EwbNo</h2>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("EWayBills")" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+        @if (Model.Status == 1)
+        {
+            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelModal"><i class="bi bi-x-circle me-1"></i>Cancel</button>
+        }
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header fw-semibold">Part A — Consignment Details</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Status</label>
+                        <div><span class="badge bg-@StatusBadge(Model.Status) fs-6">@StatusText(Model.Status)</span></div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">EWB No</label>
+                        <div class="fw-semibold font-monospace">@Model.EwbNo</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Doc Type / No / Date</label>
+                        <div>@Model.DocType / @Model.DocNo / @Model.DocDate?.ToString("dd/MM/yyyy")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Supplier GSTIN</label>
+                        <div class="font-monospace">@Model.SupplierGstin</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Recipient GSTIN</label>
+                        <div class="font-monospace">@(Model.RecipientGstin ?? "URP")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Total Value</label>
+                        <div class="fw-semibold">₹@Model.TotalValue.ToString("N2")</div>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="text-muted small">CGST</label>
+                        <div>₹@Model.CgstAmount.ToString("N2")</div>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="text-muted small">SGST</label>
+                        <div>₹@Model.SgstAmount.ToString("N2")</div>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="text-muted small">IGST</label>
+                        <div>₹@Model.IgstAmount.ToString("N2")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Valid Upto</label>
+                        <div class="fw-semibold @(Model.ValidUpto < DateTime.UtcNow ? "text-danger" : "text-success")">
+                            @Model.ValidUpto.ToString("dd/MM/yyyy HH:mm")
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Generated At</label>
+                        <div>@Model.GeneratedAtUtc.ToString("dd/MM/yyyy HH:mm")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header fw-semibold">Part B — Transport Details</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Transporter ID</label>
+                        <div>@(Model.TransporterId ?? "—")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Transporter Name</label>
+                        <div>@(Model.TransporterName ?? "—")</div>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="text-muted small">Vehicle No</label>
+                        <div class="fw-semibold">@(Model.VehicleNo ?? "—")</div>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="text-muted small">Transport Mode</label>
+                        <div>@Model.TransMode</div>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="text-muted small">Distance (km)</label>
+                        <div>@Model.Distance.ToString("N1")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">From Address</label>
+                        <div>@(Model.FromAddress ?? "—") @(Model.FromPincode ?? "")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">To Address</label>
+                        <div>@(Model.ToAddress ?? "—") @(Model.ToPincode ?? "")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.CancelReason))
+        {
+            <div class="card shadow-sm border-danger mb-4">
+                <div class="card-header bg-danger text-white fw-semibold">Cancellation</div>
+                <div class="card-body">
+                    <p class="mb-0 text-danger">@Model.CancelReason</p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@if (Model.Status == 1)
+{
+    <div class="modal fade" id="cancelModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" asp-action="CancelEWayBill" asp-route-id="@Model.EWayBillId">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title">Cancel E-Way Bill</h5>
+                        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Reason <span class="text-danger">*</span></label>
+                            <textarea name="reason" class="form-control" rows="3" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-danger">Cancel E-Way Bill</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}

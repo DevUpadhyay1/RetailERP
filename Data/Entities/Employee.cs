@@ -2,6 +2,14 @@
 
 namespace RetailERP.Data.Entities;
 
+public enum EmployeeStatus
+{
+    Active = 1,
+    Inactive = 2,
+    OnLeave = 3,
+    Terminated = 4
+}
+
 public class Employee
 {
     [Key]
@@ -18,4 +26,6 @@ public class Employee
 
     [DataType(DataType.Date)]
     public DateTime JoinDate { get; set; }
+
+    public EmployeeStatus Status { get; set; } = EmployeeStatus.Active;
 }

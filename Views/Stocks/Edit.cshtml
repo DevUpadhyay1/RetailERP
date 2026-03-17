@@ -1,42 +1,49 @@
 ﻿@model RetailERP.Data.Entities.Stock
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Edit Stock";
 }
 
-<h1>Edit</h1>
-
-<h4>Stock</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Edit">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="StockId" />
-            <div class="form-group">
-                <label asp-for="ItemId" class="control-label"></label>
-                <select asp-for="ItemId" class="form-control" asp-items="ViewBag.ItemId"></select>
-                <span asp-validation-for="ItemId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="WarehouseId" class="control-label"></label>
-                <select asp-for="WarehouseId" class="form-control" asp-items="ViewBag.WarehouseId"></select>
-                <span asp-validation-for="WarehouseId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Quantity" class="control-label"></label>
-                <input asp-for="Quantity" class="form-control" />
-                <span asp-validation-for="Quantity" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
-            </div>
-        </form>
+<div class="vstack gap-3" style="max-width:720px;">
+    <div class="d-flex align-items-center justify-content-between">
+        <h2 class="mb-0">Edit Stock</h2>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back to List
+        </a>
     </div>
-</div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <form asp-action="Edit">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                <input type="hidden" asp-for="StockId" />
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="ItemId" class="form-label"></label>
+                        <select asp-for="ItemId" class="form-select" asp-items="ViewBag.ItemId"></select>
+                        <span asp-validation-for="ItemId" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="WarehouseId" class="form-label"></label>
+                        <select asp-for="WarehouseId" class="form-select" asp-items="ViewBag.WarehouseId"></select>
+                        <span asp-validation-for="WarehouseId" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Quantity" class="form-label"></label>
+                        <input asp-for="Quantity" class="form-control" />
+                        <span asp-validation-for="Quantity" class="text-danger"></span>
+                    </div>
+                    <div class="col-12">
+                        <hr class="my-1" />
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save</button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 @section Scripts {

@@ -1,0 +1,103 @@
+@model List<RetailERP.Data.Entities.Promotion>
+@{
+    ViewData["Title"] = "Promotions";
+    var q = ViewBag.Q as string;
+    var sort = (string)ViewBag.Sort;
+    var dir = (string)ViewBag.Dir;
+    var page = (int)ViewBag.Page;
+    var totalPages = (int)ViewBag.TotalPages;
+    string Flip(string s) => sort == s && dir == "asc" ? "desc" : "asc";
+    string Icon(string s) => sort == s ? (dir == "asc" ? "↑" : "↓") : "";
+}
+
+@if (TempData["Success"] is string msg)
+{
+    <div class="alert alert-success alert-dismissible fade show mb-3">@msg<button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0"><i class="bi bi-percent me-2"></i>Promotions</h4>
+    <a asp-action="Create" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>New Promotion</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto">
+        <input name="q" value="@q" class="form-control form-control-sm" placeholder="Search…" />
+    </div>
+    <div class="col-auto"><button class="btn btn-outline-secondary btn-sm">Search</button></div>
+    @if (!string.IsNullOrEmpty(q)) { <div class="col-auto"><a asp-action="Index" class="btn btn-link btn-sm">Clear</a></div> }
+</form>
+
+<div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th><a asp-action="Index" asp-route-q="@q" asp-route-sort="Name" asp-route-dir="@Flip("Name")">Name @Icon("Name")</a></th>
+                <th><a asp-action="Index" asp-route-q="@q" asp-route-sort="PromoType" asp-route-dir="@Flip("PromoType")">Type @Icon("PromoType")</a></th>
+                <th>Discount</th>
+                <th>Scope</th>
+                <th><a asp-action="Index" asp-route-q="@q" asp-route-sort="ValidTo" asp-route-dir="@Flip("ValidTo")">Valid To @Icon("ValidTo")</a></th>
+                <th><a asp-action="Index" asp-route-q="@q" asp-route-sort="Priority" asp-route-dir="@Flip("Priority")">Priority @Icon("Priority")</a></th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model)
+            {
+                var isExpired = p.ValidTo < DateTime.Today;
+                <tr class="@(isExpired ? "table-secondary" : "")">
+                    <td><a asp-action="Details" asp-route-id="@p.PromotionId" class="fw-semibold text-decoration-none">@p.Name</a></td>
+                    <td><span class="badge bg-info text-dark">@p.PromoType</span></td>
+                    <td>
+                        @if (p.PromoType is "FlatPercent" or "HappyHour") { <span>@p.DiscountPercent%</span> }
+                        else if (p.PromoType == "FlatAmount") { <span>₹@p.DiscountAmount.ToString("N2")</span> }
+                        else if (p.PromoType is "BOGO" or "BuyXGetY") { <span>Buy @p.BuyQty Get @p.GetQty</span> }
+                        else if (p.PromoType == "ComboDiscount") { <span>Combo ₹@p.ComboPrice.ToString("N2")</span> }
+                    </td>
+                    <td>
+                        @if (p.Item is not null) { <span class="badge bg-secondary">@p.Item.Name</span> }
+                        else if (p.Category is not null) { <span class="badge bg-warning text-dark">@p.Category.Name</span> }
+                        else { <span class="text-muted">All Items</span> }
+                    </td>
+                    <td>@p.ValidTo.ToString("dd-MMM-yyyy")</td>
+                    <td class="text-center">@p.Priority</td>
+                    <td>
+                        @if (!p.IsActive) { <span class="badge bg-secondary">Inactive</span> }
+                        else if (isExpired) { <span class="badge bg-danger">Expired</span> }
+                        else { <span class="badge bg-success">Active</span> }
+                    </td>
+                    <td class="text-end">
+                        <a asp-action="Edit" asp-route-id="@p.PromotionId" class="btn btn-outline-primary btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+                        <form asp-action="ToggleActive" asp-route-id="@p.PromotionId" method="post" class="d-inline">
+                            <button class="btn btn-outline-@(p.IsActive ? "warning" : "success") btn-sm" title="@(p.IsActive ? "Deactivate" : "Activate")">
+                                <i class="bi bi-@(p.IsActive ? "pause" : "play")"></i>
+                            </button>
+                        </form>
+                        <form asp-action="Delete" asp-route-id="@p.PromotionId" method="post" class="d-inline" onsubmit="return confirm('Delete this promotion?')">
+                            <button class="btn btn-outline-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (!Model.Any())
+            {
+                <tr><td colspan="8" class="text-center text-muted py-4">No promotions found. Create your first one!</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (totalPages > 1)
+{
+    <nav>
+        <ul class="pagination pagination-sm justify-content-center">
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(i == page ? "active" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-q="@q" asp-route-sort="@sort" asp-route-dir="@dir" asp-route-page="@i">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

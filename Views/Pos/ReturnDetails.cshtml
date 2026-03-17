@@ -1,0 +1,91 @@
+@model RetailERP.Data.Entities.PosReturn
+@{
+    ViewData["Title"] = $"Return — {Model.ReturnNo}";
+}
+
+<div class="vstack gap-3" style="max-width:900px;">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-0"><i class="bi bi-arrow-return-left me-2"></i>@Model.ReturnNo</h2>
+            <div class="text-muted small">
+                Original bill: <a asp-action="Bill" asp-route-id="@Model.OriginalBillId">@Model.OriginalBill?.BillNo</a> &bull;
+                @Model.Store?.Name &bull;
+                @(Model.Customer?.Name ?? "Walk-in") &bull;
+                @Model.ReturnDate.ToString("dd MMM yyyy")
+            </div>
+        </div>
+        <span class="badge bg-success text-white fs-6">Processed</span>
+    </div>
+
+    @if (TempData["Ok"] is string ok) { <div class="alert alert-success py-2">@ok</div> }
+
+    @if (!string.IsNullOrEmpty(Model.Reason))
+    {
+        <div class="alert alert-info py-2 mb-0">
+            <i class="bi bi-chat-left-text me-1"></i><strong>Reason:</strong> @Model.Reason
+        </div>
+    }
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-light fw-semibold">
+            <i class="bi bi-list-check me-1"></i>Returned Items
+        </div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Item</th>
+                        <th class="text-end">Unit Price</th>
+                        <th class="text-center">Qty Returned</th>
+                        <th class="text-end">Refund</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int idx = 0; }
+                    @foreach (var l in Model.Lines)
+                    {
+                        idx++;
+                        <tr>
+                            <td class="text-muted">@idx</td>
+                            <td class="fw-medium">@l.Item?.Name</td>
+                            <td class="text-end">₹@l.UnitPrice.ToString("N2")</td>
+                            <td class="text-center">@l.Qty</td>
+                            <td class="text-end fw-medium text-danger">₹@l.RefundAmount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="table-light">
+                        <td colspan="4" class="text-end fw-bold">Total Refund:</td>
+                        <td class="text-end fw-bold text-danger fs-5">₹@Model.TotalRefund.ToString("N2")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="text-muted small">Processed At</div>
+                    <div class="fw-medium">@Model.ProcessedAtUtc?.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-muted small">Processed By</div>
+                    <div class="fw-medium">@(Model.ProcessedByUser?.DisplayName ?? Model.ProcessedByUser?.Email ?? "—")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-muted small">Status</div>
+                    <div><span class="badge bg-success text-white">Processed</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" asp-action="Returns"><i class="bi bi-arrow-left me-1"></i>All Returns</a>
+        <a class="btn btn-outline-secondary" asp-action="Bill" asp-route-id="@Model.OriginalBillId"><i class="bi bi-receipt me-1"></i>Original Bill</a>
+    </div>
+</div>

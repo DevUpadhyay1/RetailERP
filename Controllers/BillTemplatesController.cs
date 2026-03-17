@@ -1,0 +1,330 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using RetailERP.Data;
+using RetailERP.Data.Entities;
+using RetailERP.Services;
+using System.Security.Claims;
+
+namespace RetailERP.Controllers;
+
+/// <summary>Sprint 6 – Bill template designer (drag-and-drop receipt/invoice customisation).</summary>
+[Authorize(Roles = "Admin,SuperAdmin")]
+public class BillTemplatesController : Controller
+{
+    private readonly ApplicationDbContext _db;
+    private readonly IWebHostEnvironment _env;
+    private readonly ReceiptPdfService _receiptPdf;
+    private readonly InvoicePdfService _invoicePdf;
+
+    public BillTemplatesController(
+        ApplicationDbContext db,
+        IWebHostEnvironment env,
+        ReceiptPdfService receiptPdf,
+        InvoicePdfService invoicePdf)
+    {
+        _db = db;
+        _env = env;
+        _receiptPdf = receiptPdf;
+        _invoicePdf = invoicePdf;
+    }
+
+    private Guid GetCompanyId() =>
+        Guid.Parse(User.FindFirstValue("CompanyId") ?? Guid.Empty.ToString());
+
+    // ──────────────────────────────────────────────────────
+    // List templates
+    // ──────────────────────────────────────────────────────
+    [HttpGet]
+    public async Task<IActionResult> Index()
+    {
+        var templates = await _db.BillTemplates
+            .AsNoTracking()
+            .OrderByDescending(t => t.IsDefault)
+            .ThenBy(t => t.TemplateName)
+            .ToListAsync();
+
+        return View(templates);
+    }
+
+    // ──────────────────────────────────────────────────────
+    // Create
+    // ──────────────────────────────────────────────────────
+    [HttpGet]
+    public IActionResult Create()
+    {
+        var template = new BillTemplate
+        {
+            LayoutJson = GetDefaultLayoutJson()
+        };
+        return View(template);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(BillTemplate template)
+    {
+        if (!ModelState.IsValid) return View(template);
+
+        template.BillTemplateId = Guid.NewGuid();
+        template.CompanyId = GetCompanyId();
+        template.CreatedAtUtc = DateTime.UtcNow;
+        template.UpdatedAtUtc = DateTime.UtcNow;
+
+        // If marked default, unset other defaults of same type
+        if (template.IsDefault)
+            await UnsetOtherDefaults(template.TemplateType, template.BillTemplateId);
+
+        _db.BillTemplates.Add(template);
+        await _db.SaveChangesAsync();
+
+        TempData["Ok"] = "Template created.";
+        return RedirectToAction(nameof(Designer), new { id = template.BillTemplateId });
+    }
+
+    // ──────────────────────────────────────────────────────
+    // Designer (drag-and-drop)
+    // ──────────────────────────────────────────────────────
+    [HttpGet]
+    public async Task<IActionResult> Designer(Guid id)
+    {
+        var template = await _db.BillTemplates
+            .FirstOrDefaultAsync(t => t.BillTemplateId == id);
+        if (template is null) return NotFound();
+
+        var company = await _db.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.CompanyId == GetCompanyId());
+        ViewBag.Company = company;
+
+        return View(template);
+    }
+
+    // ──────────────────────────────────────────────────────
+    // Save layout (AJAX from designer)
+    // ──────────────────────────────────────────────────────
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveLayout([FromBody] SaveLayoutRequest req)
+    {
+        var template = await _db.BillTemplates
+            .FirstOrDefaultAsync(t => t.BillTemplateId == req.BillTemplateId);
+        if (template is null) return NotFound();
+
+        template.LayoutJson = req.LayoutJson;
+        template.PaperSize = req.PaperSize;
+        template.UpdatedAtUtc = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        return Json(new { success = true });
+    }
+
+    // ──────────────────────────────────────────────────────
+    // Edit metadata
+    // ──────────────────────────────────────────────────────
+    [HttpGet]
+    public async Task<IActionResult> Edit(Guid id)
+    {
+        var template = await _db.BillTemplates
+            .FirstOrDefaultAsync(t => t.BillTemplateId == id);
+        if (template is null) return NotFound();
+        return View(template);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(Guid id, BillTemplate model)
+    {
+        if (id != model.BillTemplateId) return NotFound();
+        if (!ModelState.IsValid) return View(model);
+
+        var template = await _db.BillTemplates
+            .FirstOrDefaultAsync(t => t.BillTemplateId == id);
+        if (template is null) return NotFound();
+
+        template.TemplateName = model.TemplateName;
+        template.TemplateType = model.TemplateType;
+        template.PaperSize = model.PaperSize;
+        template.IsDefault = model.IsDefault;
+        template.UpdatedAtUtc = DateTime.UtcNow;
+
+        if (template.IsDefault)
+            await UnsetOtherDefaults(template.TemplateType, template.BillTemplateId);
+
+        await _db.SaveChangesAsync();
+
+        TempData["Ok"] = "Template updated.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    // ──────────────────────────────────────────────────────
+    // Delete
+    // ──────────────────────────────────────────────────────
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var template = await _db.BillTemplates
+            .FirstOrDefaultAsync(t => t.BillTemplateId == id);
+        if (template is null) return NotFound();
+
+        _db.BillTemplates.Remove(template);
+        await _db.SaveChangesAsync();
+
+        TempData["Ok"] = "Template deleted.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    // ──────────────────────────────────────────────────────
+    // Set as default (AJAX)
+    // ──────────────────────────────────────────────────────
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetDefault(Guid id)
+    {
+        var template = await _db.BillTemplates
+            .FirstOrDefaultAsync(t => t.BillTemplateId == id);
+        if (template is null) return NotFound();
+
+        await UnsetOtherDefaults(template.TemplateType, template.BillTemplateId);
+        template.IsDefault = true;
+        template.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        TempData["Ok"] = $"'{template.TemplateName}' is now the default.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    // ──────────────────────────────────────────────────────
+    // Company logo upload
+    // ──────────────────────────────────────────────────────
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> UploadLogo(IFormFile logo)
+    {
+        if (logo is null || logo.Length == 0)
+            return Json(new { success = false, message = "No file selected." });
+
+        if (logo.Length > 2 * 1024 * 1024)
+            return Json(new { success = false, message = "File too large (max 2 MB)." });
+
+        var ext = Path.GetExtension(logo.FileName).ToLowerInvariant();
+        if (ext is not (".png" or ".jpg" or ".jpeg" or ".webp"))
+            return Json(new { success = false, message = "Only PNG, JPG, WEBP allowed." });
+
+        var companyId = GetCompanyId();
+        var company = await _db.Companies.FindAsync(companyId);
+        if (company is null) return NotFound();
+
+        var uploadsDir = Path.Combine(_env.WebRootPath, "uploads", "logos");
+        Directory.CreateDirectory(uploadsDir);
+
+        // Delete old logo if exists
+        if (!string.IsNullOrEmpty(company.LogoPath))
+        {
+            var oldPath = Path.Combine(_env.WebRootPath, company.LogoPath.TrimStart('/'));
+            if (System.IO.File.Exists(oldPath))
+                System.IO.File.Delete(oldPath);
+        }
+
+        var fileName = $"{companyId}{ext}";
+        var filePath = Path.Combine(uploadsDir, fileName);
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await logo.CopyToAsync(stream);
+        }
+
+        company.LogoPath = $"uploads/logos/{fileName}";
+        company.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Json(new { success = true, path = company.LogoPath });
+    }
+
+    // ──────────────────────────────────────────────────────
+    // Preview receipt PDF
+    // ──────────────────────────────────────────────────────
+    [HttpGet]
+    [Authorize(Roles = "Admin,Manager,Cashier")]
+    public async Task<IActionResult> PreviewReceipt(Guid id)
+    {
+        var template = await _db.BillTemplates.AsNoTracking().FirstOrDefaultAsync(t => t.BillTemplateId == id);
+        if (template is null) return NotFound();
+
+        var company = await _db.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.CompanyId == GetCompanyId());
+        if (company is null) return NotFound();
+
+        // Get latest completed bill for preview
+        var bill = await _db.PosBills
+            .AsNoTracking()
+            .Include(b => b.Lines).ThenInclude(l => l.Item)
+            .Include(b => b.Payments)
+            .Include(b => b.Store)
+            .Include(b => b.Customer)
+            .Include(b => b.CashierUser)
+            .Where(b => b.Status == 2)
+            .OrderByDescending(b => b.BillDate)
+            .FirstOrDefaultAsync();
+
+        // If no completed bills, create a sample bill for preview
+        if (bill is null)
+        {
+            var store = await _db.Stores.AsNoTracking().FirstOrDefaultAsync()
+                ?? new Store { Name = company.Name, Address = company.Address, Phone = company.Phone, GstNo = company.GstNo };
+
+            bill = new PosBill
+            {
+                BillNo = "PREVIEW-001",
+                BillDate = DateTime.Today,
+                Store = store,
+                SubTotal = 570m,
+                TaxTotal = 10.50m,
+                DiscountTotal = 0m,
+                GrandTotal = 580.50m,
+                Status = 2,
+                CompletedAtUtc = DateTime.UtcNow,
+                Lines = new List<PosBillLine>
+                {
+                    new() { ItemNameSnapshot = "Basmati Rice 5kg", SkuSnapshot = "ITM-001", BarcodeSnapshot = "8901000000011", Qty = 1, UnitPrice = 220m, MrpSnapshot = 220m, GstPercentSnapshot = 0m, DiscountAmount = 0, LineTotal = 220m },
+                    new() { ItemNameSnapshot = "Milk 1L", SkuSnapshot = "ITM-002", BarcodeSnapshot = "8901000000013", Qty = 1, UnitPrice = 210m, MrpSnapshot = 210m, GstPercentSnapshot = 5m, DiscountAmount = 0, LineTotal = 210m },
+                    new() { ItemNameSnapshot = "Sugar 1kg", SkuSnapshot = "ITM-003", BarcodeSnapshot = "8901000000012", Qty = 1, UnitPrice = 140m, MrpSnapshot = 140m, GstPercentSnapshot = 0m, DiscountAmount = 0, LineTotal = 140m }
+                },
+                Payments = new List<Payment>
+                {
+                    new() { Method = "Cash", Amount = 580.50m, PaidAtUtc = DateTime.UtcNow, IsRefund = false }
+                }
+            };
+        }
+
+        var pdf = _receiptPdf.Generate(bill, template, company);
+        return File(pdf, "application/pdf", $"receipt_preview_{template.TemplateName}.pdf");
+    }
+
+    // ──────────────────────────────────────────────────────
+    // Helpers
+    // ──────────────────────────────────────────────────────
+    private async Task UnsetOtherDefaults(byte templateType, Guid excludeId)
+    {
+        var others = await _db.BillTemplates
+            .Where(t => t.TemplateType == templateType && t.IsDefault && t.BillTemplateId != excludeId)
+            .ToListAsync();
+        foreach (var t in others) t.IsDefault = false;
+        if (others.Count > 0) await _db.SaveChangesAsync();
+    }
+
+    private static string GetDefaultLayoutJson()
+    {
+        var components = new object[]
+        {
+            new { type = "logo",         props = new { maxHeight = 50, align = "center" } },
+            new { type = "store_header", props = new { showGst = true, headerText = "" } },
+            new { type = "bill_info",    props = new { } },
+            new { type = "items_table",  props = new { showHsn = false } },
+            new { type = "totals",       props = new { showDiscount = true } },
+            new { type = "payments",     props = new { } },
+            new { type = "tax_summary",  props = new { } },
+            new { type = "footer",       props = new { text = "Thank you for shopping!", showItemCount = true } }
+        };
+        return System.Text.Json.JsonSerializer.Serialize(components);
+    }
+
+    public class SaveLayoutRequest
+    {
+        public Guid BillTemplateId { get; set; }
+        public string LayoutJson { get; set; } = "[]";
+        public string PaperSize { get; set; } = "Thermal80mm";
+    }
+}

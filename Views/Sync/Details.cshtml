@@ -1,0 +1,87 @@
+@model RetailERP.Data.Entities.SyncLog
+@{
+    ViewData["Title"] = $"Sync Entry – {Model.SyncLogId.ToString()[..8]}";
+    var statusClass = Model.Status switch { 1 => "bg-warning text-dark", 2 => "bg-success", 3 => "bg-danger", _ => "bg-secondary" };
+    var statusText = Model.Status switch { 1 => "Pending", 2 => "Synced", 3 => "Conflict", _ => "?" };
+}
+
+@if (TempData["Success"] is string msg)
+{
+    <div class="alert alert-success alert-dismissible fade show">@msg <button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger alert-dismissible fade show">@err <button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>Sync Entry</h4>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Index"><i class="bi bi-arrow-left me-1"></i>Back</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="text-muted mb-3">Entry Details</h6>
+                <table class="table table-sm mb-0">
+                    <tr><th style="width:35%">ID</th><td><code class="small">@Model.SyncLogId</code></td></tr>
+                    <tr><th>Device</th><td><code>@Model.DeviceId</code></td></tr>
+                    <tr><th>Entity Type</th><td>@Model.EntityType</td></tr>
+                    <tr><th>Entity ID</th><td><code class="small">@Model.EntityId</code></td></tr>
+                    <tr><th>Action</th><td><span class="badge bg-info text-dark">@Model.Action</span></td></tr>
+                    <tr><th>Status</th><td><span class="badge @statusClass">@statusText</span></td></tr>
+                    <tr><th>Queued</th><td>@Model.QueuedAtUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm:ss")</td></tr>
+                    <tr><th>Synced</th><td>@(Model.SyncedAtUtc?.ToLocalTime().ToString("dd MMM yyyy HH:mm:ss") ?? "—")</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        @if (Model.Status == 3)
+        {
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">Conflict Details</div>
+                <div class="card-body">
+                    <p class="mb-3">@(Model.ConflictDetails ?? "No details available.")</p>
+                    <form method="post" asp-action="Resolve" class="d-flex gap-2">
+                        <input type="hidden" name="syncLogId" value="@Model.SyncLogId" />
+                        <button name="resolution" value="Server" class="btn btn-outline-primary btn-sm">Keep Server</button>
+                        <button name="resolution" value="Client" class="btn btn-outline-warning btn-sm">Keep Client</button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.Resolution))
+        {
+            <div class="card shadow-sm border-success mt-3">
+                <div class="card-body">
+                    <h6 class="text-muted mb-2">Resolution</h6>
+                    <p><strong>@Model.Resolution</strong> version was kept.</p>
+                    <p class="text-muted small mb-0">Resolved: @Model.ResolvedAtUtc?.ToLocalTime().ToString("dd MMM yyyy HH:mm")</p>
+                </div>
+            </div>
+        }
+
+        <div class="mt-3">
+            <form method="post" asp-action="Retry" class="d-inline">
+                <input type="hidden" name="syncLogId" value="@Model.SyncLogId" />
+                <button class="btn btn-outline-warning btn-sm" onclick="return confirm('Re-queue for sync?')">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Retry
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.Payload))
+{
+    <div class="card shadow-sm mt-3">
+        <div class="card-header">Payload (JSON)</div>
+        <div class="card-body">
+            <pre class="mb-0" style="max-height:400px; overflow:auto; font-size:12px;">@Model.Payload</pre>
+        </div>
+    </div>
+}

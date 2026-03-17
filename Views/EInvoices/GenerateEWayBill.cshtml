@@ -1,0 +1,80 @@
+@model RetailERP.Services.EWayBillInput
+@{
+    ViewData["Title"] = "Generate E-Way Bill";
+    var posBillId   = ViewBag.PosBillId as Guid?;
+    var billNumber  = ViewBag.BillNumber as string ?? "N/A";
+    var totalValue  = ViewBag.TotalValue as decimal? ?? 0m;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-truck me-2"></i>Generate E-Way Bill</h2>
+        <small class="text-muted">For POS Bill <strong>@billNumber</strong> — ₹@totalValue.ToString("N2")</small>
+    </div>
+    <a href="@Url.Action("EWayBills")" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <form method="post" asp-action="GenerateEWayBill" asp-route-posBillId="@posBillId">
+            <h5 class="card-title mb-3">Transport Details (Part B)</h5>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="TransporterId" class="form-label">Transporter GSTIN / ID</label>
+                    <input asp-for="TransporterId" class="form-control" placeholder="15-digit GSTIN or Transporter ID" />
+                    <span asp-validation-for="TransporterId" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="TransporterName" class="form-label">Transporter Name</label>
+                    <input asp-for="TransporterName" class="form-control" />
+                    <span asp-validation-for="TransporterName" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="VehicleNo" class="form-label">Vehicle Number <span class="text-danger">*</span></label>
+                    <input asp-for="VehicleNo" class="form-control" placeholder="e.g. MH12AB1234" required />
+                    <span asp-validation-for="VehicleNo" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="TransMode" class="form-label">Transport Mode <span class="text-danger">*</span></label>
+                    <select asp-for="TransMode" class="form-select" required>
+                        <option value="Road">Road</option>
+                        <option value="Rail">Rail</option>
+                        <option value="Air">Air</option>
+                        <option value="Ship">Ship</option>
+                    </select>
+                    <span asp-validation-for="TransMode" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Distance" class="form-label">Distance (km) <span class="text-danger">*</span></label>
+                    <input asp-for="Distance" class="form-control" type="number" min="1" step="0.1" required />
+                    <span asp-validation-for="Distance" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <h5 class="card-title mb-3">Destination Details</h5>
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label asp-for="ToAddress" class="form-label">To Address <span class="text-danger">*</span></label>
+                    <input asp-for="ToAddress" class="form-control" required />
+                    <span asp-validation-for="ToAddress" class="text-danger small"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="ToPincode" class="form-label">To Pincode <span class="text-danger">*</span></label>
+                    <input asp-for="ToPincode" class="form-control" maxlength="6" pattern="\d{6}" placeholder="6 digits" required />
+                    <span asp-validation-for="ToPincode" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-success px-4"><i class="bi bi-check-circle me-1"></i>Generate E-Way Bill</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

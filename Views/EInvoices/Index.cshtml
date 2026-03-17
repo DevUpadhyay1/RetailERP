@@ -1,0 +1,76 @@
+@model List<RetailERP.Data.Entities.EInvoice>
+@{
+    ViewData["Title"] = "E-Invoices";
+    var statusFilter = (byte?)ViewBag.StatusFilter;
+    string StatusBadge(byte s) => s switch { 1 => "success", 2 => "danger", 3 => "warning", _ => "secondary" };
+    string StatusText(byte s) => s switch { 1 => "Generated", 2 => "Cancelled", 3 => "Failed", _ => "Unknown" };
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">@TempData["Success"]<button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">@TempData["Error"]<button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-qr-code me-2"></i>E-Invoices (IRN)</h2>
+        <div class="text-muted small">GST E-Invoice records with IRN and QR code</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("Index")" class="btn btn-sm @(statusFilter == null ? "btn-primary" : "btn-outline-primary")">All</a>
+        <a href="@Url.Action("Index", new { status = 1 })" class="btn btn-sm @(statusFilter == 1 ? "btn-success" : "btn-outline-success")">Generated</a>
+        <a href="@Url.Action("Index", new { status = 2 })" class="btn btn-sm @(statusFilter == 2 ? "btn-danger" : "btn-outline-danger")">Cancelled</a>
+        <a href="@Url.Action("Generate")" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Generate New</a>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>IRN</th>
+                        <th>Document</th>
+                        <th>Ack No</th>
+                        <th>Generated</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr><td colspan="6" class="p-4 text-muted text-center">No E-Invoices found.</td></tr>
+                    }
+                    @foreach (var e in Model)
+                    {
+                        <tr>
+                            <td class="font-monospace small" title="@e.Irn">@e.Irn[..16]…</td>
+                            <td>
+                                @if (e.PosBill != null)
+                                {
+                                    <span class="badge bg-info">POS</span> @e.PosBill.BillNo
+                                }
+                                else if (e.Invoice != null)
+                                {
+                                    <span class="badge bg-primary">INV</span> @e.Invoice.InvoiceNo
+                                }
+                            </td>
+                            <td class="text-muted">@e.AckNo</td>
+                            <td class="text-muted small">@e.GeneratedAtUtc.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td><span class="badge bg-@StatusBadge(e.Status)">@StatusText(e.Status)</span></td>
+                            <td>
+                                <a href="@Url.Action("Details", new { id = e.EInvoiceId })" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

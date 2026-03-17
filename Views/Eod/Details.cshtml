@@ -1,0 +1,108 @@
+@model RetailERP.Data.Entities.EodReport
+@{
+    ViewData["Title"] = $"EOD – {Model.Store?.Name} – {Model.ReportDate:dd MMM yyyy}";
+}
+
+@if (TempData["Success"] is string msg)
+{
+    <div class="alert alert-success alert-dismissible fade show">@msg <button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger alert-dismissible fade show">@err <button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="mb-0">
+        <i class="bi bi-calendar-check me-2"></i>EOD: @Model.Store?.Name — @Model.ReportDate.ToString("dd MMM yyyy")
+        @if (Model.Status == 1) { <span class="badge bg-warning text-dark ms-2">Pending</span> }
+        else { <span class="badge bg-success ms-2">Closed</span> }
+    </h4>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Print" asp-route-id="@Model.EodReportId" target="_blank"><i class="bi bi-printer me-1"></i>Print</a>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <!-- Sales Summary -->
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white"><i class="bi bi-bar-chart me-1"></i>Sales Summary</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-4 text-center">
+                        <div class="fs-3 fw-bold text-primary">@Model.BillCount</div>
+                        <div class="text-muted small">Bills</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="fs-3 fw-bold text-success">₹@Model.TotalSales.ToString("N2")</div>
+                        <div class="text-muted small">Total Sales</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="fs-3 fw-bold text-danger">₹@Model.TotalReturns.ToString("N2")</div>
+                        <div class="text-muted small">Returns (@Model.ReturnCount)</div>
+                    </div>
+                </div>
+                <hr />
+                <table class="table table-sm mb-0">
+                    <tr><th>Cash Sales</th><td class="text-end">₹@Model.TotalCashSales.ToString("N2")</td></tr>
+                    <tr><th>Card Sales</th><td class="text-end">₹@Model.TotalCardSales.ToString("N2")</td></tr>
+                    <tr><th>UPI Sales</th><td class="text-end">₹@Model.TotalUpiSales.ToString("N2")</td></tr>
+                    <tr class="table-primary"><th>Net Sales</th><td class="text-end fw-bold">₹@Model.NetSales.ToString("N2")</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cash Reconciliation -->
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white"><i class="bi bi-cash-stack me-1"></i>Cash Drawer</div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><th>Opening Cash</th><td class="text-end">₹@Model.OpeningCash.ToString("N2")</td></tr>
+                    <tr><th>+ Cash Sales</th><td class="text-end text-success">₹@Model.TotalCashSales.ToString("N2")</td></tr>
+                    <tr><th>– Returns</th><td class="text-end text-danger">₹@Model.TotalReturns.ToString("N2")</td></tr>
+                    <tr class="table-warning"><th>Expected Cash</th><td class="text-end fw-bold">₹@Model.ExpectedCash.ToString("N2")</td></tr>
+                    @if (Model.Status == 2)
+                    {
+                        <tr><th>Actual Cash</th><td class="text-end">₹@Model.ActualCash.ToString("N2")</td></tr>
+                        <tr class="@(Model.Variance < 0 ? "table-danger" : Model.Variance > 0 ? "table-warning" : "table-success")">
+                            <th>Variance</th>
+                            <td class="text-end fw-bold">₹@Model.Variance.ToString("N2")</td>
+                        </tr>
+                    }
+                </table>
+
+                @if (Model.Status == 1)
+                {
+                    <hr />
+                    <form method="post" asp-action="Close">
+                        <input type="hidden" name="eodReportId" value="@Model.EodReportId" />
+                        <div class="mb-2">
+                            <label class="form-label small">Actual Cash in Drawer (₹)</label>
+                            <input name="actualCash" type="number" step="0.01" min="0" class="form-control form-control-sm" required />
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small">Notes</label>
+                            <textarea name="notes" class="form-control form-control-sm" rows="2"></textarea>
+                        </div>
+                        <button class="btn btn-success btn-sm w-100"><i class="bi bi-lock me-1"></i>Close Day</button>
+                    </form>
+                }
+                else if (Model.Notes is not null)
+                {
+                    <hr />
+                    <div class="small text-muted">
+                        <strong>Notes:</strong> @Model.Notes
+                    </div>
+                    <div class="small text-muted mt-1">
+                        Closed by @(Model.ClosedByUser?.DisplayName ?? Model.ClosedByUser?.Email)
+                        at @Model.ClosedAtUtc?.ToLocalTime().ToString("dd MMM yyyy HH:mm")
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

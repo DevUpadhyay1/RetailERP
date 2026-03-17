@@ -1,47 +1,65 @@
 ﻿@model RetailERP.Data.Entities.Employee
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Edit Employee";
 }
 
-<h1>Edit</h1>
-
-<h4>Employee</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Edit">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="EmployeeId" />
-            <div class="form-group">
-                <label asp-for="EmployeeCode" class="control-label"></label>
-                <input asp-for="EmployeeCode" class="form-control" />
-                <span asp-validation-for="EmployeeCode" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="FirstName" class="control-label"></label>
-                <input asp-for="FirstName" class="form-control" />
-                <span asp-validation-for="FirstName" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="LastName" class="control-label"></label>
-                <input asp-for="LastName" class="form-control" />
-                <span asp-validation-for="LastName" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="JoinDate" class="control-label"></label>
-                <input asp-for="JoinDate" class="form-control" />
-                <span asp-validation-for="JoinDate" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
-            </div>
-        </form>
+<div class="d-flex justify-content-between align-items-end mb-3">
+    <div>
+        <h2 class="mb-0">Edit Employee</h2>
+        <div class="text-muted">Update staff details</div>
     </div>
+    <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
 </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
+<div class="row">
+    <div class="col-12 col-lg-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <form asp-action="Edit" class="vstack gap-3">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <input type="hidden" asp-for="EmployeeId" />
+
+                    <div>
+                        <label asp-for="EmployeeCode" class="form-label"></label>
+                        <input asp-for="EmployeeCode" class="form-control" />
+                        <span asp-validation-for="EmployeeCode" class="text-danger"></span>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label asp-for="FirstName" class="form-label"></label>
+                            <input asp-for="FirstName" class="form-control" />
+                            <span asp-validation-for="FirstName" class="text-danger"></span>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label asp-for="LastName" class="form-label"></label>
+                            <input asp-for="LastName" class="form-control" />
+                            <span asp-validation-for="LastName" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label asp-for="JoinDate" class="form-label"></label>
+                            <input asp-for="JoinDate" class="form-control" />
+                            <span asp-validation-for="JoinDate" class="text-danger"></span>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label asp-for="Status" class="form-label"></label>
+                            <select asp-for="Status" class="form-select" asp-items="@(ViewData["StatusOptions"] as SelectList)"></select>
+                            <span asp-validation-for="Status" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                        <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {

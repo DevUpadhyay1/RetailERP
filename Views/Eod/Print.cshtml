@@ -1,0 +1,75 @@
+@model RetailERP.Data.Entities.EodReport
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>EOD Report – @Model.Store?.Name – @Model.ReportDate.ToString("dd MMM yyyy")</title>
+    <style>
+        body { font-family: Consolas, 'Courier New', monospace; font-size: 13px; max-width: 400px; margin: 20px auto; }
+        .center { text-align: center; }
+        .right { text-align: right; }
+        hr { border: none; border-top: 1px dashed #000; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 2px 4px; }
+        th { text-align: left; }
+        td { text-align: right; }
+        .bold { font-weight: bold; }
+        h2, h3 { margin: 6px 0; }
+        @@media print { body { margin: 0; } }
+    </style>
+</head>
+<body onload="window.print()">
+    <div class="center">
+        <h2>@Model.Store?.Name</h2>
+        <p>END OF DAY REPORT</p>
+        <p>@Model.ReportDate.ToString("dd MMM yyyy")</p>
+    </div>
+    <hr />
+
+    <table>
+        <tr><th>Bills</th><td>@Model.BillCount</td></tr>
+        <tr><th>Returns</th><td>@Model.ReturnCount</td></tr>
+    </table>
+    <hr />
+
+    <h3>Sales Breakdown</h3>
+    <table>
+        <tr><th>Cash</th><td>@Model.TotalCashSales.ToString("N2")</td></tr>
+        <tr><th>Card</th><td>@Model.TotalCardSales.ToString("N2")</td></tr>
+        <tr><th>UPI</th><td>@Model.TotalUpiSales.ToString("N2")</td></tr>
+        <tr class="bold"><th>Total Sales</th><td>@Model.TotalSales.ToString("N2")</td></tr>
+        <tr><th>Returns</th><td>-@Model.TotalReturns.ToString("N2")</td></tr>
+        <tr class="bold"><th>Net Sales</th><td>@Model.NetSales.ToString("N2")</td></tr>
+    </table>
+    <hr />
+
+    <h3>Cash Reconciliation</h3>
+    <table>
+        <tr><th>Opening</th><td>@Model.OpeningCash.ToString("N2")</td></tr>
+        <tr><th>+ Cash Sales</th><td>@Model.TotalCashSales.ToString("N2")</td></tr>
+        <tr><th>- Returns</th><td>@Model.TotalReturns.ToString("N2")</td></tr>
+        <tr class="bold"><th>Expected</th><td>@Model.ExpectedCash.ToString("N2")</td></tr>
+        @if (Model.Status == 2)
+        {
+            <tr><th>Actual</th><td>@Model.ActualCash.ToString("N2")</td></tr>
+            <tr class="bold"><th>Variance</th><td>@Model.Variance.ToString("N2")</td></tr>
+        }
+    </table>
+    <hr />
+
+    <div class="center">
+        <p>Status: @(Model.Status == 2 ? "CLOSED" : "PENDING")</p>
+        @if (Model.Status == 2 && Model.ClosedAtUtc.HasValue)
+        {
+            <p>Closed: @Model.ClosedAtUtc.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm")</p>
+        }
+        @if (!string.IsNullOrEmpty(Model.Notes))
+        {
+            <p>Notes: @Model.Notes</p>
+        }
+    </div>
+</body>
+</html>

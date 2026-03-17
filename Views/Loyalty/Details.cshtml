@@ -1,0 +1,103 @@
+@model List<RetailERP.Data.Entities.LoyaltyTransaction>
+@{
+    var card = (RetailERP.Data.Entities.LoyaltyCard)ViewBag.Card;
+    ViewData["Title"] = $"Loyalty Card – {card.CardNumber}";
+    var tierName = (string)ViewBag.TierName;
+    var page = (int)ViewBag.Page;
+    var totalPages = (int)ViewBag.TotalPages;
+    var tierBadge = card.Tier switch { 4 => "bg-dark", 3 => "bg-warning text-dark", 2 => "bg-secondary", _ => "bg-info text-dark" };
+}
+
+@if (TempData["Success"] is string msg)
+{
+    <div class="alert alert-success alert-dismissible fade show">@msg <button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="mb-0"><i class="bi bi-star me-2"></i>@card.CardNumber</h4>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Index"><i class="bi bi-arrow-left me-1"></i>Back</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="text-muted mb-3">Card Info</h6>
+                <table class="table table-sm mb-0">
+                    <tr><th style="width:40%">Customer</th><td>@card.Customer?.Name</td></tr>
+                    <tr><th>Phone</th><td>@card.Customer?.Phone</td></tr>
+                    <tr><th>Card #</th><td><code>@card.CardNumber</code></td></tr>
+                    <tr><th>Joined</th><td>@card.JoinDate.ToString("dd MMM yyyy")</td></tr>
+                    <tr><th>Status</th><td>
+                        @if (card.IsActive) { <span class="badge bg-success">Active</span> }
+                        else { <span class="badge bg-secondary">Inactive</span> }
+                    </td></tr>
+                </table>
+                <form method="post" asp-action="ToggleActive" asp-route-id="@card.LoyaltyCardId" class="mt-2">
+                    <button class="btn btn-sm @(card.IsActive ? "btn-outline-danger" : "btn-outline-success")">
+                        @(card.IsActive ? "Deactivate" : "Activate")
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-3">Points & Tier</h6>
+                <div class="display-5 fw-bold text-primary mb-1">@card.PointsBalance.ToString("N0")</div>
+                <div class="text-muted mb-2">Available Points</div>
+                <span class="badge @tierBadge fs-6 mb-2">@tierName</span>
+                <div class="text-muted small">Lifetime: @card.LifetimePoints.ToString("N0") pts</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h5 class="mb-2">Transaction History</h5>
+<div class="table-responsive">
+    <table class="table table-hover align-middle table-sm">
+        <thead class="table-light">
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th class="text-end">Points</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Model)
+            {
+                <tr>
+                    <td>@t.OccurredAtUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</td>
+                    <td>
+                        @if (t.Type == "Earn") { <span class="badge bg-success">Earn</span> }
+                        else { <span class="badge bg-danger">Redeem</span> }
+                    </td>
+                    <td class="text-end fw-bold @(t.Type == "Earn" ? "text-success" : "text-danger")">
+                        @(t.Type == "Earn" ? "+" : "-")@t.Points.ToString("N0")
+                    </td>
+                    <td class="text-muted small">@t.Description</td>
+                </tr>
+            }
+            @if (!Model.Any())
+            {
+                <tr><td colspan="4" class="text-center text-muted py-3">No transactions yet.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (totalPages > 1)
+{
+    <nav>
+        <ul class="pagination pagination-sm justify-content-center">
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(i == page ? "active" : "")">
+                    <a class="page-link" asp-action="Details" asp-route-id="@card.LoyaltyCardId" asp-route-page="@i">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

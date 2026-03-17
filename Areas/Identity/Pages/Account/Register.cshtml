@@ -2,104 +2,173 @@
 @model RetailERP.Areas.Identity.Pages.Account.RegisterModel
 @{
     ViewData["Title"] = "Create account";
+    Layout = null;
 }
-
-<div class="container py-5" style="max-width: 980px;">
-    <div class="row justify-content-center g-4">
-        <div class="col-lg-6">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body p-4 p-md-5">
-                    <div class="mb-4">
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="fw-semibold fs-4">RetailERP</div>
-                            <span class="badge text-bg-light border">Secure</span>
-                        </div>
-                        <div class="text-muted">Create your account to access dashboards and modules.</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create account — RetailERP</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; margin: 0; min-height: 100vh; }
+        .auth-split { display: flex; min-height: 100vh; }
+        .auth-brand {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: #fff;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 48px;
+        }
+        .auth-brand .feature-icon {
+            width: 44px; height: 44px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;
+        }
+        .auth-form-side {
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 48px 32px; background: #f8fafc;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-split">
+        <!-- ═══ LEFT: Brand panel ═══ -->
+        <div class="auth-brand col-lg-5 d-none d-lg-flex">
+            <div style="max-width:380px;">
+                <div class="d-flex align-items-center gap-2 mb-4">
+                    <div class="d-flex align-items-center justify-content-center rounded-2"
+                         style="width:40px;height:40px;background:#3b82f6;color:#fff;font-size:1.1rem;">
+                        <i class="bi bi-box-seam"></i>
                     </div>
+                    <span class="fw-bold fs-4">RetailERP</span>
+                </div>
 
-                    <h2 class="h5 mb-3">@ViewData["Title"]</h2>
+                <h2 class="fw-bold mb-2" style="font-size:1.6rem;">Get started in seconds</h2>
+                <p class="text-white-50 mb-4">Create your account and start managing inventory, sales, and more right away.</p>
 
-                    <form method="post" class="needs-validation" novalidate>
-                        <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 mb-3"></div>
+                <div class="vstack gap-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="feature-icon" style="background:rgba(59,130,246,.2);color:#60a5fa;"><i class="bi bi-1-circle"></i></div>
+                        <div>
+                            <div class="fw-semibold">Create your account</div>
+                            <div class="text-white-50 small">First user gets Administrator role automatically</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="feature-icon" style="background:rgba(16,185,129,.2);color:#34d399;"><i class="bi bi-2-circle"></i></div>
+                        <div>
+                            <div class="fw-semibold">Set up your catalog</div>
+                            <div class="text-white-50 small">Add items, categories, warehouses &amp; suppliers</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="feature-icon" style="background:rgba(245,158,11,.2);color:#fbbf24;"><i class="bi bi-3-circle"></i></div>
+                        <div>
+                            <div class="fw-semibold">Start selling</div>
+                            <div class="text-white-50 small">Create invoices and track stock automatically</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="feature-icon" style="background:rgba(139,92,246,.2);color:#a78bfa;"><i class="bi bi-4-circle"></i></div>
+                        <div>
+                            <div class="fw-semibold">Invite your team</div>
+                            <div class="text-white-50 small">Assign roles — Manager, Inventory, Cashier</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-5 pt-4 border-top" style="border-color:rgba(255,255,255,.12) !important;">
+                    <div class="text-white-50 small">&copy; @DateTime.Now.Year RetailERP. Built with ASP.NET Core &amp; Bootstrap.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ RIGHT: Register form ═══ -->
+        <div class="auth-form-side col-12 col-lg-7">
+            <div style="width:100%;max-width:420px;">
+                <!-- Mobile brand -->
+                <div class="d-lg-none text-center mb-4">
+                    <div class="d-inline-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center justify-content-center rounded-2"
+                             style="width:36px;height:36px;background:#3b82f6;color:#fff;font-size:1rem;">
+                            <i class="bi bi-box-seam"></i>
+                        </div>
+                        <span class="fw-bold fs-5">RetailERP</span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h2 class="fw-bold mb-1">Create account</h2>
+                    <p class="text-muted mb-0">Fill in the details below to get started</p>
+                </div>
+
+                @if (!Model.RegistrationOpen)
+                {
+                    <div class="alert alert-warning d-flex align-items-start gap-2 mb-0">
+                        <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                        <div>
+                            Self-registration is currently disabled. Please contact your administrator for access.
+                            <div class="mt-2">
+                                <a class="btn btn-sm btn-outline-primary" asp-area="Identity" asp-page="/Account/Login">
+                                    <i class="bi bi-arrow-left me-1"></i>Back to Sign in
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <form method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger small mb-3" role="alert"></div>
 
                         <div class="mb-3">
-                            <label asp-for="Input.Email" class="form-label">Email</label>
-                            <input asp-for="Input.Email" class="form-control" autocomplete="username" placeholder="name@company.com" />
+                            <label asp-for="Input.Email" class="form-label fw-medium">Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-envelope text-muted"></i></span>
+                                <input asp-for="Input.Email" class="form-control" autocomplete="username" placeholder="name@company.com" />
+                            </div>
                             <span asp-validation-for="Input.Email" class="text-danger small"></span>
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="Input.Password" class="form-label">Password</label>
-                            <input asp-for="Input.Password" class="form-control" autocomplete="new-password" placeholder="Minimum 6 characters" />
+                            <label asp-for="Input.Password" class="form-label fw-medium">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-lock text-muted"></i></span>
+                                <input asp-for="Input.Password" class="form-control" autocomplete="new-password" placeholder="Minimum 6 characters" />
+                            </div>
                             <span asp-validation-for="Input.Password" class="text-danger small"></span>
                         </div>
 
                         <div class="mb-4">
-                            <label asp-for="Input.ConfirmPassword" class="form-label">Confirm password</label>
-                            <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="Re-enter your password" />
+                            <label asp-for="Input.ConfirmPassword" class="form-label fw-medium">Confirm password</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-shield-lock text-muted"></i></span>
+                                <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="Re-enter your password" />
+                            </div>
                             <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100 btn-lg">
-                            Create account
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                            <i class="bi bi-person-plus me-1"></i>Create account
                         </button>
-
-                        <div class="text-muted small mt-3 text-center">
-                            Already have an account?
-                            <a asp-area="Identity" asp-page="/Account/Login">Sign in</a>
-                        </div>
                     </form>
+                }
+
+                <div class="text-center mt-4 pt-3 border-top">
+                    <span class="text-muted small">Already have an account?</span>
+                    <a asp-area="Identity" asp-page="/Account/Login" class="small fw-medium text-decoration-none ms-1">Sign in</a>
                 </div>
-            </div>
 
-            <div class="text-muted small mt-3 text-center">
-                By creating an account, you’ll be assigned a default role (Cashier) and can be updated by Admin later.
-            </div>
-        </div>
-
-        <div class="col-lg-5 d-none d-lg-block">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-4 p-md-5">
-                    <h3 class="h6 mb-3">What you can do after sign-up</h3>
-
-                    <ul class="list-unstyled mb-0">
-                        <li class="d-flex gap-2 mb-3">
-                            <div class="mt-1">•</div>
-                            <div>
-                                <div class="fw-semibold">Sales & invoices</div>
-                                <div class="text-muted small">Create drafts, post invoices, and track totals.</div>
-                            </div>
-                        </li>
-
-                        <li class="d-flex gap-2 mb-3">
-                            <div class="mt-1">•</div>
-                            <div>
-                                <div class="fw-semibold">Inventory control</div>
-                                <div class="text-muted small">View stock on hand by warehouse and item.</div>
-                            </div>
-                        </li>
-
-                        <li class="d-flex gap-2 mb-0">
-                            <div class="mt-1">•</div>
-                            <div>
-                                <div class="fw-semibold">Audit trail</div>
-                                <div class="text-muted small">See who posted invoices and adjusted stock.</div>
-                            </div>
-                        </li>
-                    </ul>
-
-                    <hr class="my-4" />
-
-                    <div class="text-muted small">
-                        Tip: Admin can assign roles (Admin/Manager/Inventory/Cashier) from the Users page.
-                    </div>
+                <div class="text-center mt-3">
+                    <a href="/" class="small text-muted text-decoration-none"><i class="bi bi-arrow-left me-1"></i>Back to home</a>
                 </div>
             </div>
         </div>
-
     </div>
-</div>
 
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-}
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+</body>
+</html>

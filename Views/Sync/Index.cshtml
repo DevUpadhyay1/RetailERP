@@ -1,0 +1,122 @@
+@model List<RetailERP.Data.Entities.SyncLog>
+@{
+    ViewData["Title"] = "Sync Queue";
+    var stats = (RetailERP.Services.SyncService.SyncStats)ViewBag.Stats;
+    var sort = (string)ViewBag.Sort;
+    var dir = (string)ViewBag.Dir;
+    var page = (int)ViewBag.Page;
+    var totalPages = (int)ViewBag.TotalPages;
+    var filterStatus = ViewBag.Status as byte?;
+    var filterDevice = ViewBag.DeviceId as string;
+    string Toggle(string col) => sort == col && dir == "asc" ? "desc" : "asc";
+    string Arrow(string col) => sort == col ? (dir == "asc" ? "▲" : "▼") : "";
+}
+
+@if (TempData["Success"] is string msg)
+{
+    <div class="alert alert-success alert-dismissible fade show">@msg <button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="mb-0"><i class="bi bi-arrow-repeat me-2"></i>Offline Sync Queue</h4>
+    <form method="post" asp-action="ProcessAll" class="d-inline">
+        <button class="btn btn-primary" onclick="return confirm('Process all pending sync entries?')">
+            <i class="bi bi-play-fill me-1"></i>Process All Pending
+        </button>
+    </form>
+</div>
+
+<!-- Stats cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-warning">
+            <div class="card-body text-center">
+                <div class="fs-2 fw-bold text-warning">@stats.Pending</div>
+                <div class="text-muted">Pending</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-success">
+            <div class="card-body text-center">
+                <div class="fs-2 fw-bold text-success">@stats.Synced</div>
+                <div class="text-muted">Synced</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-danger">
+            <div class="card-body text-center">
+                <div class="fs-2 fw-bold text-danger">@stats.Conflicts</div>
+                <div class="text-muted">Conflicts</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto">
+        <select name="status" class="form-select form-select-sm">
+            <option value="">All Status</option>
+            <option value="1" selected="@(filterStatus == 1)">Pending</option>
+            <option value="2" selected="@(filterStatus == 2)">Synced</option>
+            <option value="3" selected="@(filterStatus == 3)">Conflict</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <input name="deviceId" value="@filterDevice" class="form-control form-control-sm" placeholder="Device ID…" style="min-width:180px;" />
+    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-outline-primary">Filter</button></div>
+    @if (filterStatus.HasValue || !string.IsNullOrEmpty(filterDevice))
+    {
+        <div class="col-auto"><a class="btn btn-sm btn-outline-secondary" asp-action="Index">Clear</a></div>
+    }
+</form>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle table-sm">
+        <thead class="table-light">
+            <tr>
+                <th><a asp-action="Index" asp-route-sort="QueuedAtUtc" asp-route-dir="@Toggle("QueuedAtUtc")">Queued @Arrow("QueuedAtUtc")</a></th>
+                <th><a asp-action="Index" asp-route-sort="DeviceId" asp-route-dir="@Toggle("DeviceId")">Device @Arrow("DeviceId")</a></th>
+                <th><a asp-action="Index" asp-route-sort="EntityType" asp-route-dir="@Toggle("EntityType")">Entity @Arrow("EntityType")</a></th>
+                <th>Entity ID</th>
+                <th>Action</th>
+                <th><a asp-action="Index" asp-route-sort="Status" asp-route-dir="@Toggle("Status")">Status @Arrow("Status")</a></th>
+                <th>Synced</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model)
+            {
+                var statusClass = s.Status switch { 1 => "bg-warning text-dark", 2 => "bg-success", 3 => "bg-danger", _ => "bg-secondary" };
+                var statusText = s.Status switch { 1 => "Pending", 2 => "Synced", 3 => "Conflict", _ => "?" };
+                <tr>
+                    <td class="small">@s.QueuedAtUtc.ToLocalTime().ToString("dd MMM HH:mm:ss")</td>
+                    <td><code class="small">@s.DeviceId</code></td>
+                    <td>@s.EntityType</td>
+                    <td class="small text-muted">@s.EntityId[..Math.Min(8, s.EntityId.Length)]…</td>
+                    <td><span class="badge bg-info text-dark">@s.Action</span></td>
+                    <td><span class="badge @statusClass">@statusText</span></td>
+                    <td class="small">@(s.SyncedAtUtc?.ToLocalTime().ToString("dd MMM HH:mm") ?? "—")</td>
+                    <td><a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@s.SyncLogId">View</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (totalPages > 1)
+{
+    <nav>
+        <ul class="pagination pagination-sm justify-content-center">
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(i == page ? "active" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-status="@filterStatus" asp-route-deviceId="@filterDevice" asp-route-sort="@sort" asp-route-dir="@dir" asp-route-page="@i">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

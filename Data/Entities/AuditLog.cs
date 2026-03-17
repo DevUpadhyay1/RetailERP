@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using RetailERP.Data.Identity;
 
 namespace RetailERP.Data.Entities;
 
@@ -16,6 +17,8 @@ public class AuditLog
     public string? EntityId { get; set; }
 
     public Guid? ActorUserId { get; set; }
+
+    public ApplicationUser? ActorUser { get; set; }
 
     [MaxLength(256)]
     public string? ActorEmail { get; set; }

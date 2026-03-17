@@ -1,0 +1,55 @@
+@model RetailERP.Controllers.PurchasesController.PurchaseCreateVm
+@{
+    ViewData["Title"] = "New Purchase";
+}
+
+<div class="container py-3" style="max-width: 860px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">New Purchase</h2>
+        <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Supplier</label>
+                    <select class="form-select" asp-for="SupplierId" asp-items="ViewBag.Suppliers">
+                        <option value="" disabled selected>-- Select Supplier --</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Warehouse (Receive into)</label>
+                    <select class="form-select" asp-for="WarehouseId" asp-items="ViewBag.Warehouses">
+                        <option value="" disabled selected>-- Select Warehouse --</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Purchase Date</label>
+                    <input class="form-control" asp-for="PurchaseDate" type="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div class="col-md-8">
+                    <label class="form-label">Employee (Optional)</label>
+                    <select class="form-select" asp-for="EmployeeId" asp-items="ViewBag.Employees">
+                        <option value="">-</option>
+                    </select>
+                </div>
+
+                <div class="col-12 d-flex gap-2">
+                    <button class="btn btn-primary" type="submit">Create Draft</button>
+                    <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

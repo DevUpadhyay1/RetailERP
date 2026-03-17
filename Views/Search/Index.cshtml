@@ -1,0 +1,168 @@
+@model RetailERP.Controllers.SearchController.SearchVm
+@{
+    ViewData["Title"] = "Search";
+}
+
+<div class="d-flex justify-content-between align-items-end mb-3">
+    <div>
+        <h2 class="mb-0">Search</h2>
+        <div class="text-muted">Find invoices, purchases, items, customers, suppliers</div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2">
+            <div class="col-md-8">
+                <input class="form-control" name="q" value="@Model.Query" placeholder="Type something to search..." />
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+            <div class="col-auto">
+                <a class="btn btn-outline-secondary" asp-action="Index">Reset</a>
+            </div>
+            <div class="col-auto ms-auto text-muted small d-flex align-items-center">
+                Results: @Model.TotalCount
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (string.IsNullOrWhiteSpace(Model.Query))
+{
+    <div class="alert alert-light border">Enter a keyword to search across the system.</div>
+}
+else if (Model.TotalCount == 0)
+{
+    <div class="alert alert-warning">No results found for <span class="fw-semibold">@Model.Query</span>.</div>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">Invoices</div>
+                <div class="list-group list-group-flush">
+                    @if (!Model.Invoices.Any())
+                    {
+                        <div class="list-group-item text-muted">No invoice matches.</div>
+                    }
+                    else
+                    {
+                        foreach (var r in Model.Invoices)
+                        {
+                            <a class="list-group-item list-group-item-action" href="@r.Url">
+                                <div class="fw-semibold">@r.Title</div>
+                                @if (!string.IsNullOrWhiteSpace(r.Subtitle))
+                                {
+                                    <div class="small text-muted">@r.Subtitle</div>
+                                }
+                            </a>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">Purchases</div>
+                <div class="list-group list-group-flush">
+                    @if (!Model.Purchases.Any())
+                    {
+                        <div class="list-group-item text-muted">No purchase matches.</div>
+                    }
+                    else
+                    {
+                        foreach (var r in Model.Purchases)
+                        {
+                            <a class="list-group-item list-group-item-action" href="@r.Url">
+                                <div class="fw-semibold">@r.Title</div>
+                                @if (!string.IsNullOrWhiteSpace(r.Subtitle))
+                                {
+                                    <div class="small text-muted">@r.Subtitle</div>
+                                }
+                            </a>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">Items</div>
+                <div class="list-group list-group-flush">
+                    @if (!Model.Items.Any())
+                    {
+                        <div class="list-group-item text-muted">No item matches.</div>
+                    }
+                    else
+                    {
+                        foreach (var r in Model.Items)
+                        {
+                            <a class="list-group-item list-group-item-action" href="@r.Url">
+                                <div class="fw-semibold">@r.Title</div>
+                                @if (!string.IsNullOrWhiteSpace(r.Subtitle))
+                                {
+                                    <div class="small text-muted">Barcode: @r.Subtitle</div>
+                                }
+                            </a>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">Customers</div>
+                <div class="list-group list-group-flush">
+                    @if (!Model.Customers.Any())
+                    {
+                        <div class="list-group-item text-muted">No customer matches.</div>
+                    }
+                    else
+                    {
+                        foreach (var r in Model.Customers)
+                        {
+                            <a class="list-group-item list-group-item-action" href="@r.Url">
+                                <div class="fw-semibold">@r.Title</div>
+                                @if (!string.IsNullOrWhiteSpace(r.Subtitle))
+                                {
+                                    <div class="small text-muted">@r.Subtitle</div>
+                                }
+                            </a>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">Suppliers</div>
+                <div class="list-group list-group-flush">
+                    @if (!Model.Suppliers.Any())
+                    {
+                        <div class="list-group-item text-muted">No supplier matches.</div>
+                    }
+                    else
+                    {
+                        foreach (var r in Model.Suppliers)
+                        {
+                            <a class="list-group-item list-group-item-action" href="@r.Url">
+                                <div class="fw-semibold">@r.Title</div>
+                                @if (!string.IsNullOrWhiteSpace(r.Subtitle))
+                                {
+                                    <div class="small text-muted">@r.Subtitle</div>
+                                }
+                            </a>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}

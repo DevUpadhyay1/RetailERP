@@ -80,6 +80,56 @@ public class StockTransfersController : Controller
         fromStock.Quantity -= vm.Qty;
         toStock.Quantity += vm.Qty;
 
+        var transferRefId = Guid.NewGuid().ToString();
+
+        var fromStoreId = await _db.Warehouses
+            .AsNoTracking()
+            .Where(w => w.WarehouseId == vm.FromWarehouseId)
+            .Select(w => w.StoreId)
+            .FirstOrDefaultAsync();
+
+        var toStoreId = await _db.Warehouses
+            .AsNoTracking()
+            .Where(w => w.WarehouseId == vm.ToWarehouseId)
+            .Select(w => w.StoreId)
+            .FirstOrDefaultAsync();
+
+        var itemCompanyId = await _db.Items
+            .AsNoTracking()
+            .Where(i => i.ItemId == vm.ItemId)
+            .Select(i => i.CompanyId)
+            .FirstOrDefaultAsync();
+
+        _db.StockTransactions.Add(new StockTransaction
+        {
+            StockTransactionId = Guid.NewGuid(),
+            OccurredAtUtc = DateTime.UtcNow,
+            Type = "TRANSFER",
+            ItemId = vm.ItemId,
+            WarehouseId = vm.FromWarehouseId,
+            StoreId = fromStoreId,
+            Qty = -vm.Qty,
+            RefType = "StockTransfer",
+            RefId = transferRefId,
+            Reason = vm.Reason,
+            CompanyId = itemCompanyId
+        });
+
+        _db.StockTransactions.Add(new StockTransaction
+        {
+            StockTransactionId = Guid.NewGuid(),
+            OccurredAtUtc = DateTime.UtcNow,
+            Type = "TRANSFER",
+            ItemId = vm.ItemId,
+            WarehouseId = vm.ToWarehouseId,
+            StoreId = toStoreId,
+            Qty = vm.Qty,
+            RefType = "StockTransfer",
+            RefId = transferRefId,
+            Reason = vm.Reason,
+            CompanyId = itemCompanyId
+        });
+
         await _db.SaveChangesAsync();
         await tx.CommitAsync();
 

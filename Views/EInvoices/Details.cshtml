@@ -1,0 +1,163 @@
+@model RetailERP.Data.Entities.EInvoice
+@{
+    ViewData["Title"] = "E-Invoice Details";
+    string StatusBadge(byte s) => s switch { 1 => "success", 2 => "danger", 3 => "warning", _ => "secondary" };
+    string StatusText(byte s) => s switch { 1 => "Generated", 2 => "Cancelled", 3 => "Failed", _ => "Unknown" };
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">@TempData["Success"]<button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">@TempData["Error"]<button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-qr-code me-2"></i>E-Invoice Details</h2>
+        <div class="text-muted small">IRN: <span class="font-monospace">@Model.Irn</span></div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("Index")" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+        @if (Model.Status == 1)
+        {
+            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelModal"><i class="bi bi-x-circle me-1"></i>Cancel E-Invoice</button>
+        }
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left column: Details -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header fw-semibold">Invoice Information</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Status</label>
+                        <div><span class="badge bg-@StatusBadge(Model.Status) fs-6">@StatusText(Model.Status)</span></div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Acknowledgement No</label>
+                        <div class="fw-semibold">@(Model.AckNo ?? "—")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Acknowledgement Date</label>
+                        <div>@(Model.AckDate?.ToString("dd/MM/yyyy HH:mm") ?? "—")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Generated At (UTC)</label>
+                        <div>@Model.GeneratedAtUtc.ToString("dd/MM/yyyy HH:mm:ss")</div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">Source Document</label>
+                        <div>
+                            @if (Model.PosBill != null)
+                            {
+                                <span class="badge bg-info">POS Bill</span>
+                                <span class="fw-semibold">@Model.PosBill.BillNo</span>
+                                @if (Model.PosBill.Customer != null)
+                                {
+                                    <span class="text-muted">— @Model.PosBill.Customer.Name</span>
+                                }
+                            }
+                            else if (Model.Invoice != null)
+                            {
+                                <span class="badge bg-primary">Invoice</span>
+                                <span class="fw-semibold">@Model.Invoice.InvoiceNo</span>
+                                @if (Model.Invoice.Customer != null)
+                                {
+                                    <span class="text-muted">— @Model.Invoice.Customer.Name</span>
+                                }
+                            }
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="text-muted small">IRN (full)</label>
+                        <div class="font-monospace small text-break">@Model.Irn</div>
+                    </div>
+                    @if (Model.Status == 2)
+                    {
+                        <div class="col-12">
+                            <label class="text-muted small">Cancel Reason</label>
+                            <div class="text-danger">@(Model.CancelReason ?? "—")</div>
+                            <div class="text-muted small">Cancelled at: @(Model.CancelledAtUtc?.ToString("dd/MM/yyyy HH:mm") ?? "—")</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    {
+                        <div class="col-12">
+                            <label class="text-muted small">Error Message</label>
+                            <div class="text-danger">@Model.ErrorMessage</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Signed JSON Payload -->
+        @if (!string.IsNullOrEmpty(Model.SignedInvoice))
+        {
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header fw-semibold">
+                    <i class="bi bi-code-square me-1"></i>Signed Invoice JSON (NIC Payload)
+                </div>
+                <div class="card-body p-0">
+                    <pre class="p-3 mb-0 bg-light" style="max-height:400px;overflow:auto;font-size:.8rem;">@Model.SignedInvoice</pre>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Right column: QR Code -->
+    <div class="col-lg-5">
+        @if (!string.IsNullOrEmpty(Model.SignedQrCode))
+        {
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header fw-semibold"><i class="bi bi-qr-code me-1"></i>Signed QR Code Data</div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="border rounded p-4 bg-light d-inline-block">
+                            <i class="bi bi-qr-code-scan" style="font-size:6rem;color:#333;"></i>
+                            <div class="small text-muted mt-2">QR rendered on printed invoice</div>
+                        </div>
+                    </div>
+                    <div class="small">
+                        <label class="text-muted">QR Payload:</label>
+                        <pre class="bg-light p-2 rounded" style="font-size:.75rem;max-height:200px;overflow:auto;">@Model.SignedQrCode</pre>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@if (Model.Status == 1)
+{
+    <!-- Cancel Modal -->
+    <div class="modal fade" id="cancelModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" asp-action="Cancel" asp-route-id="@Model.EInvoiceId">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title">Cancel E-Invoice</h5>
+                        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted">This E-Invoice will be marked as cancelled. Per GST rules, cancellation is only allowed within 24 hours of generation.</p>
+                        <div class="mb-3">
+                            <label class="form-label">Reason for cancellation <span class="text-danger">*</span></label>
+                            <textarea name="reason" class="form-control" rows="3" required placeholder="Enter reason..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-danger">Cancel E-Invoice</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}

@@ -27,10 +27,17 @@ namespace RetailERP.Controllers
         }
 
         // GET: Stocks
-        public async Task<IActionResult> Index(string? q)
+        public async Task<IActionResult> Index(string? q, string sort = "warehouse", string dir = "asc", int page = 1, int pageSize = 20)
         {
             q = (q ?? "").Trim();
+            if (page < 1) page = 1;
+            if (pageSize is < 10 or > 200) pageSize = 20;
+
             ViewData["q"] = q;
+            ViewData["sort"] = sort;
+            ViewData["dir"] = dir;
+            ViewData["page"] = page;
+            ViewData["pageSize"] = pageSize;
 
             var query = _context.Stocks
                 .AsNoTracking()
@@ -46,10 +53,31 @@ namespace RetailERP.Controllers
                 );
             }
 
-            var data = await query
-                .OrderBy(x => x.Warehouse!.Name)
-                .ThenBy(x => x.Item!.SKU)
-                .ToListAsync();
+            var ascending = !string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
+            query = sort?.ToLowerInvariant() switch
+            {
+                "sku" => ascending
+                    ? query.OrderBy(x => x.Item!.SKU).ThenBy(x => x.Warehouse!.Name)
+                    : query.OrderByDescending(x => x.Item!.SKU).ThenByDescending(x => x.Warehouse!.Name),
+                "item" => ascending
+                    ? query.OrderBy(x => x.Item!.Name).ThenBy(x => x.Item!.SKU)
+                    : query.OrderByDescending(x => x.Item!.Name).ThenByDescending(x => x.Item!.SKU),
+                "qty" => ascending
+                    ? query.OrderBy(x => x.Quantity).ThenBy(x => x.Item!.SKU)
+                    : query.OrderByDescending(x => x.Quantity).ThenByDescending(x => x.Item!.SKU),
+                _ => ascending
+                    ? query.OrderBy(x => x.Warehouse!.Name).ThenBy(x => x.Item!.SKU)
+                    : query.OrderByDescending(x => x.Warehouse!.Name).ThenByDescending(x => x.Item!.SKU)
+            };
+
+            var total = await query.CountAsync();
+            var data = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            var totalPages = (int)Math.Ceiling(total / (double)pageSize);
+            ViewData["total"] = total;
+            ViewData["totalPages"] = totalPages < 1 ? 1 : totalPages;
+            ViewData["from"] = total == 0 ? 0 : ((page - 1) * pageSize + 1);
+            ViewData["to"] = Math.Min(page * pageSize, total);
 
             return View(data);
         }
@@ -259,6 +287,21 @@ namespace RetailERP.Controllers
                 ModelState.AddModelError(nameof(vm.DeltaQty), "Resulting stock cannot be negative.");
                 return View(vm);
             }
+
+            _context.StockTransactions.Add(new StockTransaction
+            {
+                StockTransactionId = Guid.NewGuid(),
+                OccurredAtUtc = DateTime.UtcNow,
+                Type = "ADJUSTMENT",
+                ItemId = stock.ItemId,
+                WarehouseId = stock.WarehouseId,
+                StoreId = stock.Warehouse?.StoreId,
+                Qty = vm.DeltaQty,
+                RefType = "StockAdjust",
+                RefId = stock.StockId.ToString(),
+                Reason = vm.Reason,
+                CompanyId = stock.Item?.CompanyId
+            });
 
             stock.Quantity = newQty;
             await _context.SaveChangesAsync();

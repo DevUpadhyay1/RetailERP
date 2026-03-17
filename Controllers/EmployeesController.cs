@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
 
@@ -20,10 +21,18 @@ namespace RetailERP.Controllers
         }
 
         // GET: Employees
-        public async Task<IActionResult> Index(string? q)
+        public async Task<IActionResult> Index(string? q, EmployeeStatus? status = null, string sort = "code", string dir = "asc", int page = 1, int pageSize = 20)
         {
             q = (q ?? "").Trim();
             ViewData["q"] = q;
+            ViewData["status"] = status;
+            ViewData["sort"] = sort;
+            ViewData["dir"] = dir;
+            ViewData["page"] = page;
+            ViewData["pageSize"] = pageSize;
+
+            ViewData["StatusOptions"] = new SelectList(Enum.GetValues<EmployeeStatus>()
+                .Select(s => new { Value = s, Text = s.ToString() }), "Value", "Text", status);
 
             var query = _context.Employees.AsNoTracking().AsQueryable();
 
@@ -36,7 +45,29 @@ namespace RetailERP.Controllers
                 );
             }
 
-            var data = await query.OrderBy(x => x.EmployeeCode).ToListAsync();
+            if (status is not null)
+                query = query.Where(x => x.Status == status);
+
+            var ascending = !string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
+            query = sort?.ToLowerInvariant() switch
+            {
+                "firstname" => ascending ? query.OrderBy(x => x.FirstName) : query.OrderByDescending(x => x.FirstName),
+                "lastname" => ascending ? query.OrderBy(x => x.LastName) : query.OrderByDescending(x => x.LastName),
+                "joindate" => ascending ? query.OrderBy(x => x.JoinDate) : query.OrderByDescending(x => x.JoinDate),
+                "status" => ascending ? query.OrderBy(x => x.Status) : query.OrderByDescending(x => x.Status),
+                _ => ascending ? query.OrderBy(x => x.EmployeeCode) : query.OrderByDescending(x => x.EmployeeCode)
+            };
+
+            if (page < 1) page = 1;
+            if (pageSize is < 10 or > 200) pageSize = 20;
+
+            var total = await query.CountAsync();
+            var data = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            ViewData["total"] = total;
+            ViewData["from"] = total == 0 ? 0 : ((page - 1) * pageSize + 1);
+            ViewData["to"] = Math.Min(page * pageSize, total);
+            ViewData["totalPages"] = (int)Math.Ceiling(total / (double)pageSize);
             return View(data);
         }
 
@@ -57,14 +88,19 @@ namespace RetailERP.Controllers
         // GET: Employees/Create
         public IActionResult Create()
         {
+            ViewData["StatusOptions"] = new SelectList(Enum.GetValues<EmployeeStatus>()
+                .Select(s => new { Value = s, Text = s.ToString() }), "Value", "Text", EmployeeStatus.Active);
             return View();
         }
 
         // POST: Employees/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("EmployeeId,EmployeeCode,FirstName,LastName,JoinDate")] Employee employee)
+        public async Task<IActionResult> Create([Bind("EmployeeId,EmployeeCode,FirstName,LastName,JoinDate,Status")] Employee employee)
         {
+            ViewData["StatusOptions"] = new SelectList(Enum.GetValues<EmployeeStatus>()
+                .Select(s => new { Value = s, Text = s.ToString() }), "Value", "Text", employee.Status);
+
             if (!ModelState.IsValid) return View(employee);
 
             employee.EmployeeId = Guid.NewGuid();
@@ -90,15 +126,20 @@ namespace RetailERP.Controllers
             var employee = await _context.Employees.FindAsync(id);
             if (employee == null) return NotFound();
 
+            ViewData["StatusOptions"] = new SelectList(Enum.GetValues<EmployeeStatus>()
+                .Select(s => new { Value = s, Text = s.ToString() }), "Value", "Text", employee.Status);
+
             return View(employee);
         }
 
         // POST: Employees/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("EmployeeId,EmployeeCode,FirstName,LastName,JoinDate")] Employee employee)
+        public async Task<IActionResult> Edit(Guid id, [Bind("EmployeeId,EmployeeCode,FirstName,LastName,JoinDate,Status")] Employee employee)
         {
             if (id != employee.EmployeeId) return NotFound();
+            ViewData["StatusOptions"] = new SelectList(Enum.GetValues<EmployeeStatus>()
+                .Select(s => new { Value = s, Text = s.ToString() }), "Value", "Text", employee.Status);
             if (!ModelState.IsValid) return View(employee);
 
             try

@@ -1,0 +1,84 @@
+@model RetailERP.Data.Entities.Coupon
+@{
+    ViewData["Title"] = $"Coupon – {Model.Code}";
+    var usages = ViewBag.Usages as List<RetailERP.Data.Entities.CouponUsage>;
+    var expired = Model.ValidTo < DateTime.Today;
+}
+
+@if (TempData["Success"] is string msg)
+{
+    <div class="alert alert-success alert-dismissible fade show">@msg <button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="mb-0"><i class="bi bi-tag me-2"></i><code>@Model.Code</code></h4>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Edit" asp-route-id="@Model.CouponId">Edit</a>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h6 class="text-muted mb-3">Coupon Details</h6>
+                <table class="table table-sm mb-0">
+                    <tr><th style="width:40%">Code</th><td><code class="fw-bold">@Model.Code</code></td></tr>
+                    <tr><th>Description</th><td>@(Model.Description ?? "—")</td></tr>
+                    <tr>
+                        <th>Discount</th>
+                        <td>@(Model.DiscountType == "Percent" ? $"{Model.DiscountValue}%" : $"₹{Model.DiscountValue:N2}") (@Model.DiscountType)</td>
+                    </tr>
+                    <tr><th>Min Bill</th><td>₹@Model.MinBillAmount.ToString("N2")</td></tr>
+                    <tr><th>Max Discount</th><td>@(Model.MaxDiscount > 0 ? $"₹{Model.MaxDiscount:N2}" : "No cap")</td></tr>
+                    <tr><th>Valid</th><td>@Model.ValidFrom.ToString("dd MMM yyyy") – @Model.ValidTo.ToString("dd MMM yyyy")</td></tr>
+                    <tr><th>Uses</th><td>@Model.UsedCount / @(Model.MaxUses == 0 ? "∞" : Model.MaxUses.ToString())</td></tr>
+                    <tr>
+                        <th>Status</th>
+                        <td>
+                            @if (!Model.IsActive) { <span class="badge bg-secondary">Inactive</span> }
+                            else if (expired) { <span class="badge bg-danger">Expired</span> }
+                            else { <span class="badge bg-success">Active</span> }
+                        </td>
+                    </tr>
+                </table>
+                <form method="post" asp-action="ToggleActive" asp-route-id="@Model.CouponId" class="mt-2">
+                    <button class="btn btn-sm @(Model.IsActive ? "btn-outline-danger" : "btn-outline-success")">
+                        @(Model.IsActive ? "Deactivate" : "Activate")
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h5 class="mb-2">Usage History</h5>
+<div class="table-responsive">
+    <table class="table table-hover align-middle table-sm">
+        <thead class="table-light">
+            <tr>
+                <th>Date</th>
+                <th>Bill #</th>
+                <th class="text-end">Discount Applied</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (usages is not null)
+            {
+                @foreach (var u in usages)
+                {
+                    <tr>
+                        <td>@u.UsedAtUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</td>
+                        <td><a asp-controller="Pos" asp-action="Receipt" asp-route-id="@u.PosBillId">@u.PosBill?.BillNo</a></td>
+                        <td class="text-end text-danger fw-bold">₹@u.DiscountApplied.ToString("N2")</td>
+                    </tr>
+                }
+                @if (!usages.Any())
+                {
+                    <tr><td colspan="3" class="text-center text-muted py-3">No usages yet.</td></tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>

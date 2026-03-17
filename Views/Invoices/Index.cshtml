@@ -1,9 +1,29 @@
 ﻿@model List<RetailERP.Data.Entities.Invoice>
 
+@{
+    ViewData["Title"] = "Invoice Register";
+    var q = (ViewData["q"] as string) ?? "";
+    var status = (ViewData["status"] as byte?);
+    var sort = (ViewData["sort"] as string) ?? "date";
+    var dir = (ViewData["dir"] as string) ?? "desc";
+    var pageNumber = (ViewData["page"] as int?) ?? 1;
+    var pageSize = (ViewData["pageSize"] as int?) ?? 20;
+    var total = (ViewData["total"] as int?) ?? 0;
+    var from = (ViewData["from"] as int?) ?? 0;
+    var to = (ViewData["to"] as int?) ?? 0;
+    var totalPages = (ViewData["totalPages"] as int?) ?? 1;
+
+    string ToggleDir(string nextSort)
+    {
+        if (!string.Equals(sort, nextSort, StringComparison.OrdinalIgnoreCase)) return "asc";
+        return string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+    }
+}
+
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h2 class="mb-0">Invoice Register</h2>
-        <div class="text-muted">Step 5</div>
+        <div class="text-muted">Showing @from-@to of @total</div>
     </div>
     <a class="btn btn-primary" asp-action="Create">+ New Invoice</a>
 </div>
@@ -17,25 +37,58 @@
     <div class="alert alert-danger">@err</div>
 }
 
+<form method="get" class="mb-3">
+    <div class="row g-2 align-items-center">
+        <div class="col-12 col-md-6 col-lg-5">
+            <input class="form-control" name="q" value="@q" placeholder="Search invoice no / customer" />
+        </div>
+        <div class="col-12 col-md-4 col-lg-3">
+            <select class="form-select" name="status">
+                <option value="" selected="@(status is null)">All statuses</option>
+                <option value="1" selected="@(status == 1)">Draft</option>
+                <option value="2" selected="@(status == 2)">Posted</option>
+            </select>
+        </div>
+        <input type="hidden" name="sort" value="@sort" />
+        <input type="hidden" name="dir" value="@dir" />
+        <input type="hidden" name="pageSize" value="@pageSize" />
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary" type="submit">Apply</button>
+        </div>
+        <div class="col-auto">
+            <a class="btn btn-outline-dark" asp-action="Index">Reset</a>
+        </div>
+    </div>
+</form>
+
 <div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0 align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>Invoice No</th>
-                        <th>Date</th>
+                        <th>
+                            <a class="text-decoration-none" asp-action="Index" asp-route-q="@q" asp-route-status="@status" asp-route-sort="no" asp-route-dir="@ToggleDir("no")" asp-route-page="1" asp-route-pageSize="@pageSize">Invoice No</a>
+                        </th>
+                        <th>
+                            <a class="text-decoration-none" asp-action="Index" asp-route-q="@q" asp-route-status="@status" asp-route-sort="date" asp-route-dir="@ToggleDir("date")" asp-route-page="1" asp-route-pageSize="@pageSize">Date</a>
+                        </th>
                         <th>Customer</th>
+                        <th>Employee</th>
                         <th>Warehouse</th>
-                        <th class="text-end">Total</th>
-                        <th>Status</th>
+                        <th class="text-end">
+                            <a class="text-decoration-none" asp-action="Index" asp-route-q="@q" asp-route-status="@status" asp-route-sort="total" asp-route-dir="@ToggleDir("total")" asp-route-page="1" asp-route-pageSize="@pageSize">Total</a>
+                        </th>
+                        <th>
+                            <a class="text-decoration-none" asp-action="Index" asp-route-q="@q" asp-route-status="@status" asp-route-sort="status" asp-route-dir="@ToggleDir("status")" asp-route-page="1" asp-route-pageSize="@pageSize">Status</a>
+                        </th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @if (!Model.Any())
+                    @if (total == 0)
                     {
-                        <tr><td colspan="7" class="p-4 text-muted">No invoices yet.</td></tr>
+                        <tr><td colspan="8" class="p-4 text-muted">No invoices yet.</td></tr>
                     }
                     else
                     {
@@ -44,7 +97,8 @@
                             <tr>
                                 <td>@inv.InvoiceNo</td>
                                 <td>@inv.InvoiceDate.ToString("yyyy-MM-dd")</td>
-                                <td>@inv.Customer.Name</td>
+                                <td>@(inv.Customer?.Name ?? "-")</td>
+                                <td>@(inv.Employee is null ? "-" : $"{inv.Employee.EmployeeCode} - {inv.Employee.FirstName} {inv.Employee.LastName}")</td>
                                 <td>@(inv.Warehouse?.Name ?? "-")</td>
                                 <td class="text-end">@inv.TotalAmount.ToString("0.00")</td>
                                 <td>
@@ -70,5 +124,40 @@
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-3 border-top">
+        <div class="text-muted small">Page @pageNumber of @totalPages</div>
+
+        <form method="get" class="d-flex align-items-center gap-2">
+            <input type="hidden" name="q" value="@q" />
+            <input type="hidden" name="status" value="@status" />
+            <input type="hidden" name="sort" value="@sort" />
+            <input type="hidden" name="dir" value="@dir" />
+            <input type="hidden" name="page" value="1" />
+            <label class="text-muted small">Rows</label>
+            <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 110px;">
+                <option value="10" selected="@(pageSize==10)">10</option>
+                <option value="20" selected="@(pageSize==20)">20</option>
+                <option value="50" selected="@(pageSize==50)">50</option>
+            </select>
+        </form>
+
+        <nav>
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item @(pageNumber <= 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-q="@q" asp-route-status="@status" asp-route-sort="@sort" asp-route-dir="@dir" asp-route-page="@(pageNumber-1)" asp-route-pageSize="@pageSize">Prev</a>
+                </li>
+                @for (var p = Math.Max(1, pageNumber - 2); p <= Math.Min(totalPages, pageNumber + 2); p++)
+                {
+                    <li class="page-item @(p == pageNumber ? "active" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-q="@q" asp-route-status="@status" asp-route-sort="@sort" asp-route-dir="@dir" asp-route-page="@p" asp-route-pageSize="@pageSize">@p</a>
+                    </li>
+                }
+                <li class="page-item @(pageNumber >= totalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-q="@q" asp-route-status="@status" asp-route-sort="@sort" asp-route-dir="@dir" asp-route-page="@(pageNumber+1)" asp-route-pageSize="@pageSize">Next</a>
+                </li>
+            </ul>
+        </nav>
     </div>
 </div>

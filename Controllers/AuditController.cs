@@ -5,7 +5,7 @@ using RetailERP.Data;
 
 namespace RetailERP.Controllers;
 
-[Authorize(Roles = "Admin,Manager")]
+[Authorize(Roles = "SuperAdmin,Admin,Manager")]
 public class AuditController : Controller
 {
     private readonly ApplicationDbContext _db;

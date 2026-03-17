@@ -19,15 +19,48 @@ public class InvoicesController : Controller
     }
 
     // Finance -> Invoice Register (Step 5)
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? q, byte? status = null, string sort = "date", string dir = "desc", int page = 1, int pageSize = 20)
     {
-        var rows = await _db.Invoices
+        q = (q ?? string.Empty).Trim();
+        ViewData["q"] = q;
+        ViewData["status"] = status;
+        ViewData["sort"] = sort;
+        ViewData["dir"] = dir;
+        ViewData["page"] = page;
+        ViewData["pageSize"] = pageSize;
+
+        var query = _db.Invoices
             .AsNoTracking()
             .Include(x => x.Customer)
             .Include(x => x.Warehouse)
-            .OrderByDescending(x => x.InvoiceDate)
-            .ThenByDescending(x => x.InvoiceNo)
-            .ToListAsync();
+            .Include(x => x.Employee)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(x => x.InvoiceNo.Contains(q) || (x.Customer != null && x.Customer.Name.Contains(q)));
+
+        if (status is not null)
+            query = query.Where(x => x.Status == status);
+
+        var ascending = !string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
+        query = sort?.ToLowerInvariant() switch
+        {
+            "no" => ascending ? query.OrderBy(x => x.InvoiceNo) : query.OrderByDescending(x => x.InvoiceNo),
+            "total" => ascending ? query.OrderBy(x => x.TotalAmount) : query.OrderByDescending(x => x.TotalAmount),
+            "status" => ascending ? query.OrderBy(x => x.Status) : query.OrderByDescending(x => x.Status),
+            _ => ascending ? query.OrderBy(x => x.InvoiceDate).ThenBy(x => x.InvoiceNo) : query.OrderByDescending(x => x.InvoiceDate).ThenByDescending(x => x.InvoiceNo)
+        };
+
+        if (page < 1) page = 1;
+        if (pageSize is < 10 or > 200) pageSize = 20;
+
+        var total = await query.CountAsync();
+        var rows = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+        ViewData["total"] = total;
+        ViewData["from"] = total == 0 ? 0 : ((page - 1) * pageSize + 1);
+        ViewData["to"] = Math.Min(page * pageSize, total);
+        ViewData["totalPages"] = (int)Math.Ceiling(total / (double)pageSize);
 
         return View(rows);
     }
@@ -49,7 +82,7 @@ public class InvoicesController : Controller
             return View(vm);
         }
 
-        var invoiceId = await _invoiceService.CreateDraftAsync(vm.CustomerId, vm.WarehouseId, vm.InvoiceDate);
+        var invoiceId = await _invoiceService.CreateDraftAsync(vm.CustomerId, vm.WarehouseId, vm.InvoiceDate, vm.EmployeeId);
         return RedirectToAction(nameof(Edit), new { id = invoiceId });
     }
 
@@ -60,6 +93,7 @@ public class InvoicesController : Controller
             .AsNoTracking()
             .Include(x => x.Customer)
             .Include(x => x.Warehouse)
+            .Include(x => x.Employee)
             .Include(x => x.Lines)
                 .ThenInclude(l => l.Item)
             .FirstOrDefaultAsync(x => x.InvoiceId == id);
@@ -77,17 +111,20 @@ public class InvoicesController : Controller
             InvoiceId = invoice.InvoiceId,
             InvoiceNo = invoice.InvoiceNo,
             InvoiceDate = invoice.InvoiceDate,
-            CustomerName = invoice.Customer.Name,
+            CustomerName = invoice.Customer?.Name ?? "(Not set)",
             WarehouseName = invoice.Warehouse?.Name ?? "(Not set)",
+            EmployeeName = invoice.Employee is null
+                ? "-"
+                : $"{invoice.Employee.EmployeeCode} - {invoice.Employee.FirstName} {invoice.Employee.LastName}",
             Status = invoice.Status,
             PostedAt = invoice.PostedAt,
             TotalAmount = invoice.TotalAmount,
             Lines = invoice.Lines
-                .OrderBy(x => x.Item.SKU)
+                .OrderBy(x => x.Item?.SKU)
                 .Select(x => new InvoiceLineRowVm
                 {
                     InvoiceLineId = x.InvoiceLineId,
-                    ItemName = $"{x.Item.SKU} - {x.Item.Name}",
+                    ItemName = x.Item is null ? "(Missing Item)" : $"{x.Item.SKU} - {x.Item.Name}",
                     Qty = x.Qty,
                     UnitPrice = x.UnitPrice
                 })
@@ -151,6 +188,16 @@ public class InvoicesController : Controller
             "WarehouseId",
             "Name"
         );
+
+        ViewBag.Employees = new SelectList(
+            await _db.Employees
+                .AsNoTracking()
+                .OrderBy(x => x.EmployeeCode)
+                .Select(x => new { x.EmployeeId, Name = x.EmployeeCode + " - " + x.FirstName + " " + x.LastName })
+                .ToListAsync(),
+            "EmployeeId",
+            "Name"
+        );
     }
 
     public sealed class InvoiceCreateVm
@@ -158,6 +205,8 @@ public class InvoicesController : Controller
         public Guid CustomerId { get; set; }
         public Guid WarehouseId { get; set; }
         public DateTime InvoiceDate { get; set; }
+
+        public Guid? EmployeeId { get; set; }
     }
 
     public sealed class InvoiceEditVm
@@ -167,6 +216,7 @@ public class InvoicesController : Controller
         public DateTime InvoiceDate { get; set; }
         public string CustomerName { get; set; } = "";
         public string WarehouseName { get; set; } = "";
+        public string EmployeeName { get; set; } = "-";
         public byte Status { get; set; }
         public DateTime? PostedAt { get; set; }
         public decimal TotalAmount { get; set; }

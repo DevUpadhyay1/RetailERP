@@ -1,0 +1,236 @@
+@model RetailERP.Controllers.Gstr1ViewModel
+@{
+    ViewData["Title"] = "GSTR-1 — Outward Supplies";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-file-earmark-ruled me-2"></i>GSTR-1 — Outward Supplies</h2>
+        <div class="text-muted small">@Model.From.ToString("dd MMM yyyy") — @Model.To.ToString("dd MMM yyyy")</div>
+    </div>
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-end">
+        <div>
+            <label class="form-label mb-1">From</label>
+            <input type="date" name="from" class="form-control" value="@Model.From.ToString("yyyy-MM-dd")" />
+        </div>
+        <div>
+            <label class="form-label mb-1">To</label>
+            <input type="date" name="to" class="form-control" value="@Model.To.ToString("yyyy-MM-dd")" />
+        </div>
+        <button class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
+    </form>
+</div>
+
+@{
+    var totalB2BTaxable = Model.B2B.Sum(r => r.TaxableValue);
+    var totalB2BTax = Model.B2B.Sum(r => r.CgstAmount + r.SgstAmount + r.IgstAmount);
+    var totalB2CSTaxable = Model.B2CS.Sum(r => r.TaxableValue);
+    var totalB2CSTax = Model.B2CS.Sum(r => r.CgstAmount + r.SgstAmount + r.IgstAmount);
+}
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-start border-4 border-primary h-100">
+            <div class="card-body">
+                <div class="text-muted small">B2B Invoices</div>
+                <div class="fs-3 fw-semibold">@Model.B2B.Count</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+                <div class="text-muted small">B2B Taxable Value</div>
+                <div class="fs-3 fw-semibold">₹@totalB2BTaxable.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-start border-4 border-info h-100">
+            <div class="card-body">
+                <div class="text-muted small">B2CS Taxable Value</div>
+                <div class="fs-3 fw-semibold">₹@totalB2CSTaxable.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-start border-4 border-warning h-100">
+            <div class="card-body">
+                <div class="text-muted small">Total Tax</div>
+                <div class="fs-3 fw-semibold">₹@((totalB2BTax + totalB2CSTax).ToString("N2"))</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- B2B Table (Table 4A) -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-primary text-white fw-semibold">
+        <i class="bi bi-building me-1"></i>Table 4A — B2B Invoices (Customer with GSTIN)
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>GSTIN</th>
+                        <th>Customer</th>
+                        <th>Invoice No</th>
+                        <th>Date</th>
+                        <th class="text-end">Taxable</th>
+                        <th class="text-end">Rate%</th>
+                        <th class="text-end">CGST</th>
+                        <th class="text-end">SGST</th>
+                        <th class="text-end">IGST</th>
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.B2B.Any())
+                    {
+                        <tr><td colspan="10" class="p-4 text-muted text-center">No B2B invoices in this period.</td></tr>
+                    }
+                    @foreach (var r in Model.B2B)
+                    {
+                        <tr>
+                            <td class="font-monospace small">@r.Gstin</td>
+                            <td>@r.CustomerName</td>
+                            <td class="fw-semibold">@r.InvoiceNo</td>
+                            <td class="text-muted">@r.InvoiceDate.ToString("dd/MM/yyyy")</td>
+                            <td class="text-end">@r.TaxableValue.ToString("N2")</td>
+                            <td class="text-end">@r.TaxRate.ToString("N1")%</td>
+                            <td class="text-end">@r.CgstAmount.ToString("N2")</td>
+                            <td class="text-end">@r.SgstAmount.ToString("N2")</td>
+                            <td class="text-end">@r.IgstAmount.ToString("N2")</td>
+                            <td class="text-end fw-semibold">@r.TotalValue.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+                @if (Model.B2B.Any())
+                {
+                    <tfoot class="table-light fw-semibold">
+                        <tr>
+                            <td colspan="4">Total</td>
+                            <td class="text-end">@totalB2BTaxable.ToString("N2")</td>
+                            <td></td>
+                            <td class="text-end">@Model.B2B.Sum(r => r.CgstAmount).ToString("N2")</td>
+                            <td class="text-end">@Model.B2B.Sum(r => r.SgstAmount).ToString("N2")</td>
+                            <td class="text-end">@Model.B2B.Sum(r => r.IgstAmount).ToString("N2")</td>
+                            <td class="text-end">@Model.B2B.Sum(r => r.TotalValue).ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- B2CS Table (Table 7) -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-info text-white fw-semibold">
+        <i class="bi bi-person me-1"></i>Table 7 — B2C Small (Aggregate by Tax Rate)
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tax Rate</th>
+                        <th class="text-end">Taxable Value</th>
+                        <th class="text-end">CGST</th>
+                        <th class="text-end">SGST</th>
+                        <th class="text-end">IGST</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.B2CS.Any())
+                    {
+                        <tr><td colspan="5" class="p-4 text-muted text-center">No B2C supplies in this period.</td></tr>
+                    }
+                    @foreach (var r in Model.B2CS)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@r.TaxRate.ToString("N1")%</td>
+                            <td class="text-end">@r.TaxableValue.ToString("N2")</td>
+                            <td class="text-end">@r.CgstAmount.ToString("N2")</td>
+                            <td class="text-end">@r.SgstAmount.ToString("N2")</td>
+                            <td class="text-end">@r.IgstAmount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+                @if (Model.B2CS.Any())
+                {
+                    <tfoot class="table-light fw-semibold">
+                        <tr>
+                            <td>Total</td>
+                            <td class="text-end">@totalB2CSTaxable.ToString("N2")</td>
+                            <td class="text-end">@Model.B2CS.Sum(r => r.CgstAmount).ToString("N2")</td>
+                            <td class="text-end">@Model.B2CS.Sum(r => r.SgstAmount).ToString("N2")</td>
+                            <td class="text-end">@Model.B2CS.Sum(r => r.IgstAmount).ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- HSN Summary (Table 12) -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-dark text-white fw-semibold">
+        <i class="bi bi-hash me-1"></i>Table 12 — HSN-wise Summary
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>HSN Code</th>
+                        <th class="text-end">Qty</th>
+                        <th class="text-end">Taxable Value</th>
+                        <th class="text-end">Rate%</th>
+                        <th class="text-end">CGST</th>
+                        <th class="text-end">SGST</th>
+                        <th class="text-end">IGST</th>
+                        <th class="text-end">Total Tax</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Hsn.Any())
+                    {
+                        <tr><td colspan="8" class="p-4 text-muted text-center">No HSN data in this period.</td></tr>
+                    }
+                    @foreach (var r in Model.Hsn)
+                    {
+                        <tr>
+                            <td class="font-monospace fw-semibold">@r.HsnCode</td>
+                            <td class="text-end">@r.TotalQty.ToString("N2")</td>
+                            <td class="text-end">@r.TaxableValue.ToString("N2")</td>
+                            <td class="text-end">@r.GstRate.ToString("N1")%</td>
+                            <td class="text-end">@r.CgstAmount.ToString("N2")</td>
+                            <td class="text-end">@r.SgstAmount.ToString("N2")</td>
+                            <td class="text-end">@r.IgstAmount.ToString("N2")</td>
+                            <td class="text-end fw-semibold">@r.TotalTax.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+                @if (Model.Hsn.Any())
+                {
+                    <tfoot class="table-light fw-semibold">
+                        <tr>
+                            <td>Total</td>
+                            <td class="text-end">@Model.Hsn.Sum(r => r.TotalQty).ToString("N2")</td>
+                            <td class="text-end">@Model.Hsn.Sum(r => r.TaxableValue).ToString("N2")</td>
+                            <td></td>
+                            <td class="text-end">@Model.Hsn.Sum(r => r.CgstAmount).ToString("N2")</td>
+                            <td class="text-end">@Model.Hsn.Sum(r => r.SgstAmount).ToString("N2")</td>
+                            <td class="text-end">@Model.Hsn.Sum(r => r.IgstAmount).ToString("N2")</td>
+                            <td class="text-end">@Model.Hsn.Sum(r => r.TotalTax).ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+    </div>
+</div>

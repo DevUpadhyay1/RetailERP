@@ -1,0 +1,198 @@
+@model RetailERP.Services.Gstr3BSummary
+@{
+    ViewData["Title"] = "GSTR-3B — Monthly Summary Return";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-journal-text me-2"></i>GSTR-3B — Monthly Summary Return</h2>
+        <div class="text-muted small">@Model.From.ToString("dd MMM yyyy") — @Model.To.ToString("dd MMM yyyy")</div>
+    </div>
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-end">
+        <div>
+            <label class="form-label mb-1">From</label>
+            <input type="date" name="from" class="form-control" value="@Model.From.ToString("yyyy-MM-dd")" />
+        </div>
+        <div>
+            <label class="form-label mb-1">To</label>
+            <input type="date" name="to" class="form-control" value="@Model.To.ToString("yyyy-MM-dd")" />
+        </div>
+        <button class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filter</button>
+    </form>
+</div>
+
+<!-- Overview KPIs -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-start border-4 border-primary h-100">
+            <div class="card-body">
+                <div class="text-muted small">POS Bills</div>
+                <div class="fs-3 fw-semibold">@Model.BillCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-start border-4 border-success h-100">
+            <div class="card-body">
+                <div class="text-muted small">Invoices</div>
+                <div class="fs-3 fw-semibold">@Model.InvoiceCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-start border-4 border-info h-100">
+            <div class="card-body">
+                <div class="text-muted small">Purchases (ITC)</div>
+                <div class="fs-3 fw-semibold">@Model.PurchaseCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-start border-4 border-danger h-100">
+            <div class="card-body">
+                <div class="text-muted small">Net Tax Payable</div>
+                <div class="fs-3 fw-semibold">₹@((Model.NetCgst + Model.NetSgst + Model.NetIgst).ToString("N2"))</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 3.1 — Outward supplies -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-primary text-white fw-semibold">
+        <i class="bi bi-arrow-up-right-circle me-1"></i>Table 3.1 — Outward Supplies (Taxable)
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-bordered mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Description</th>
+                    <th class="text-end">Taxable Value</th>
+                    <th class="text-end">CGST</th>
+                    <th class="text-end">SGST</th>
+                    <th class="text-end">IGST</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>(a) Outward taxable supplies (other than zero rated, nil rated and exempted)</td>
+                    <td class="text-end fw-semibold">@Model.TotalOutwardTaxable.ToString("N2")</td>
+                    <td class="text-end">@Model.CgstPayable.ToString("N2")</td>
+                    <td class="text-end">@Model.SgstPayable.ToString("N2")</td>
+                    <td class="text-end">@Model.IgstPayable.ToString("N2")</td>
+                </tr>
+                <tr class="table-light">
+                    <td>(b) Outward taxable supplies (zero rated)</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                </tr>
+                <tr>
+                    <td>(c) Other outward supplies (nil rated, exempted)</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                </tr>
+            </tbody>
+            <tfoot class="table-warning fw-semibold">
+                <tr>
+                    <td>Total Outward Tax</td>
+                    <td class="text-end">@Model.TotalOutwardTaxable.ToString("N2")</td>
+                    <td class="text-end">@Model.CgstPayable.ToString("N2")</td>
+                    <td class="text-end">@Model.SgstPayable.ToString("N2")</td>
+                    <td class="text-end">@Model.IgstPayable.ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- 4 — Eligible ITC -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-success text-white fw-semibold">
+        <i class="bi bi-arrow-down-left-circle me-1"></i>Table 4 — Eligible Input Tax Credit (ITC)
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-bordered mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Details</th>
+                    <th class="text-end">CGST</th>
+                    <th class="text-end">SGST</th>
+                    <th class="text-end">IGST</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>(A) ITC Available — from purchases of goods/services</td>
+                    <td class="text-end fw-semibold">@Model.ItcCgst.ToString("N2")</td>
+                    <td class="text-end fw-semibold">@Model.ItcSgst.ToString("N2")</td>
+                    <td class="text-end fw-semibold">@Model.ItcIgst.ToString("N2")</td>
+                </tr>
+                <tr class="table-light">
+                    <td>(B) ITC Reversed</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                    <td class="text-end text-muted">0.00</td>
+                </tr>
+            </tbody>
+            <tfoot class="table-success fw-semibold">
+                <tr>
+                    <td>Net ITC Available (A) − (B)</td>
+                    <td class="text-end">@Model.ItcCgst.ToString("N2")</td>
+                    <td class="text-end">@Model.ItcSgst.ToString("N2")</td>
+                    <td class="text-end">@Model.ItcIgst.ToString("N2")</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- Net Tax Payable -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-danger text-white fw-semibold">
+        <i class="bi bi-cash-stack me-1"></i>Tax Computation — Net Payable
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-bordered mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Component</th>
+                    <th class="text-end">Tax on Output</th>
+                    <th class="text-end">ITC Claimed</th>
+                    <th class="text-end">Net Payable</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="fw-semibold">CGST</td>
+                    <td class="text-end">@Model.CgstPayable.ToString("N2")</td>
+                    <td class="text-end text-success">@Model.ItcCgst.ToString("N2")</td>
+                    <td class="text-end fw-bold @(Model.NetCgst >= 0 ? "text-danger" : "text-success")">@Model.NetCgst.ToString("N2")</td>
+                </tr>
+                <tr>
+                    <td class="fw-semibold">SGST</td>
+                    <td class="text-end">@Model.SgstPayable.ToString("N2")</td>
+                    <td class="text-end text-success">@Model.ItcSgst.ToString("N2")</td>
+                    <td class="text-end fw-bold @(Model.NetSgst >= 0 ? "text-danger" : "text-success")">@Model.NetSgst.ToString("N2")</td>
+                </tr>
+                <tr>
+                    <td class="fw-semibold">IGST</td>
+                    <td class="text-end">@Model.IgstPayable.ToString("N2")</td>
+                    <td class="text-end text-success">@Model.ItcIgst.ToString("N2")</td>
+                    <td class="text-end fw-bold">@Model.NetIgst.ToString("N2")</td>
+                </tr>
+            </tbody>
+            <tfoot class="table-danger fw-bold">
+                <tr>
+                    <td>Total</td>
+                    <td class="text-end">@((Model.CgstPayable + Model.SgstPayable + Model.IgstPayable).ToString("N2"))</td>
+                    <td class="text-end">@((Model.ItcCgst + Model.ItcSgst + Model.ItcIgst).ToString("N2"))</td>
+                    <td class="text-end">@((Model.NetCgst + Model.NetSgst + Model.NetIgst).ToString("N2"))</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>

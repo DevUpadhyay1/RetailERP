@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
@@ -8,6 +9,7 @@ using RetailERP.Data.Entities;
 
 namespace RetailERP.Controllers
 {
+    [Authorize(Roles = "Admin,Manager,Cashier,Finance")]
     public class CustomersController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -18,10 +20,14 @@ namespace RetailERP.Controllers
         }
 
         // GET: Customers
-        public async Task<IActionResult> Index(string? q)
+        public async Task<IActionResult> Index(string? q, string sort = "name", string dir = "asc", int page = 1, int pageSize = 20)
         {
             q = (q ?? "").Trim();
             ViewData["q"] = q;
+            ViewData["sort"] = sort;
+            ViewData["dir"] = dir;
+            ViewData["page"] = page;
+            ViewData["pageSize"] = pageSize;
 
             var query = _context.Customers.AsNoTracking().AsQueryable();
 
@@ -34,7 +40,24 @@ namespace RetailERP.Controllers
                 );
             }
 
-            var data = await query.OrderBy(x => x.Name).ToListAsync();
+            var ascending = !string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
+            query = sort?.ToLowerInvariant() switch
+            {
+                "phone" => ascending ? query.OrderBy(x => x.Phone) : query.OrderByDescending(x => x.Phone),
+                "email" => ascending ? query.OrderBy(x => x.Email) : query.OrderByDescending(x => x.Email),
+                _ => ascending ? query.OrderBy(x => x.Name) : query.OrderByDescending(x => x.Name)
+            };
+
+            if (page < 1) page = 1;
+            if (pageSize is < 10 or > 200) pageSize = 20;
+
+            var total = await query.CountAsync();
+            var data = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            ViewData["total"] = total;
+            ViewData["from"] = total == 0 ? 0 : ((page - 1) * pageSize + 1);
+            ViewData["to"] = Math.Min(page * pageSize, total);
+            ViewData["totalPages"] = (int)Math.Ceiling(total / (double)pageSize);
             return View(data);
         }
 

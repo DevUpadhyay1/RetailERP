@@ -1,0 +1,72 @@
+@model RetailERP.Data.Entities.PosBill
+@{
+    ViewData["Title"] = $"Receipt — {Model.BillNo}";
+    Layout = null;
+    var pdfUrl = Url.Action("ReceiptPdf", "Pos", new { id = Model.PosBillId });
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Receipt — @Model.BillNo</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+        html, body { height: 100%; margin: 0; }
+        .receipt-wrapper { display: flex; flex-direction: column; height: 100vh; }
+        .toolbar { flex-shrink: 0; }
+        .pdf-container { flex: 1; min-height: 0; position: relative; }
+        .pdf-container iframe { width: 100%; height: 100%; border: 0; }
+        .loading-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; }
+        @@media print { .toolbar { display: none !important; } }
+    </style>
+</head>
+<body>
+    <div class="receipt-wrapper">
+        <div class="toolbar text-center py-3 bg-light border-bottom">
+            <button id="btnPrintReceipt" class="btn btn-primary me-2"><i class="bi bi-printer me-1"></i>Print Receipt</button>
+            <a id="btnDownload" href="#" class="btn btn-info me-2"><i class="bi bi-file-pdf me-1"></i>Download PDF</a>
+            <a href="@Url.Action("Bill", "Pos", new { id = Model.PosBillId })" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back to Bill</a>
+            <a href="@Url.Action("NewBill", "Pos")" class="btn btn-outline-success"><i class="bi bi-plus-lg me-1"></i>New Bill</a>
+        </div>
+        <div class="pdf-container">
+            <div class="loading-msg" id="loadingMsg">
+                <div class="spinner-border text-primary" role="status"></div>
+                <span>Loading receipt…</span>
+            </div>
+            <iframe id="pdfFrame" style="display:none;"></iframe>
+        </div>
+    </div>
+    <script>
+    (function() {
+        var pdfUrl = '@Html.Raw(pdfUrl)';
+        var frame = document.getElementById('pdfFrame');
+        var loadingMsg = document.getElementById('loadingMsg');
+
+        // Load PDF directly in iframe (avoids CSP blob: blocking)
+        frame.src = pdfUrl;
+        frame.onload = function() {
+            frame.style.display = '';
+            loadingMsg.style.display = 'none';
+        };
+
+        // Setup download link
+        var dl = document.getElementById('btnDownload');
+        dl.href = pdfUrl;
+        dl.download = 'Receipt_@(Model.BillNo).pdf';
+
+        // Fallback: if iframe doesn't fire onload after 5s, show it anyway
+        setTimeout(function() {
+            frame.style.display = '';
+            loadingMsg.style.display = 'none';
+        }, 5000);
+
+        document.getElementById('btnPrintReceipt').addEventListener('click', function () {
+            try { frame.contentWindow.print(); }
+            catch (e) { window.open(pdfUrl, '_blank'); }
+        });
+    })();
+    </script>
+</body>
+</html>

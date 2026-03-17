@@ -1,28 +1,61 @@
 ﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
 @using RetailERP.Data.Identity
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 
+@{
+    // Self-registration is only allowed when the system has zero users (bootstrap).
+    var registrationOpen = !UserManager.Users.AsNoTracking().Any();
+    static string InferNiceName(string? displayName, string? userName, string? email, string? fallback)
+    {
+        var preferred = displayName;
+        if (string.IsNullOrWhiteSpace(preferred)) preferred = userName;
+        if (string.IsNullOrWhiteSpace(preferred)) preferred = email;
+        if (string.IsNullOrWhiteSpace(preferred)) preferred = fallback;
+
+        preferred ??= "";
+        var at = preferred.IndexOf('@');
+        if (at > 0) preferred = preferred[..at];
+        preferred = preferred.Replace('.', ' ').Replace('_', ' ').Trim();
+        return string.IsNullOrWhiteSpace(preferred) ? "User" : preferred;
+    }
+}
+
 <ul class="navbar-nav">
     @if (SignInManager.IsSignedIn(User))
     {
+        var currentUser = await UserManager.GetUserAsync(User);
+        var displayName = InferNiceName(currentUser?.DisplayName, currentUser?.UserName, currentUser?.Email, User.Identity?.Name);
         <li class="nav-item">
-            <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">
-                Hello @User.Identity?.Name!
-            </a>
-        </li>
-        <li class="nav-item">
-            <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout"
-                  asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })" method="post">
-                <button type="submit" class="nav-link btn btn-link text-dark border-0">Logout</button>
-            </form>
+            <div class="dropdown">
+                <a class="nav-link dropdown-toggle text-dark d-flex align-items-center gap-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-person-circle"></i>
+                    <span>@displayName</span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">Profile</a>
+                    </li>
+                    <li><hr class="dropdown-divider" /></li>
+                    <li>
+                        <form class="px-3" asp-area="Identity" asp-page="/Account/Logout"
+                              asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })" method="post">
+                            <button type="submit" class="btn btn-outline-secondary w-100">Logout</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
         </li>
     }
     else
     {
-        <li class="nav-item">
-            <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Register</a>
-        </li>
+        if (registrationOpen)
+        {
+            <li class="nav-item">
+                <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Register</a>
+            </li>
+        }
         <li class="nav-item">
             <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a>
         </li>

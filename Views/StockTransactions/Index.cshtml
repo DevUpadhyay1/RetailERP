@@ -1,0 +1,186 @@
+@model RetailERP.Controllers.StockTransactionsController.IndexVm
+@{
+    ViewData["Title"] = "Stock Ledger";
+
+    string ToggleDir(string nextSort)
+    {
+        if (!string.Equals(Model.Sort, nextSort, StringComparison.OrdinalIgnoreCase)) return "asc";
+        return string.Equals(Model.Dir, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+    }
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h2 class="mb-0">Stock Ledger</h2>
+        <div class="text-muted">Showing @Model.FromRow-@Model.ToRow of @Model.TotalCount • All stock movements</div>
+    </div>
+
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-end">
+        <div>
+            <label class="form-label mb-1">From</label>
+            <input class="form-control" type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div>
+            <label class="form-label mb-1">To</label>
+            <input class="form-control" type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div>
+            <label class="form-label mb-1">Type</label>
+            <select class="form-select" name="type">
+                <option value="">All</option>
+                @foreach (var t in Model.Types)
+                {
+                    <option value="@t.Value" selected="@(t.Value == Model.Type)">@t.Text</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="form-label mb-1">Warehouse</label>
+            <select class="form-select" name="warehouseId">
+                <option value="">All</option>
+                @foreach (var w in Model.Warehouses)
+                {
+                    <option value="@w.Value" selected="@(w.Value == (Model.WarehouseId?.ToString() ?? ""))">@w.Text</option>
+                }
+            </select>
+        </div>
+        <div>
+            <label class="form-label mb-1">Item</label>
+            <select class="form-select" name="itemId">
+                <option value="">All</option>
+                @foreach (var i in Model.Items)
+                {
+                    <option value="@i.Value" selected="@(i.Value == (Model.ItemId?.ToString() ?? ""))">@i.Text</option>
+                }
+            </select>
+        </div>
+        <div style="min-width: 220px;">
+            <label class="form-label mb-1">Search</label>
+            <input class="form-control" name="q" value="@Model.Query" placeholder="SKU, warehouse, ref, reason..." />
+        </div>
+
+        <input type="hidden" name="sort" value="@Model.Sort" />
+        <input type="hidden" name="dir" value="@Model.Dir" />
+        <input type="hidden" name="pageSize" value="@Model.PageSize" />
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Filter</button>
+            <a class="btn btn-outline-secondary" asp-action="Index">Reset</a>
+        </div>
+    </form>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 170px;">
+                            <a class="text-decoration-none" asp-action="Index"
+                               asp-route-from="@(Model.From?.ToString("yyyy-MM-dd"))" asp-route-to="@(Model.To?.ToString("yyyy-MM-dd"))"
+                               asp-route-type="@Model.Type" asp-route-warehouseId="@Model.WarehouseId" asp-route-itemId="@Model.ItemId" asp-route-q="@Model.Query"
+                               asp-route-sort="time" asp-route-dir="@ToggleDir("time")" asp-route-page="1" asp-route-pageSize="@Model.PageSize">Time (UTC)</a>
+                        </th>
+                        <th style="width: 130px;">
+                            <a class="text-decoration-none" asp-action="Index"
+                               asp-route-from="@(Model.From?.ToString("yyyy-MM-dd"))" asp-route-to="@(Model.To?.ToString("yyyy-MM-dd"))"
+                               asp-route-type="@Model.Type" asp-route-warehouseId="@Model.WarehouseId" asp-route-itemId="@Model.ItemId" asp-route-q="@Model.Query"
+                               asp-route-sort="type" asp-route-dir="@ToggleDir("type")" asp-route-page="1" asp-route-pageSize="@Model.PageSize">Type</a>
+                        </th>
+                        <th>Item</th>
+                        <th>Warehouse</th>
+                        <th class="text-end" style="width: 140px;">
+                            <a class="text-decoration-none" asp-action="Index"
+                               asp-route-from="@(Model.From?.ToString("yyyy-MM-dd"))" asp-route-to="@(Model.To?.ToString("yyyy-MM-dd"))"
+                               asp-route-type="@Model.Type" asp-route-warehouseId="@Model.WarehouseId" asp-route-itemId="@Model.ItemId" asp-route-q="@Model.Query"
+                               asp-route-sort="qty" asp-route-dir="@ToggleDir("qty")" asp-route-page="1" asp-route-pageSize="@Model.PageSize">Qty</a>
+                        </th>
+                        <th style="width: 220px;">Reference</th>
+                        <th>Reason</th>
+                        <th style="width: 180px;">Actor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Rows.Any())
+                    {
+                        <tr><td colspan="8" class="p-4 text-muted">No transactions found.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var r in Model.Rows)
+                        {
+                            var itemLabel = r.Item is null ? r.ItemId.ToString() : $"{r.Item.SKU} - {r.Item.Name}";
+                            var whLabel = r.Warehouse is null ? r.WarehouseId.ToString() : r.Warehouse.Name;
+                            var refLabel = string.IsNullOrWhiteSpace(r.RefType)
+                                ? (r.RefId ?? "-")
+                                : $"{r.RefType}: {r.RefId}";
+                            var actor = r.ActorUser?.Email ?? r.ActorUserId?.ToString() ?? "-";
+
+                            <tr>
+                                <td class="text-muted">@r.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>
+                                    <span class="badge @(r.Type == "IN" ? "bg-success" : r.Type == "OUT" ? "bg-danger" : "bg-secondary")">@r.Type</span>
+                                </td>
+                                <td class="fw-semibold">@itemLabel</td>
+                                <td>@whLabel</td>
+                                <td class="text-end @(r.Qty < 0 ? "text-danger" : "text-success")">@r.Qty.ToString("0.##")</td>
+                                <td class="text-muted">@refLabel</td>
+                                <td>@(string.IsNullOrWhiteSpace(r.Reason) ? "-" : r.Reason)</td>
+                                <td class="text-muted">@actor</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+    <div class="text-muted small">Page @Model.Page of @Model.TotalPages</div>
+
+    <form method="get" class="d-flex align-items-center gap-2">
+        <input type="hidden" name="from" value="@(Model.From?.ToString("yyyy-MM-dd"))" />
+        <input type="hidden" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))" />
+        <input type="hidden" name="type" value="@Model.Type" />
+        <input type="hidden" name="warehouseId" value="@Model.WarehouseId" />
+        <input type="hidden" name="itemId" value="@Model.ItemId" />
+        <input type="hidden" name="q" value="@Model.Query" />
+        <input type="hidden" name="sort" value="@Model.Sort" />
+        <input type="hidden" name="dir" value="@Model.Dir" />
+        <input type="hidden" name="page" value="1" />
+        <label class="text-muted small">Rows</label>
+        <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 110px;">
+            <option value="10" selected="@(Model.PageSize==10)">10</option>
+            <option value="20" selected="@(Model.PageSize==20)">20</option>
+            <option value="50" selected="@(Model.PageSize==50)">50</option>
+        </select>
+    </form>
+
+    <nav>
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                <a class="page-link" asp-action="Index"
+                   asp-route-from="@(Model.From?.ToString("yyyy-MM-dd"))" asp-route-to="@(Model.To?.ToString("yyyy-MM-dd"))"
+                   asp-route-type="@Model.Type" asp-route-warehouseId="@Model.WarehouseId" asp-route-itemId="@Model.ItemId" asp-route-q="@Model.Query"
+                   asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-page="@(Model.Page-1)" asp-route-pageSize="@Model.PageSize">Prev</a>
+            </li>
+            @for (var p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+            {
+                <li class="page-item @(p == Model.Page ? "active" : "")">
+                    <a class="page-link" asp-action="Index"
+                       asp-route-from="@(Model.From?.ToString("yyyy-MM-dd"))" asp-route-to="@(Model.To?.ToString("yyyy-MM-dd"))"
+                       asp-route-type="@Model.Type" asp-route-warehouseId="@Model.WarehouseId" asp-route-itemId="@Model.ItemId" asp-route-q="@Model.Query"
+                       asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-page="@p" asp-route-pageSize="@Model.PageSize">@p</a>
+                </li>
+            }
+            <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                <a class="page-link" asp-action="Index"
+                   asp-route-from="@(Model.From?.ToString("yyyy-MM-dd"))" asp-route-to="@(Model.To?.ToString("yyyy-MM-dd"))"
+                   asp-route-type="@Model.Type" asp-route-warehouseId="@Model.WarehouseId" asp-route-itemId="@Model.ItemId" asp-route-q="@Model.Query"
+                   asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-page="@(Model.Page+1)" asp-route-pageSize="@Model.PageSize">Next</a>
+            </li>
+        </ul>
+    </nav>
+</div>

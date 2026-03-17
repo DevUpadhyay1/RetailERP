@@ -3,6 +3,7 @@
 #nullable disable
 
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Authorization;
 
 namespace RetailERP.Areas.Identity.Pages.Account
 {
@@ -10,6 +11,7 @@ namespace RetailERP.Areas.Identity.Pages.Account
     ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
     ///     directly from your code. This API may change or be removed in future releases.
     /// </summary>
+    [AllowAnonymous]
     public class AccessDeniedModel : PageModel
     {
         /// <summary>

@@ -1,0 +1,707 @@
+@model RetailERP.Data.Entities.PosBill
+@{
+    Layout = null;
+    var isOpen = Model.Status == 1;
+    var companyName = ViewBag.CompanyName ?? "RetailERP";
+    var cashierName = ViewBag.CashierName ?? "Cashier";
+    var totalPaid = Model.Payments.Where(p => !p.IsRefund).Sum(p => p.Amount);
+    var remaining = Model.GrandTotal - totalPaid;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>POS — @Model.BillNo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+    <link href="/css/pos.css" rel="stylesheet" />
+</head>
+<body class="pos-body">
+
+<!-- ═══════════════════  TOP HEADER  ═══════════════════ -->
+<header class="pos-topbar">
+    <div class="topbar-left">
+        <span class="topbar-brand"><i class="bi bi-shop"></i> @companyName</span>
+    </div>
+    <div class="topbar-fields">
+        <div class="tf"><span class="tf-label">Site</span><span class="tf-value">@(Model.Store?.Name ?? "—")</span></div>
+        <div class="tf"><span class="tf-label">Bill Date</span><span class="tf-value">@Model.BillDate.ToString("dd-MM-yyyy")</span></div>
+        <div class="tf"><span class="tf-label">Bill No</span><span class="tf-value tf-highlight">@Model.BillNo</span></div>
+        <div class="tf"><span class="tf-label">Warehouse</span><span class="tf-value">@(Model.Warehouse?.Name ?? "—")</span></div>
+        <div class="tf"><span class="tf-label">Cashier</span><span class="tf-value">@cashierName</span></div>
+        <div class="tf">
+            <span class="tf-label">Status</span>
+            @if (Model.Status == 1) { <span class="tf-badge tf-open">Open</span> }
+            else if (Model.Status == 2) { <span class="tf-badge tf-completed">Completed</span> }
+            else if (Model.Status == 4) { <span class="tf-badge tf-open" style="background:#f0ad4e">On Hold</span> }
+            else { <span class="tf-badge tf-cancelled">Cancelled</span> }
+        </div>
+    </div>
+</header>
+
+<!-- ═══════════════════  CUSTOMER BAR  ═══════════════════ -->
+<div class="pos-customer-bar">
+    <div class="cb-fields">
+        <div class="cb-f"><span class="cb-label">Customer</span><span class="cb-val fw-semibold" id="customerName">@(Model.Customer?.Name ?? "Walk-in Customer")</span></div>
+        <div class="cb-f"><span class="cb-label">Phone</span><span class="cb-val" id="customerPhone">@(Model.Customer?.Phone ?? "—")</span></div>
+        <div class="cb-f"><span class="cb-label">Email</span><span class="cb-val" id="customerEmail">@(Model.Customer?.Email ?? "—")</span></div>
+    </div>
+    @if (!isOpen && Model.Status == 2)
+    {
+        <div class="cb-actions">
+            <a href="@Url.Action("Receipt", new { id = Model.PosBillId })" class="btn btn-sm btn-outline-light"><i class="bi bi-printer me-1"></i>Receipt</a>
+            <a href="@Url.Action("ReceiptPdf", new { id = Model.PosBillId })" class="btn btn-sm btn-outline-light"><i class="bi bi-file-pdf me-1"></i>PDF</a>
+        </div>
+    }
+</div>
+
+<!-- ═══════════════════  MAIN AREA  ═══════════════════ -->
+<div class="pos-main">
+
+    <!-- ──── LEFT : Scan + Table ──── -->
+    <div class="pos-left">
+
+        @if (isOpen)
+        {
+        <!-- Scan Item Area -->
+        <div class="pos-scan-area">
+            <div class="scan-row">
+                <div class="scan-field scan-barcode">
+                    <label class="scan-lbl">Scan Item</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" id="barcodeInput" class="form-control" placeholder="Barcode / SKU" autofocus autocomplete="off" />
+                        <button id="btnScan" class="btn btn-primary" type="button"><i class="bi bi-search"></i></button>
+                    </div>
+                </div>
+                <div class="scan-field" id="sf_uom"><label class="scan-lbl">UoM</label><span class="scan-val" id="scanUom">—</span></div>
+                <div class="scan-field" id="sf_mrp"><label class="scan-lbl">MRP</label><span class="scan-val" id="scanMrp">0.00</span></div>
+                <div class="scan-field" id="sf_price"><label class="scan-lbl">Sale Price</label><span class="scan-val" id="scanPrice">0.00</span></div>
+                <div class="scan-field" id="sf_stock"><label class="scan-lbl">Stock</label><span class="scan-val" id="scanStock">—</span></div>
+            </div>
+            <div id="scanFeedback" class="scan-feedback"></div>
+        </div>
+
+        <!-- Action Buttons Row (below scan, above table) -->
+        <div class="pos-item-actions">
+            <button class="btn btn-sm btn-outline-danger btn-remove-last-line"><i class="bi bi-trash3 me-1"></i>Remove Last</button>
+            <button id="btnCancel" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-lg me-1"></i>Cancel Bill</button>
+            <button id="btnHold" class="btn btn-sm btn-outline-warning"><i class="bi bi-pause-circle me-1"></i>Hold Bill</button>
+            <button id="btnPopHold" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#heldBillsModal"><i class="bi bi-play-circle me-1"></i>Pop Hold</button>
+            <a class="btn btn-sm btn-outline-dark" href="@Url.Action("Index")"><i class="bi bi-list-ul me-1"></i>All Bills</a>
+        </div>
+        }
+
+        <!-- Items Table -->
+        <div class="pos-items-wrap">
+            <table class="pos-table" id="linesTable">
+                <thead>
+                    <tr>
+                        <th class="col-sr">Sr</th>
+                        <th class="col-item">Item Description</th>
+                        <th class="col-uom">UoM</th>
+                        <th class="col-qty">Qty</th>
+                        <th class="col-num">MRP</th>
+                        <th class="col-num">Sale Price</th>
+                        <th class="col-gst">GST%</th>
+                        <th class="col-gst">Disc%</th>
+                        <th class="col-amt">Amount</th>
+                        @if (isOpen) { <th class="col-act"></th> }
+                    </tr>
+                </thead>
+                <tbody id="linesBody">
+                    @{ int idx = 0; }
+                    @foreach (var l in Model.Lines)
+                    {
+                        idx++;
+                        <tr data-line-id="@l.PosBillLineId">
+                            <td class="col-sr">@idx</td>
+                            <td class="col-item">@(l.ItemNameSnapshot ?? l.Item?.Name)</td>
+                            <td class="col-uom">@(l.Item?.Unit?.Name ?? "—")</td>
+                            <td class="col-qty">
+                                @if (isOpen) {
+                                    <input type="number" class="qty-input" value="@l.Qty" min="1" step="1" data-line-id="@l.PosBillLineId" />
+                                } else { @l.Qty }
+                            </td>
+                            <td class="col-num">@((l.Item?.MRP ?? l.UnitPrice).ToString("N2"))</td>
+                            <td class="col-num">@l.UnitPrice.ToString("N2")</td>
+                            <td class="col-gst">@(l.GstPercentSnapshot?.ToString("0.##") ?? "0")%</td>
+                            <td class="col-gst">
+                                @if (isOpen) {
+                                    <input type="number" class="disc-input" value="@l.DiscountPercent" min="0" max="100" step="0.5" data-line-id="@l.PosBillLineId" />
+                                } else { @(l.DiscountPercent > 0 ? l.DiscountPercent.ToString("0.##") + "%" : "—") }
+                            </td>
+                            <td class="col-amt">₹@l.LineTotal.ToString("N2")</td>
+                            @if (isOpen) {
+                                <td class="col-act"><button class="btn-row-del btn-remove-line" data-line-id="@l.PosBillLineId" title="Remove"><i class="bi bi-x-lg"></i></button></td>
+                            }
+                        </tr>
+                    }
+                    @if (!Model.Lines.Any())
+                    {
+                        <tr id="emptyRow"><td colspan="@(isOpen ? 10 : 9)" class="empty-msg">Scan barcode or type SKU to begin billing</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Bottom Footer -->
+        <div class="pos-left-footer">
+            <div class="lf-stat">Tot Items <strong id="totalItems">@Model.Lines.Count</strong></div>
+            <div class="lf-stat">Total Qty <strong id="totalQty">@Model.Lines.Sum(l => l.Qty).ToString("N0")</strong></div>
+            <div class="lf-stat lf-barcode"><i class="bi bi-upc me-1"></i>Barcode</div>
+            <div class="lf-stat ms-auto">Sub Total <strong id="footerSubTotal">₹@Model.SubTotal.ToString("N2")</strong></div>
+        </div>
+    </div>
+
+    <!-- ──── RIGHT : Totals + Payments ──── -->
+    <div class="pos-right">
+
+        <!-- Invoice Type Label -->
+        <div class="pos-invoice-type">
+            <span>Retail Invoice</span>
+            <span class="billno-label">Bill No</span>
+        </div>
+
+        <!-- Totals Stack (matching reference layout) -->
+        <div class="pos-totals-stack">
+            <div class="ts-row"><span>Total Bill Amt</span><span class="ts-val" id="valSubTotal">@Model.SubTotal.ToString("N2")</span></div>
+            <div class="ts-row"><span>Item Disc</span><span class="ts-val ts-red" id="valDiscount">@Model.DiscountTotal.ToString("N2")</span></div>
+            <div class="ts-row" id="rowCouponDiscount" style="@(Model.CouponDiscount > 0 ? "" : "display:none")">
+                <span><i class="bi bi-tag-fill text-info me-1"></i>Coupon Disc</span>
+                <span class="ts-val ts-red" id="valCouponDiscount">@Model.CouponDiscount.ToString("N2")</span>
+            </div>
+            <div class="ts-row" id="rowLoyaltyDiscount" style="@(Model.LoyaltyDiscount > 0 ? "" : "display:none")">
+                <span><i class="bi bi-star-fill text-warning me-1"></i>Loyalty Disc</span>
+                <span class="ts-val ts-red" id="valLoyaltyDiscount">@Model.LoyaltyDiscount.ToString("N2")</span>
+            </div>
+            <div class="ts-row" id="rowAddDiscount" style="@(Model.AddDiscountAmount > 0 ? "" : "display:none")">
+                <span><i class="bi bi-percent text-danger me-1"></i>Add Disc (<span id="addDiscPctLabel">@Model.AddDiscountPercent.ToString("0.##")</span>%)</span>
+                <span class="ts-val ts-red" id="valAddDiscount">@Model.AddDiscountAmount.ToString("N2")</span>
+            </div>
+            <div class="ts-row" id="rowAddCharge" style="@(Model.AddChargeAmount > 0 ? "" : "display:none")">
+                <span><i class="bi bi-plus-circle text-primary me-1"></i>Add Charge (<span id="addChargePctLabel">@Model.AddChargePercent.ToString("0.##")</span>%)</span>
+                <span class="ts-val" id="valAddCharge">@Model.AddChargeAmount.ToString("N2")</span>
+            </div>
+            <div class="ts-row"><span>Tax Amt</span><span class="ts-val" id="valTax">@Model.TaxTotal.ToString("N2")</span></div>
+            <div class="ts-row"><span>Round Off</span><span class="ts-val" id="valRoundOff">@Model.RoundOff.ToString("N2")</span></div>
+            <div class="ts-grand">
+                <span>Net Bill Amt</span>
+                <span class="ts-grand-val" id="valGrandTotal">@Model.GrandTotal.ToString("N2")</span>
+            </div>
+        </div>
+
+        @if (isOpen)
+        {
+        <!-- Checkout Button -->
+        <button id="btnComplete" class="pos-checkout-btn">
+            Check Out Payment (F10)
+        </button>
+
+        <!-- Payment Section -->
+        <div class="pos-pay-section">
+            <div class="pay-header">
+                <span>Paid: <strong id="valPaid" class="text-success">₹@totalPaid.ToString("N2")</strong></span>
+                <span>Due: <strong id="valRemaining" class="@(remaining > 0 ? "text-danger" : "text-success")">₹@remaining.ToString("N2")</strong></span>
+            </div>
+            <div id="paymentsList" class="pay-list">
+                @foreach (var p in Model.Payments.Where(p => !p.IsRefund))
+                {
+                    <div class="pay-row" data-payment-id="@p.PaymentId">
+                        <span class="pay-method">@p.Method</span>
+                        <span class="pay-ref">@(p.Reference ?? "")</span>
+                        <span class="pay-amt">₹@p.Amount.ToString("N2")</span>
+                        <button class="btn-row-del btn-remove-payment" data-payment-id="@p.PaymentId"><i class="bi bi-x"></i></button>
+                    </div>
+                }
+            </div>
+
+            <!-- Payment Buttons -->
+            <div class="pay-btns">
+                <button class="pbtn pbtn-cash"   data-method="Cash"><i class="bi bi-cash-stack"></i><span>Cash</span></button>
+                <button class="pbtn pbtn-card"   data-method="Card"><i class="bi bi-credit-card-2-front"></i><span>Card</span></button>
+                <button class="pbtn pbtn-upi"    data-method="UPI"><i class="bi bi-phone"></i><span>UPI</span></button>
+                <button class="pbtn pbtn-online" data-method="Online" id="btnPayOnline"><i class="bi bi-globe2"></i><span>Online</span></button>
+            </div>
+            <div class="row g-1 mt-1">
+                <div class="col-5"><input id="payAmount" type="number" class="form-control form-control-sm" placeholder="Amount" min="0.01" step="0.01" /></div>
+                <div class="col-7"><input id="payRef" type="text" class="form-control form-control-sm" placeholder="Ref# (optional)" /></div>
+            </div>
+            <div id="razorpayFeedback" class="small mt-1"></div>
+        </div>
+
+        <!-- Loyalty + Coupon -->
+        <div class="pos-extras">
+            <div class="extra-col">
+                <div class="extra-title"><i class="bi bi-star-fill text-warning"></i> Loyalty</div>
+                <div id="loyaltyInfo" style="@(Model.LoyaltyCardId.HasValue ? "" : "display:none")">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small fw-medium" id="loyaltyCardNumber">@Model.LoyaltyCard?.CardNumber</span>
+                        <button class="btn-row-del" id="btnRemoveLoyalty"><i class="bi bi-x"></i></button>
+                    </div>
+                    <div class="extra-meta">
+                        <span class="badge bg-warning text-dark" id="loyaltyTier" style="font-size:.6rem">@(Model.LoyaltyCard != null ? RetailERP.Services.LoyaltyService.GetTierName(Model.LoyaltyCard.Tier) : "")</span>
+                        Pts: <span id="loyaltyPoints">@(Model.LoyaltyCard?.PointsBalance.ToString("N0") ?? "0")</span>
+                    </div>
+                    <div class="input-group input-group-sm mt-1" id="loyaltyRedeemRow">
+                        <input id="redeemPoints" type="number" class="form-control" placeholder="Redeem pts" min="50" step="1" />
+                        <button id="btnRedeem" class="btn btn-outline-warning btn-sm"><i class="bi bi-arrow-down-circle"></i></button>
+                    </div>
+                </div>
+                <div id="loyaltyLookup" style="@(Model.LoyaltyCardId.HasValue ? "display:none" : "")">
+                    <div class="input-group input-group-sm">
+                        <input id="loyaltySearch" type="text" class="form-control" placeholder="Phone / Card#" autocomplete="off" />
+                        <button id="btnLoyaltyLookup" class="btn btn-outline-primary btn-sm"><i class="bi bi-search"></i></button>
+                    </div>
+                    <div id="loyaltyFeedback" class="small mt-1"></div>
+                </div>
+            </div>
+            <div class="extra-col">
+                <div class="extra-title"><i class="bi bi-tag-fill text-info"></i> Coupon</div>
+                <div id="couponInfo" style="@(Model.CouponId.HasValue ? "" : "display:none")">
+                    <div class="d-flex justify-content-between align-items-center gap-1">
+                        <span class="badge bg-info text-white" id="couponCode">@Model.Coupon?.Code</span>
+                        <span class="small text-success fw-medium" id="couponDiscountVal">-₹@Model.CouponDiscount.ToString("N2")</span>
+                        <button class="btn-row-del" id="btnRemoveCoupon"><i class="bi bi-x"></i></button>
+                    </div>
+                </div>
+                <div id="couponInput" style="@(Model.CouponId.HasValue ? "display:none" : "")">
+                    <div class="input-group input-group-sm">
+                        <input id="couponCodeInput" type="text" class="form-control" placeholder="Enter code" autocomplete="off" />
+                        <button id="btnApplyCoupon" class="btn btn-outline-info btn-sm"><i class="bi bi-check-lg"></i></button>
+                    </div>
+                    <div id="couponFeedback" class="small mt-1"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Grid (matching reference) -->
+        <div class="pos-quick-actions">
+            <a class="qa-btn" href="@Url.Action("Index", "Items")"><i class="bi bi-search"></i> Rate Query</a>
+            <a class="qa-btn" href="@Url.Action("Create", "Customers")"><i class="bi bi-person-plus"></i> Add Customer</a>
+            <a class="qa-btn" href="@Url.Action("Returns")"><i class="bi bi-arrow-return-left"></i> Sales Return</a>
+            <a class="qa-btn" href="@Url.Action("NewBill")"><i class="bi bi-plus-circle"></i> New Bill</a>            <button class="qa-btn" id="btnApplyPromos"><i class="bi bi-percent"></i> Apply Schemes</button>
+            <a class="qa-btn" href="@Url.Action("Index", "Promotions")"><i class="bi bi-tags"></i> View Schemes</a>
+        </div>
+
+        <!-- Bill-level Discount / Charge -->
+        <div class="pos-bill-adj">
+            <div class="d-flex gap-2 align-items-end">
+                <div class="flex-fill">
+                    <label class="form-label mb-0 small fw-medium">Add Disc %</label>
+                    <input id="addDiscPct" type="number" class="form-control form-control-sm" min="0" max="100" step="0.5" value="@Model.AddDiscountPercent" />
+                </div>
+                <div class="flex-fill">
+                    <label class="form-label mb-0 small fw-medium">Add Charge %</label>
+                    <input id="addChargePct" type="number" class="form-control form-control-sm" min="0" max="100" step="0.5" value="@Model.AddChargePercent" />
+                </div>
+                <button id="btnApplyAdj" class="btn btn-sm btn-outline-primary"><i class="bi bi-check-lg"></i></button>
+            </div>        </div>
+        }
+
+        @if (!isOpen && Model.Status == 2)
+        {
+        <div class="pos-quick-actions" style="margin-top:auto">
+            <a class="qa-btn qa-primary" href="@Url.Action("Receipt", new { id = Model.PosBillId })"><i class="bi bi-printer"></i> Print Receipt</a>
+            <a class="qa-btn" href="@Url.Action("NewReturn", new { billId = Model.PosBillId })"><i class="bi bi-arrow-return-left"></i> Return</a>
+            <a class="qa-btn" href="@Url.Action("Index")"><i class="bi bi-list-ul"></i> All Bills</a>
+            <a class="qa-btn" href="@Url.Action("NewBill")"><i class="bi bi-plus-circle"></i> New Bill</a>
+        </div>
+        }
+    </div>
+</div>
+
+<!-- Held Bills Modal -->
+<div class="modal fade" id="heldBillsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-play-circle me-1"></i>Held Bills</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="heldBillsBody">
+                <p class="text-muted text-center">Loading…</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════  JAVASCRIPT  ═══════════════════ -->
+<script>
+(function () {
+    const billId = '@Model.PosBillId';
+    const warehouseId = '@Model.WarehouseId';
+    const isOpen = @(isOpen ? "true" : "false");
+    if (!isOpen) return;
+
+    // XSS-safe HTML escaping
+    function esc(str) {
+        const d = document.createElement('div');
+        d.textContent = str || '';
+        return d.innerHTML;
+    }
+
+    const barcodeInput = document.getElementById('barcodeInput');
+    const scanFeedback = document.getElementById('scanFeedback');
+    const linesBody    = document.getElementById('linesBody');
+
+    // ── Scan ──
+    let scanning = false;
+    function doScan() {
+        const code = barcodeInput.value.trim();
+        if (!code || scanning) return;
+        scanning = true;
+        scanFeedback.innerHTML = '<span class="text-muted">Looking up…</span>';
+        clearScanFields();
+
+        fetch(`@Url.Action("LookupItem")?code=${encodeURIComponent(code)}&warehouseId=${warehouseId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    scanFeedback.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> ${esc(data.message)}</span>`;
+                    scanning = false; return;
+                }
+                const it = data.item;
+                // Fill scan fields
+                document.getElementById('scanUom').textContent   = it.unitName || '—';
+                document.getElementById('scanMrp').textContent   = (it.mrp || it.unitPrice).toFixed(2);
+                document.getElementById('scanPrice').textContent = it.unitPrice.toFixed(2);
+                document.getElementById('scanStock').textContent = it.stockAvailable;
+                document.getElementById('scanStock').className   = 'scan-val ' + (it.stockAvailable > 0 ? 'text-success' : 'text-danger');
+
+                if (it.stockAvailable <= 0) {
+                    scanFeedback.innerHTML = `<span class="text-warning"><i class="bi bi-exclamation-triangle"></i> ${esc(it.name)} — OUT OF STOCK</span>`;
+                    scanning = false; return;
+                }
+                scanFeedback.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> ${esc(it.name)}</span>`;
+                addLine(it.itemId);
+            })
+            .catch(() => { scanFeedback.innerHTML = '<span class="text-danger">Network error.</span>'; scanning = false; });
+        barcodeInput.value = '';
+        barcodeInput.focus();
+    }
+    function clearScanFields() {
+        document.getElementById('scanUom').textContent = '—';
+        document.getElementById('scanMrp').textContent = '0.00';
+        document.getElementById('scanPrice').textContent = '0.00';
+        document.getElementById('scanStock').textContent = '—';
+        document.getElementById('scanStock').className = 'scan-val';
+    }
+
+    barcodeInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doScan(); } });
+    document.getElementById('btnScan').addEventListener('click', doScan);
+    document.addEventListener('keydown', e => { if (e.key === 'F10') { e.preventDefault(); document.getElementById('btnComplete').click(); } });
+
+    function addLine(itemId) {
+        postJson('@Url.Action("AddLine")', { billId, itemId, qty: 1 }, data => { scanning = false; refreshBill(data); });
+    }
+
+    // Disc% change on line
+    document.addEventListener('change', e => {
+        if (e.target.classList.contains('disc-input'))
+            postJson('@Url.Action("SetLineDiscount")', { billLineId: e.target.dataset.lineId, discountPercent: parseFloat(e.target.value)||0 }, refreshBill);
+    });
+
+    // Qty change
+    document.addEventListener('change', e => {
+        if (e.target.classList.contains('qty-input')) {
+            let qty = parseInt(e.target.value) || 0;
+            if (qty < 1) { qty = 1; e.target.value = 1; }
+            postJson('@Url.Action("UpdateLineQty")', { billLineId: e.target.dataset.lineId, qty: qty }, refreshBill);
+        }
+    });
+
+    // Remove line
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.btn-remove-line');
+        if (btn) postJson('@Url.Action("RemoveLine")', { billLineId: btn.dataset.lineId }, refreshBill);
+    });
+
+    // Remove last
+    document.querySelector('.btn-remove-last-line')?.addEventListener('click', () => {
+        const rows = linesBody.querySelectorAll('tr[data-line-id]');
+        if (rows.length) postJson('@Url.Action("RemoveLine")', { billLineId: rows[rows.length-1].dataset.lineId }, refreshBill);
+    });
+
+    // ── Payment ──
+    document.querySelectorAll('.pbtn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const method = btn.dataset.method;
+            if (method === 'Online') { handleRazorpay(); return; }
+            const amtInput = document.getElementById('payAmount');
+            let amount = parseFloat(amtInput.value) || 0;
+            if (amount <= 0) {
+                const rem = parseFloat(document.getElementById('valRemaining').textContent.replace(/[^\d.\-]/g,'')) || 0;
+                if (rem <= 0) return;
+                amount = rem;
+            }
+            const reference = document.getElementById('payRef').value.trim();
+            postJson('@Url.Action("AddPayment")', { billId, method, amount, reference }, data => {
+                refreshBill(data);
+                amtInput.value = '';
+                document.getElementById('payRef').value = '';
+            });
+        });
+    });
+
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.btn-remove-payment');
+        if (btn) postJson('@Url.Action("RemovePayment")', { paymentId: btn.dataset.paymentId, billId }, refreshBill);
+    });
+
+    // ── Complete → Auto Next ──
+    document.getElementById('btnComplete').addEventListener('click', () => {
+        if (!confirm('Complete this bill? Stock will be deducted.')) return;
+        postJson('@Url.Action("CompleteBill")', { billId }, data => {
+            if (data.success && data.nextBillUrl) {
+                if (data.receiptUrl) window.open(data.receiptUrl, '_blank');
+                window.location.href = data.nextBillUrl;
+            }
+        });
+    });
+
+    document.getElementById('btnCancel').addEventListener('click', () => {
+        if (!confirm('Cancel this bill?')) return;
+        postJson('@Url.Action("CancelBill")', { billId }, data => {
+            if (data.success && data.redirectUrl) window.location.href = data.redirectUrl;
+        });
+    });
+
+    // ── Loyalty ──
+    const loyaltyFeedback = document.getElementById('loyaltyFeedback');
+    document.getElementById('btnLoyaltyLookup')?.addEventListener('click', () => {
+        const q = document.getElementById('loyaltySearch').value.trim();
+        if (!q) return;
+        loyaltyFeedback.innerHTML = '<span class="text-muted">Searching…</span>';
+        fetch(`@Url.Action("Lookup", "Loyalty")?code=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) { loyaltyFeedback.innerHTML = `<span class="text-danger">${data.message}</span>`; return; }
+                loyaltyFeedback.innerHTML = `<span class="text-success">${data.card.cardNumber}</span>`;
+                postJson('@Url.Action("AttachLoyalty")', { billId, loyaltyCardId: data.card.loyaltyCardId }, refreshBill);
+            })
+            .catch(() => { loyaltyFeedback.innerHTML = '<span class="text-danger">Error.</span>'; });
+    });
+    document.getElementById('loyaltySearch')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnLoyaltyLookup').click(); } });
+    document.getElementById('btnRemoveLoyalty')?.addEventListener('click', () => { postJson('@Url.Action("RemoveLoyalty")', { billId }, refreshBill); });
+    document.getElementById('btnRedeem')?.addEventListener('click', () => {
+        const pts = parseInt(document.getElementById('redeemPoints').value) || 0;
+        if (pts < 50) { alert('Minimum 50 points.'); return; }
+        postJson('@Url.Action("RedeemLoyalty")', { billId, points: pts }, data => { refreshBill(data); document.getElementById('redeemPoints').value = ''; });
+    });
+
+    // ── Coupon ──
+    const couponFeedback = document.getElementById('couponFeedback');
+    document.getElementById('btnApplyCoupon')?.addEventListener('click', () => {
+        const code = document.getElementById('couponCodeInput').value.trim();
+        if (!code) return;
+        couponFeedback.innerHTML = '<span class="text-muted">Validating…</span>';
+        postJson('@Url.Action("ApplyCoupon")', { billId, couponCode: code }, data => {
+            if (!data.success) { couponFeedback.innerHTML = `<span class="text-danger">${data.message}</span>`; return; }
+            couponFeedback.innerHTML = '';
+            refreshBill(data);
+            document.getElementById('couponCodeInput').value = '';
+        });
+    });
+    document.getElementById('couponCodeInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnApplyCoupon').click(); } });
+    document.getElementById('btnRemoveCoupon')?.addEventListener('click', () => { postJson('@Url.Action("RemoveCoupon")', { billId }, refreshBill); });
+
+    // ── Sprint 7: Hold / Pop Hold ──
+    document.getElementById('btnHold')?.addEventListener('click', () => {
+        if (!confirm('Hold this bill?')) return;
+        postJson('@Url.Action("HoldBill")', { billId }, data => {
+            if (data.success && data.nextBillUrl) window.location.href = data.nextBillUrl;
+        });
+    });
+
+    document.getElementById('heldBillsModal')?.addEventListener('show.bs.modal', () => {
+        const body = document.getElementById('heldBillsBody');
+        body.innerHTML = '<p class="text-muted text-center">Loading…</p>';
+        fetch('@Url.Action("GetHeldBills")')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success || !data.bills.length) { body.innerHTML = '<p class="text-muted text-center">No held bills.</p>'; return; }
+                let html = '<div class="list-group">';
+                data.bills.forEach(b => {
+                    html += `<button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center btn-unhold" data-bill-id="${b.posBillId}">
+                        <div><strong>${b.billNo}</strong><br/><small class="text-muted">${b.storeName} · ${b.itemCount} items</small></div>
+                        <span class="fw-bold text-primary">₹${b.grandTotal.toFixed(2)}</span>
+                    </button>`;
+                });
+                html += '</div>';
+                body.innerHTML = html;
+            })
+            .catch(() => { body.innerHTML = '<p class="text-danger text-center">Error loading held bills.</p>'; });
+    });
+
+    document.addEventListener('click', e => {
+        const btn = e.target.closest('.btn-unhold');
+        if (!btn) return;
+        postJson('@Url.Action("UnholdBill")', { billId: btn.dataset.billId }, data => {
+            if (data.success && data.billUrl) window.location.href = data.billUrl;
+        });
+    });
+
+    // ── Sprint 7: Apply Promotions ──
+    document.getElementById('btnApplyPromos')?.addEventListener('click', () => {
+        postJson('@Url.Action("ApplyPromotions")', { billId }, data => {
+            refreshBill(data);
+            if (data.applied && data.applied.length > 0) {
+                scanFeedback.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> ${data.applied.length} promotion(s) applied!</span>`;
+            } else {
+                scanFeedback.innerHTML = `<span class="text-muted">No applicable promotions found.</span>`;
+            }
+        });
+    });
+
+    // ── Sprint 7: Bill-level Discount / Charge ──
+    document.getElementById('btnApplyAdj')?.addEventListener('click', () => {
+        const discPct = parseFloat(document.getElementById('addDiscPct').value) || 0;
+        const chargePct = parseFloat(document.getElementById('addChargePct').value) || 0;
+        let pending = 0;
+        const done = () => { pending--; if (pending <= 0) barcodeInput.focus(); };
+        if (discPct >= 0) { pending++; postJson('@Url.Action("SetAddDiscount")', { billId, percent: discPct }, d => { refreshBill(d); done(); }); }
+        if (chargePct >= 0) { pending++; postJson('@Url.Action("SetAddCharge")', { billId, percent: chargePct }, d => { refreshBill(d); done(); }); }
+    });
+
+    // ── Razorpay ──
+    function handleRazorpay() {
+        const feedback = document.getElementById('razorpayFeedback');
+        feedback.innerHTML = '<span class="text-muted">Creating order…</span>';
+        fetch('@Url.Action("CreateOrder", "PaymentGateway")', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': getCookie('XSRF-TOKEN') },
+            body: JSON.stringify({ billId, amount: 0 })
+        }).then(r => r.json()).then(data => {
+            if (!data.success) { feedback.innerHTML = `<span class="text-danger">${data.message}</span>`; return; }
+            const rzp = new Razorpay({
+                key: data.keyId, amount: data.amount, currency: data.currency,
+                name: 'RetailERP', description: `Bill: ${data.billNo}`, order_id: data.orderId,
+                prefill: { name: data.customerName, email: data.customerEmail, contact: data.customerPhone },
+                theme: { color: '#1E3A5F' },
+                handler: async function(response) {
+                    feedback.innerHTML = '<span class="text-muted">Verifying…</span>';
+                    const v = await fetch('@Url.Action("VerifyPayment", "PaymentGateway")', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': getCookie('XSRF-TOKEN') },
+                        body: JSON.stringify({ billId, orderId: response.razorpay_order_id, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature, amountPaise: data.amount })
+                    }).then(r => r.json());
+                    if (v.success) { feedback.innerHTML = '<span class="text-success">✓ Paid</span>'; setTimeout(() => window.location.reload(), 600); }
+                    else { feedback.innerHTML = `<span class="text-danger">${v.message}</span>`; }
+                },
+                modal: { ondismiss: () => { feedback.innerHTML = ''; } }
+            });
+            rzp.on('payment.failed', r => { feedback.innerHTML = `<span class="text-danger">${r.error.description}</span>`; });
+            rzp.open(); feedback.innerHTML = '';
+        }).catch(() => { feedback.innerHTML = '<span class="text-danger">Network error.</span>'; });
+    }
+
+    // ── Refresh UI ──
+    function refreshBill(data) {
+        if (!data.success) { scanFeedback.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> ${data.message}</span>`; return; }
+        const b = data.bill;
+
+        document.getElementById('valSubTotal').textContent   = b.subTotal.toFixed(2);
+        document.getElementById('valDiscount').textContent   = b.discountTotal.toFixed(2);
+        document.getElementById('valTax').textContent        = b.taxTotal.toFixed(2);
+        document.getElementById('valGrandTotal').textContent = b.grandTotal.toFixed(2);
+        document.getElementById('valRoundOff').textContent   = b.roundOff.toFixed(2);
+        document.getElementById('valPaid').textContent       = '₹' + b.totalPaid.toFixed(2);
+        document.getElementById('valRemaining').textContent  = '₹' + b.remaining.toFixed(2);
+        document.getElementById('valRemaining').className    = b.remaining > 0 ? 'text-danger' : 'text-success';
+        document.getElementById('totalItems').textContent    = b.lines.length;
+        document.getElementById('totalQty').textContent      = b.lines.reduce((s,l) => s + l.qty, 0).toFixed(0);
+        document.getElementById('footerSubTotal').textContent= '₹' + b.subTotal.toFixed(2);
+
+        // Add Discount row
+        const rad = document.getElementById('rowAddDiscount');
+        if (rad) {
+            rad.style.display = b.addDiscountAmount > 0 ? '' : 'none';
+            document.getElementById('valAddDiscount').textContent = b.addDiscountAmount.toFixed(2);
+            document.getElementById('addDiscPctLabel').textContent = (b.addDiscountPercent || 0).toFixed(2);
+        }
+        // Add Charge row
+        const rac = document.getElementById('rowAddCharge');
+        if (rac) {
+            rac.style.display = b.addChargeAmount > 0 ? '' : 'none';
+            document.getElementById('valAddCharge').textContent = b.addChargeAmount.toFixed(2);
+            document.getElementById('addChargePctLabel').textContent = (b.addChargePercent || 0).toFixed(2);
+        }
+
+        const rc = document.getElementById('rowCouponDiscount');
+        if (rc) { rc.style.display = b.couponDiscount > 0 ? '' : 'none'; document.getElementById('valCouponDiscount').textContent = b.couponDiscount.toFixed(2); }
+        const rl = document.getElementById('rowLoyaltyDiscount');
+        if (rl) { rl.style.display = b.loyaltyDiscount > 0 ? '' : 'none'; document.getElementById('valLoyaltyDiscount').textContent = b.loyaltyDiscount.toFixed(2); }
+
+        // Loyalty
+        const li = document.getElementById('loyaltyInfo'), ll = document.getElementById('loyaltyLookup');
+        if (li && ll) {
+            if (b.loyaltyCardId) {
+                li.style.display = ''; ll.style.display = 'none';
+                document.getElementById('loyaltyCardNumber').textContent = b.loyaltyCardNumber || '';
+                document.getElementById('loyaltyTier').textContent = b.loyaltyTier || '';
+                document.getElementById('loyaltyPoints').textContent = b.loyaltyPointsBalance?.toFixed(0) || '0';
+            } else { li.style.display = 'none'; ll.style.display = ''; if (loyaltyFeedback) loyaltyFeedback.innerHTML = ''; }
+        }
+
+        // Coupon
+        const ci = document.getElementById('couponInfo'), cinp = document.getElementById('couponInput');
+        if (ci && cinp) {
+            if (b.couponId) {
+                ci.style.display = ''; cinp.style.display = 'none';
+                document.getElementById('couponCode').textContent = b.couponCode || '';
+                document.getElementById('couponDiscountVal').textContent = '-₹' + b.couponDiscount.toFixed(2);
+            } else { ci.style.display = 'none'; cinp.style.display = ''; if (couponFeedback) couponFeedback.innerHTML = ''; }
+        }
+
+        // Lines
+        linesBody.innerHTML = '';
+        if (b.lines.length === 0) {
+            linesBody.innerHTML = '<tr id="emptyRow"><td colspan="10" class="empty-msg">Scan barcode or type SKU to begin billing</td></tr>';
+        } else {
+            b.lines.forEach((l, i) => {
+                const discVal = l.discountPercent || 0;
+                const promoTag = l.appliedPromotionId ? ' <i class="bi bi-tag-fill text-success" title="Scheme applied"></i>' : '';
+                linesBody.innerHTML += `<tr data-line-id="${l.posBillLineId}">
+                    <td class="col-sr">${i+1}</td>
+                    <td class="col-item">${esc(l.itemName||l.itemNameSnapshot)}${promoTag}</td>
+                    <td class="col-uom">${esc(l.unitName||'—')}</td>
+                    <td class="col-qty"><input type="number" class="qty-input" value="${l.qty}" min="1" step="1" data-line-id="${l.posBillLineId}" /></td>
+                    <td class="col-num">${(l.mrp||l.unitPrice).toFixed(2)}</td>
+                    <td class="col-num">${l.unitPrice.toFixed(2)}</td>
+                    <td class="col-gst">${(l.gstPercentSnapshot||0).toFixed(0)}%</td>
+                    <td class="col-gst"><input type="number" class="disc-input" value="${discVal}" min="0" max="100" step="0.5" data-line-id="${l.posBillLineId}" /></td>
+                    <td class="col-amt">₹${l.lineTotal.toFixed(2)}</td>
+                    <td class="col-act"><button class="btn-row-del btn-remove-line" data-line-id="${l.posBillLineId}" title="Remove"><i class="bi bi-x-lg"></i></button></td>
+                </tr>`;
+            });
+        }
+
+        // Payments
+        const pl = document.getElementById('paymentsList');
+        pl.innerHTML = '';
+        b.payments.forEach(p => {
+            pl.innerHTML += `<div class="pay-row" data-payment-id="${p.paymentId}">
+                <span class="pay-method">${esc(p.method)}</span>
+                <span class="pay-ref">${esc(p.reference||'')}</span></span>
+                <span class="pay-amt">₹${p.amount.toFixed(2)}</span>
+                <button class="btn-row-del btn-remove-payment" data-payment-id="${p.paymentId}"><i class="bi bi-x"></i></button>
+            </div>`;
+        });
+
+        barcodeInput.focus();
+    }
+
+    // ── Utils ──
+    function getCookie(name) { const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)')); return m ? decodeURIComponent(m[2]) : ''; }
+    function postJson(url, body, cb) {
+        fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': getCookie('XSRF-TOKEN') }, body: JSON.stringify(body) })
+        .then(r => r.json()).then(cb)
+        .catch(() => { scanFeedback.innerHTML = '<span class="text-danger">Network error.</span>'; });
+    }
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</body>
+</html>

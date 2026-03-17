@@ -4,11 +4,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using RetailERP.Data.Identity;
 
 namespace RetailERP.Areas.Identity.Pages.Account;
 
 [AllowAnonymous]
+[EnableRateLimiting("Login")]
 public class RegisterModel : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
@@ -31,6 +34,8 @@ public class RegisterModel : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
+    public bool RegistrationOpen { get; private set; }
+
     public string? ReturnUrl { get; set; }
     public IList<AuthenticationScheme> ExternalLogins { get; set; } = new List<AuthenticationScheme>();
 
@@ -51,6 +56,7 @@ public class RegisterModel : PageModel
 
     public async Task OnGetAsync(string? returnUrl = null)
     {
+        RegistrationOpen = !await _userManager.Users.AsNoTracking().AnyAsync();
         ReturnUrl = returnUrl;
         ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
     }
@@ -61,6 +67,13 @@ public class RegisterModel : PageModel
         ReturnUrl = returnUrl;
 
         ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+
+        RegistrationOpen = !await _userManager.Users.AsNoTracking().AnyAsync();
+        if (!RegistrationOpen)
+        {
+            ModelState.AddModelError(string.Empty, "Self-registration is disabled. Please contact your administrator.");
+            return Page();
+        }
 
         if (!ModelState.IsValid)
             return Page();
@@ -81,7 +94,8 @@ public class RegisterModel : PageModel
             return Page();
         }
 
-        const string defaultRole = "Cashier";
+        // Professional default: first-ever account becomes Admin (bootstrap), then disable public registration.
+        const string defaultRole = "Admin";
 
         if (!await _roleManager.RoleExistsAsync(defaultRole))
         {

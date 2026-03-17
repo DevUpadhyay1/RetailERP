@@ -1,0 +1,79 @@
+@model List<RetailERP.Data.Entities.EWayBill>
+@{
+    ViewData["Title"] = "E-Way Bills";
+    var statusFilter = (byte?)ViewBag.StatusFilter;
+    string StatusBadge(byte s) => s switch { 1 => "success", 2 => "danger", 3 => "warning", _ => "secondary" };
+    string StatusText(byte s) => s switch { 1 => "Active", 2 => "Cancelled", 3 => "Expired", _ => "Unknown" };
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">@TempData["Success"]<button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show">@TempData["Error"]<button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-0"><i class="bi bi-truck me-2"></i>E-Way Bills</h2>
+        <div class="text-muted small">Transport documents for goods movement &gt; ₹50,000</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="@Url.Action("EWayBills")" class="btn btn-sm @(statusFilter == null ? "btn-primary" : "btn-outline-primary")">All</a>
+        <a href="@Url.Action("EWayBills", new { status = 1 })" class="btn btn-sm @(statusFilter == 1 ? "btn-success" : "btn-outline-success")">Active</a>
+        <a href="@Url.Action("EWayBills", new { status = 2 })" class="btn btn-sm @(statusFilter == 2 ? "btn-danger" : "btn-outline-danger")">Cancelled</a>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>EWB No</th>
+                        <th>Document</th>
+                        <th>Supplier GSTIN</th>
+                        <th class="text-end">Value</th>
+                        <th>Vehicle</th>
+                        <th>Valid Upto</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr><td colspan="8" class="p-4 text-muted text-center">No E-Way Bills found.</td></tr>
+                    }
+                    @foreach (var e in Model)
+                    {
+                        <tr>
+                            <td class="font-monospace fw-semibold">@e.EwbNo</td>
+                            <td>
+                                @if (e.PosBill != null)
+                                {
+                                    <span class="badge bg-info">POS</span> @e.PosBill.BillNo
+                                }
+                                else if (e.Invoice != null)
+                                {
+                                    <span class="badge bg-primary">INV</span> @e.Invoice.InvoiceNo
+                                }
+                            </td>
+                            <td class="font-monospace small">@e.SupplierGstin</td>
+                            <td class="text-end">₹@e.TotalValue.ToString("N2")</td>
+                            <td>@(e.VehicleNo ?? "—")</td>
+                            <td class="text-muted small">@e.ValidUpto.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td><span class="badge bg-@StatusBadge(e.Status)">@StatusText(e.Status)</span></td>
+                            <td>
+                                <a href="@Url.Action("EWayBillDetails", new { id = e.EWayBillId })" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

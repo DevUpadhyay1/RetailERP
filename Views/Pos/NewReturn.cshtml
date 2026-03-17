@@ -1,0 +1,114 @@
+@model RetailERP.Data.Entities.PosBill
+@{
+    ViewData["Title"] = $"Return — {Model.BillNo}";
+}
+
+<div class="vstack gap-3" style="max-width:900px;">
+    <div>
+        <h2 class="mb-1"><i class="bi bi-arrow-return-left me-2"></i>Process Return</h2>
+        <p class="text-muted mb-0">
+            Original bill: <strong>@Model.BillNo</strong> &bull;
+            @Model.Store?.Name &bull;
+            @(Model.Customer?.Name ?? "Walk-in") &bull;
+            @Model.BillDate.ToString("dd MMM yyyy") &bull;
+            Total: <strong>₹@Model.GrandTotal.ToString("N2")</strong>
+        </p>
+    </div>
+
+    @if (TempData["Err"] is string err)
+    {
+        <div class="alert alert-danger py-2">@err</div>
+    }
+
+    <form asp-action="ProcessReturn" method="post">
+        <input type="hidden" name="billId" value="@Model.PosBillId" />
+
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-light fw-semibold">
+                <i class="bi bi-list-check me-1"></i>Select items to return
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Item</th>
+                            <th>SKU</th>
+                            <th class="text-end">Price</th>
+                            <th class="text-center">Billed Qty</th>
+                            <th class="text-center">Return Qty</th>
+                            <th class="text-end">Refund</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Lines.Count; i++)
+                        {
+                            var l = Model.Lines[i];
+                            <tr>
+                                <td class="fw-medium">@(l.ItemNameSnapshot ?? l.Item?.Name)</td>
+                                <td class="small text-muted">@l.SkuSnapshot</td>
+                                <td class="text-end">₹@l.UnitPrice.ToString("N2")</td>
+                                <td class="text-center">@l.Qty</td>
+                                <td class="text-center">
+                                    <input type="hidden" name="lines[@i].OriginalBillLineId" value="@l.PosBillLineId" />
+                                    <input type="number" name="lines[@i].Qty" class="form-control form-control-sm text-center return-qty"
+                                           value="0" min="0" max="@l.Qty" step="1"
+                                           data-price="@l.UnitPrice" style="width:80px;margin:0 auto;" />
+                                </td>
+                                <td class="text-end refund-amount">₹0.00</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-light">
+                            <td colspan="5" class="text-end fw-bold">Total Refund:</td>
+                            <td class="text-end fw-bold text-danger" id="totalRefund">₹0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-medium">Reason for Return</label>
+                        <textarea name="reason" class="form-control" rows="2" placeholder="Defective, wrong item, customer request…"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-medium">Refund Method</label>
+                        <select name="refundMethod" class="form-select" required>
+                            <option value="Cash">Cash</option>
+                            <option value="Card">Card</option>
+                            <option value="UPI">UPI</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex gap-2">
+                <button type="submit" class="btn btn-warning"><i class="bi bi-arrow-return-left me-1"></i>Process Return</button>
+                <a class="btn btn-outline-secondary" asp-action="Bill" asp-route-id="@Model.PosBillId"><i class="bi bi-x-lg me-1"></i>Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+document.querySelectorAll('.return-qty').forEach(input => {
+    input.addEventListener('input', () => {
+        const row = input.closest('tr');
+        const price = parseFloat(input.dataset.price);
+        const qty = parseFloat(input.value) || 0;
+        row.querySelector('.refund-amount').textContent = '₹' + (qty * price).toFixed(2);
+
+        let total = 0;
+        document.querySelectorAll('.return-qty').forEach(q => {
+            total += (parseFloat(q.value) || 0) * parseFloat(q.dataset.price);
+        });
+        document.getElementById('totalRefund').textContent = '₹' + total.toFixed(2);
+    });
+});
+</script>
+}

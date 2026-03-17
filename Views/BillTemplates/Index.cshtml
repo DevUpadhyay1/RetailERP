@@ -1,0 +1,77 @@
+@model List<RetailERP.Data.Entities.BillTemplate>
+@{
+    ViewData["Title"] = "Bill Templates";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">Bill Templates</h2>
+        <div class="text-muted">Customise your receipt and invoice layouts with drag-and-drop</div>
+    </div>
+    <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>New Template</a>
+</div>
+
+@if (TempData["Ok"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["Err"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-1"></i>No templates yet. Create one to customise your receipts and invoices.
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var t in Model)
+        {
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100 @(t.IsDefault ? "border-primary" : "")">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0">
+                                @t.TemplateName
+                                @if (t.IsDefault)
+                                {
+                                    <span class="badge bg-primary ms-1">Default</span>
+                                }
+                            </h5>
+                            <span class="badge bg-secondary">@(t.TemplateType == 1 ? "POS Receipt" : "Invoice")</span>
+                        </div>
+                        <p class="text-muted small mb-1">Paper: @t.PaperSize • Font: @t.FontSize px</p>
+                        <p class="text-muted small mb-0">
+                            <i class="bi bi-clock me-1"></i>Updated @t.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                        </p>
+                    </div>
+                    <div class="card-footer bg-transparent d-flex gap-2 flex-wrap">
+                        <a asp-action="Designer" asp-route-id="@t.BillTemplateId" class="btn btn-sm btn-primary">
+                            <i class="bi bi-brush me-1"></i>Designer
+                        </a>
+                        <a asp-action="Edit" asp-route-id="@t.BillTemplateId" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-pencil me-1"></i>Edit
+                        </a>
+                        @if (!t.IsDefault)
+                        {
+                            <form asp-action="SetDefault" asp-route-id="@t.BillTemplateId" method="post" class="d-inline">
+                                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-star me-1"></i>Set Default</button>
+                            </form>
+                        }
+                        <a asp-action="PreviewReceipt" asp-route-id="@t.BillTemplateId" class="btn btn-sm btn-outline-info" target="_blank">
+                            <i class="bi bi-file-pdf me-1"></i>Preview PDF
+                        </a>
+                        <form asp-action="Delete" asp-route-id="@t.BillTemplateId" method="post" class="d-inline"
+                              onsubmit="return confirm('Delete this template?');">
+                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

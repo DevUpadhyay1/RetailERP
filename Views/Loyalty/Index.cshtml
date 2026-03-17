@@ -1,0 +1,83 @@
+@model List<RetailERP.Data.Entities.LoyaltyCard>
+@{
+    ViewData["Title"] = "Loyalty Cards";
+    var q = ViewBag.Q as string;
+    var sort = (string)ViewBag.Sort;
+    var dir = (string)ViewBag.Dir;
+    var page = (int)ViewBag.Page;
+    var totalPages = (int)ViewBag.TotalPages;
+    string Toggle(string col) => sort == col && dir == "asc" ? "desc" : "asc";
+    string Arrow(string col) => sort == col ? (dir == "asc" ? "▲" : "▼") : "";
+}
+
+@if (TempData["Success"] is string msg)
+{
+    <div class="alert alert-success alert-dismissible fade show">@msg <button class="btn-close" data-bs-dismiss="alert"></button></div>
+}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="mb-0"><i class="bi bi-star me-2"></i>Loyalty Cards</h4>
+    <a class="btn btn-primary" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>New Card</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto">
+        <input name="q" value="@q" class="form-control form-control-sm" placeholder="Search card / customer / phone…" style="min-width:250px;" />
+    </div>
+    <div class="col-auto"><button class="btn btn-sm btn-outline-primary">Search</button></div>
+    @if (!string.IsNullOrEmpty(q))
+    {
+        <div class="col-auto"><a class="btn btn-sm btn-outline-secondary" asp-action="Index">Clear</a></div>
+    }
+</form>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th><a asp-action="Index" asp-route-q="@q" asp-route-sort="CardNumber" asp-route-dir="@Toggle("CardNumber")">Card # @Arrow("CardNumber")</a></th>
+                <th><a asp-action="Index" asp-route-q="@q" asp-route-sort="Customer" asp-route-dir="@Toggle("Customer")">Customer @Arrow("Customer")</a></th>
+                <th>Phone</th>
+                <th class="text-end"><a asp-action="Index" asp-route-q="@q" asp-route-sort="Points" asp-route-dir="@Toggle("Points")">Points @Arrow("Points")</a></th>
+                <th><a asp-action="Index" asp-route-q="@q" asp-route-sort="Tier" asp-route-dir="@Toggle("Tier")">Tier @Arrow("Tier")</a></th>
+                <th><a asp-action="Index" asp-route-q="@q" asp-route-sort="JoinDate" asp-route-dir="@Toggle("JoinDate")">Joined @Arrow("JoinDate")</a></th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model)
+            {
+                var tierName = RetailERP.Services.LoyaltyService.GetTierName(c.Tier);
+                var tierBadge = c.Tier switch { 4 => "bg-dark", 3 => "bg-warning text-dark", 2 => "bg-secondary", _ => "bg-info text-dark" };
+                <tr>
+                    <td><code>@c.CardNumber</code></td>
+                    <td>@c.Customer?.Name</td>
+                    <td>@c.Customer?.Phone</td>
+                    <td class="text-end fw-bold">@c.PointsBalance.ToString("N0")</td>
+                    <td><span class="badge @tierBadge">@tierName</span></td>
+                    <td>@c.JoinDate.ToString("dd MMM yyyy")</td>
+                    <td>
+                        @if (c.IsActive) { <span class="badge bg-success">Active</span> }
+                        else { <span class="badge bg-secondary">Inactive</span> }
+                    </td>
+                    <td><a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@c.LoyaltyCardId">View</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (totalPages > 1)
+{
+    <nav>
+        <ul class="pagination pagination-sm justify-content-center">
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(i == page ? "active" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-q="@q" asp-route-sort="@sort" asp-route-dir="@dir" asp-route-page="@i">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

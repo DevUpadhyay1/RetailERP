@@ -1,0 +1,467 @@
+@model RetailERP.Data.Entities.BillTemplate
+@{
+    ViewData["Title"] = $"Designer — {Model.TemplateName}";
+    Layout = "_Layout";
+    var company = ViewBag.Company as RetailERP.Data.Entities.Company;
+}
+
+<!-- Top bar -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h4 class="mb-0"><i class="bi bi-brush me-2"></i>@Model.TemplateName</h4>
+        <small class="text-muted">@(Model.TemplateType == 1 ? "POS Receipt" : "Invoice") &bull; @Model.PaperSize</small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <button id="btnSave" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Save</button>
+        <a asp-action="PreviewReceipt" asp-route-id="@Model.BillTemplateId" class="btn btn-outline-info btn-sm" target="_blank"><i class="bi bi-file-pdf me-1"></i>Preview PDF</a>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    </div>
+</div>
+@if (TempData["Ok"] is string ok){<div class="alert alert-success alert-dismissible fade show py-2">@ok<button class="btn-close" data-bs-dismiss="alert"></button></div>}
+@if (TempData["Err"] is string err){<div class="alert alert-danger alert-dismissible fade show py-2">@err<button class="btn-close" data-bs-dismiss="alert"></button></div>}
+
+<div class="row g-3" style="min-height:82vh;">
+    <!-- ═══ LEFT: Toolbox + Logo ═══ -->
+    <div class="col-12 col-lg-2 order-2 order-lg-1">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header py-2 fw-semibold bg-primary text-white"><i class="bi bi-plus-circle me-1"></i>Add Component</div>
+            <div class="card-body p-2" id="toolbox">
+                <div class="tb-section">Receipt Blocks</div>
+                <div class="tb-item" data-type="logo"><i class="bi bi-image"></i> Logo</div>
+                <div class="tb-item" data-type="store_header"><i class="bi bi-shop"></i> Store Header</div>
+                <div class="tb-item" data-type="bill_info"><i class="bi bi-info-circle"></i> Bill Info</div>
+                <div class="tb-item" data-type="items_table"><i class="bi bi-table"></i> Items Table</div>
+                <div class="tb-item" data-type="totals"><i class="bi bi-calculator"></i> Totals</div>
+                <div class="tb-item" data-type="payments"><i class="bi bi-credit-card"></i> Payments</div>
+                <div class="tb-item" data-type="tax_summary"><i class="bi bi-receipt"></i> Tax Summary</div>
+                <div class="tb-item" data-type="footer"><i class="bi bi-chat-text"></i> Footer</div>
+                <div class="tb-section mt-2">Custom Elements</div>
+                <div class="tb-item" data-type="text_block"><i class="bi bi-fonts"></i> Text Block</div>
+                <div class="tb-item" data-type="separator"><i class="bi bi-dash-lg"></i> Separator</div>
+                <div class="tb-item" data-type="spacer"><i class="bi bi-arrows-expand"></i> Spacer</div>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header py-2 fw-semibold"><i class="bi bi-image me-1"></i>Company Logo</div>
+            <div class="card-body p-2">
+                @if (!string.IsNullOrEmpty(company?.LogoPath)){
+                    <img id="logoImg" src="~/@company.LogoPath" class="img-fluid border rounded d-block mx-auto mb-2" style="max-height:50px;" />
+                } else {
+                    <div id="logoImg" class="text-muted small text-center mb-2">No logo uploaded</div>
+                }
+                <input type="file" id="logoFile" accept=".png,.jpg,.jpeg,.webp" class="form-control form-control-sm mb-1" />
+                <button id="btnUploadLogo" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-upload me-1"></i>Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ CENTER: WYSIWYG Canvas ═══ -->
+    <div class="col-12 col-lg-6 order-1 order-lg-2">
+        <div class="card shadow-sm h-100">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                <span class="fw-semibold"><i class="bi bi-easel me-1"></i>Receipt Preview <small class="text-muted">(click to select, drag to reorder)</small></span>
+                <select id="paperSize" class="form-select form-select-sm" style="width:auto;font-size:12px;">
+                    @{ var sizes = new[]{("Thermal58mm","58mm"),("Thermal80mm","80mm"),("A4","A4"),("A5","A5")};
+                       foreach(var(val,lbl)in sizes){
+                           if(Model.PaperSize==val){<text><option value="@val" selected="selected">@lbl</option></text>}
+                           else{<text><option value="@val">@lbl</option></text>}
+                       }
+                    }
+                </select>
+            </div>
+            <div class="card-body p-0 d-flex justify-content-center" style="background:#e0e0e0;overflow-y:auto;">
+                <div id="canvasWrap">
+                    <div id="canvas"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ RIGHT: Properties ═══ -->
+    <div class="col-12 col-lg-4 order-3">
+        <div class="card shadow-sm" id="propCard">
+            <div class="card-header py-2 fw-semibold bg-dark text-white"><i class="bi bi-sliders me-1"></i>Properties</div>
+            <div class="card-body" id="propPanel">
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-cursor-fill d-block" style="font-size:28px;opacity:.3"></i>
+                    <span class="small">Click any block on the receipt to edit its properties</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+<style>
+/* ─── Toolbox ─── */
+.tb-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6c757d;padding:4px 6px 2px}
+.tb-item{cursor:grab;padding:5px 8px;margin-bottom:3px;background:#fff;border:1px solid #dee2e6;border-radius:5px;font-size:12px;font-weight:500;transition:all .12s;display:flex;align-items:center;gap:5px}
+.tb-item:hover{border-color:#0d6efd;background:#e7f1ff;transform:translateX(2px)}
+.tb-item.sortable-chosen{opacity:.5}
+.tb-item i{font-size:13px;color:#6c757d;width:16px;text-align:center}
+
+/* ─── Canvas ─── */
+#canvasWrap{background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.15);margin:16px 0;transition:width .2s}
+#canvas{min-height:200px;padding:0;font-family:'Consolas','Courier New',monospace;font-size:11px}
+
+/* ─── Canvas Items (WYSIWYG) ─── */
+.cv-block{position:relative;border:2px solid transparent;transition:border-color .12s,box-shadow .12s;cursor:pointer;padding:0}
+.cv-block:hover{border-color:#adb5bd50}
+.cv-block.cv-sel{border-color:#0d6efd;box-shadow:0 0 0 2px rgba(13,110,253,.2)}
+.cv-block .cv-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:none;align-items:flex-start;justify-content:space-between;padding:2px 4px;z-index:2}
+.cv-block:hover .cv-overlay,.cv-block.cv-sel .cv-overlay{display:flex}
+.cv-overlay .cv-tag{background:#0d6efd;color:#fff;font-size:9px;padding:1px 5px;border-radius:0 0 4px 0;font-family:system-ui;cursor:grab;font-weight:600;letter-spacing:.3px;line-height:1.4}
+.cv-overlay .cv-del{background:#dc3545;color:#fff;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;border:none;padding:0;line-height:1}
+.cv-overlay .cv-del:hover{background:#a71d2a}
+.cv-block.sortable-ghost{opacity:.2;border:2px dashed #0d6efd}
+
+/* ─── Inner content padding ─── */
+.cv-inner{padding:6px 14px}
+.cv-inner hr{border-style:dashed;border-color:#ccc;margin:3px 0}
+.cv-inner .r{display:flex;justify-content:space-between;gap:4px}
+.cv-inner .b{font-weight:bold}
+.cv-inner .c{text-align:center}
+.cv-inner .sm{font-size:9px}
+.cv-inner .md{font-size:10px}
+
+/* ─── Properties panel ─── */
+#propPanel .pg{margin-bottom:10px}
+#propPanel .pl{font-size:11px;font-weight:600;color:#495057;margin-bottom:3px}
+.field-badge{display:inline-block;background:#e9ecef;border:1px solid #ced4da;border-radius:3px;padding:0 5px;font-size:10px;color:#495057;font-weight:600;cursor:pointer;margin:1px}
+.field-badge:hover{background:#d3d8de}
+#propPanel .btn-del-comp{margin-top:12px}
+</style>
+}
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+<script>
+(function(){
+'use strict';
+const TID='@Model.BillTemplateId';
+const XSRF=document.querySelector('input[name="__RequestVerificationToken"]')?.value
+    || (document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('XSRF-TOKEN='))?.split('=')[1])||'';
+const CO={
+    name:'@Html.Raw((company?.Name??"RetailERP").Replace("'","\\'"))',
+    addr:'@Html.Raw((company?.Address??"").Replace("'","\\'"))',
+    phone:'@Html.Raw((company?.Phone??"").Replace("'","\\'"))',
+    gst:'@Html.Raw((company?.GstNo??"").Replace("'","\\'"))',
+    logo:'@(company?.LogoPath??"")'
+};
+
+const DEFS={
+    logo:{l:'Logo',s:true},store_header:{l:'Store',s:true},bill_info:{l:'Bill Info',s:true},
+    items_table:{l:'Items',s:true},totals:{l:'Totals',s:true},payments:{l:'Payments',s:true},
+    tax_summary:{l:'Tax',s:true},footer:{l:'Footer',s:true},
+    text_block:{l:'Text',s:false},separator:{l:'Line',s:false},spacer:{l:'Space',s:false}
+};
+
+let comps=[], sel=null, uid=0;
+const gid=()=>'c'+(++uid);
+
+function dp(t){
+    const m={
+        logo:{maxHeight:50,align:'center'},
+        store_header:{showGst:true,headerText:''},
+        bill_info:{},
+        items_table:{showHsn:false},
+        totals:{showDiscount:true},
+        payments:{},
+        tax_summary:{},
+        footer:{text:'Thank you for shopping!',showItemCount:true},
+        text_block:{text:'Your text here',fontSize:12,fontFamily:'sans-serif',align:'center',bold:false,italic:false,color:'#000000'},
+        separator:{style:'dashed',thickness:1,color:'#999999'},
+        spacer:{height:12}
+    };
+    return JSON.parse(JSON.stringify(m[t]||{}));
+}
+
+// Load saved
+try{
+    const raw=@Html.Raw(Model.LayoutJson);
+    if(Array.isArray(raw)&&raw.length)raw.forEach(c=>{
+        const t=c.type||c.id||'text_block';
+        comps.push({uid:gid(),type:t,props:Object.assign(dp(t),c.props||{})});
+    });
+}catch(e){console.warn('parse',e)}
+if(!comps.length)['logo','store_header','bill_info','items_table','totals','payments','tax_summary','footer'].forEach(t=>comps.push({uid:gid(),type:t,props:dp(t)}));
+
+const $c=document.getElementById('canvas'), $p=document.getElementById('propPanel');
+
+// ── Toolbox sortable ──
+new Sortable(document.getElementById('toolbox'),{
+    group:{name:'bill',pull:'clone',put:false},sort:false,animation:120,
+    filter:'.tb-section',
+    onEnd:function(){}
+});
+
+// ── Canvas sortable ──
+new Sortable($c,{
+    group:{name:'bill',put:true},animation:120,handle:'.cv-tag',ghostClass:'sortable-ghost',
+    onAdd(evt){
+        const el=evt.item,t=el.dataset.type;
+        if(!t){el.remove();return;}
+        if(DEFS[t]&&DEFS[t].s&&comps.some(c=>c.type===t)){el.remove();toast(DEFS[t].l+' already added','warning');return;}
+        const u=gid();
+        comps.splice(evt.newIndex,0,{uid:u,type:t,props:dp(t)});
+        el.remove();render();pick(u);
+    },
+    onSort(evt){
+        if(evt.from!==evt.to)return;
+        const uids=[...document.querySelectorAll('#canvas .cv-block')].map(e=>e.dataset.uid).filter(Boolean);
+        const re=[];uids.forEach(u=>{const c=comps.find(x=>x.uid===u);if(c)re.push(c)});
+        comps=re;
+    }
+});
+
+// ═══ RENDER ═══
+function render(){
+    $c.innerHTML='';
+    comps.forEach(comp=>{
+        const d=DEFS[comp.type]||{l:comp.type};
+        const blk=document.createElement('div');
+        blk.className='cv-block'+(comp.uid===sel?' cv-sel':'');
+        blk.dataset.uid=comp.uid;
+
+        // Overlay (drag handle + delete)
+        const ov=document.createElement('div');
+        ov.className='cv-overlay';
+        ov.innerHTML=`<span class="cv-tag">${esc(d.l)}</span><button class="cv-del" title="Remove">&times;</button>`;
+        blk.appendChild(ov);
+
+        // WYSIWYG inner content
+        const inner=document.createElement('div');
+        inner.className='cv-inner';
+        inner.innerHTML=renderWysiwyg(comp);
+        blk.appendChild(inner);
+
+        blk.addEventListener('click',e=>{if(!e.target.classList.contains('cv-del'))pick(comp.uid)});
+        ov.querySelector('.cv-del').addEventListener('click',e=>{
+            e.stopPropagation();
+            comps=comps.filter(c=>c.uid!==comp.uid);
+            if(sel===comp.uid){sel=null;renderProps()}
+            render();
+        });
+        $c.appendChild(blk);
+    });
+}
+
+function renderWysiwyg(comp){
+    const p=comp.props;
+    switch(comp.type){
+        case 'logo':
+            if(CO.logo) return `<div style="text-align:${p.align||'center'}"><img src="/${CO.logo}?v=1" style="max-height:${p.maxHeight||50}px;max-width:90%"/></div>`;
+            return `<div class="c" style="color:#bbb;padding:8px">[Company Logo]</div>`;
+        case 'store_header':{
+            let h=`<div class="c b" style="font-size:13px">${esc(CO.name)}</div>`;
+            if(CO.addr)h+=`<div class="c sm">${esc(CO.addr)}</div>`;
+            if(CO.phone)h+=`<div class="c sm">Ph: ${esc(CO.phone)}</div>`;
+            if(p.showGst&&CO.gst)h+=`<div class="c sm">GSTIN: ${esc(CO.gst)}</div>`;
+            if(p.headerText)h+=`<div class="c sm">${esc(p.headerText)}</div>`;
+            h+='<hr/>';return h;
+        }
+        case 'bill_info':
+            return `<div class="r md"><span>Bill#: <b>POS-0001</b></span><span>08/03/2026</span></div><div class="md">Customer: Walk-in</div><div class="md">Cashier: Admin</div><hr/>`;
+        case 'items_table':{
+            let h=`<div class="r b md"><span>Item</span>${p.showHsn?'<span>HSN</span>':''}<span>Qty</span><span>Rate</span><span>Amt</span></div>`;
+            h+=`<div class="md"><div class="b">Paracetamol 500mg</div><div class="r" style="color:#888"><span>2 x ₹25.00</span>${p.showHsn?'<span>30049099</span>':''}<span>₹50.00</span></div></div>`;
+            h+=`<div class="md"><div class="b">Amoxicillin 250mg</div><div class="r" style="color:#888"><span>1 x ₹120.00</span>${p.showHsn?'<span>30041000</span>':''}<span>₹120.00</span></div></div>`;
+            h+=`<div class="md"><div class="b">Vitamin D3 Drops</div><div class="r" style="color:#888"><span>1 x ₹180.00</span>${p.showHsn?'<span>29362990</span>':''}<span>₹180.00</span></div></div>`;
+            h+='<hr/>';return h;
+        }
+        case 'totals':{
+            let h=`<div class="r md"><span>Sub Total</span><span>₹350.00</span></div>`;
+            if(p.showDiscount)h+=`<div class="r md"><span>Discount</span><span>- ₹0.00</span></div>`;
+            h+=`<div class="r md"><span>Tax (GST)</span><span>+ ₹21.00</span></div><hr/>`;
+            h+=`<div class="r b" style="font-size:13px"><span>GRAND TOTAL</span><span>₹371.00</span></div><hr/>`;
+            return h;
+        }
+        case 'payments':
+            return `<div class="b md">Payments:</div><div class="r md"><span>Cash</span><span>₹400.00</span></div><div class="r b md"><span>Change</span><span>₹29.00</span></div><hr/>`;
+        case 'tax_summary':
+            return `<div class="b md">Tax Summary:</div><div class="r md"><span>GST 6%</span><span>₹21.00</span></div><hr/>`;
+        case 'footer':{
+            let h='';
+            if(p.showItemCount)h+=`<div class="c sm">Items: 4 &bull; 08/03/2026 14:30</div>`;
+            h+=`<div class="c sm">${esc(p.text||'Thank you!')}</div>`;
+            h+=`<div class="c" style="font-size:8px">&mdash; RetailERP POS &mdash;</div>`;
+            return h;
+        }
+        case 'text_block':{
+            const ff=p.fontFamily||'sans-serif',fs=p.fontSize||12,fw=p.bold?'bold':'normal',fi=p.italic?'italic':'normal',cl=p.color||'#000',ta=p.align||'center';
+            let txt=(p.text||'').replace(/\{\{company_name\}\}/g,CO.name).replace(/\{\{bill_no\}\}/g,'POS-0001').replace(/\{\{date\}\}/g,'08/03/2026').replace(/\{\{grand_total\}\}/g,'₹371.00').replace(/\{\{customer_name\}\}/g,'Walk-in');
+            return `<div style="font-family:${ff};font-size:${fs}px;font-weight:${fw};font-style:${fi};color:${cl};text-align:${ta};white-space:pre-wrap">${esc(txt)}</div>`;
+        }
+        case 'separator':
+            return `<hr style="border-style:${p.style||'dashed'};border-width:${p.thickness||1}px;border-color:${p.color||'#999'};margin:3px 0"/>`;
+        case 'spacer':
+            return `<div style="height:${p.height||12}px"></div>`;
+        default:return '';
+    }
+}
+
+function pick(u){
+    sel=u;
+    document.querySelectorAll('.cv-block').forEach(e=>e.classList.toggle('cv-sel',e.dataset.uid===u));
+    renderProps();
+}
+
+// ═══ PROPERTIES PANEL ═══
+function renderProps(){
+    const comp=comps.find(c=>c.uid===sel);
+    if(!comp){
+        $p.innerHTML='<div class="text-center text-muted py-4"><i class="bi bi-cursor-fill d-block" style="font-size:28px;opacity:.3"></i><span class="small">Click any block on the receipt</span></div>';
+        return;
+    }
+    const d=DEFS[comp.type]||{l:comp.type};
+    let h=`<div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom"><span class="badge bg-primary">${esc(d.l)}</span><small class="text-muted">${d.s?'Fixed block':'Custom block'}</small></div>`;
+
+    switch(comp.type){
+        case 'logo':
+            h+=pRange('maxHeight','Logo Height (px)',comp.props.maxHeight,20,120);
+            h+=pSel('align','Alignment',comp.props.align,[['left','Left'],['center','Center'],['right','Right']]);
+            break;
+        case 'store_header':
+            h+=pChk('showGst','Show GSTIN',comp.props.showGst);
+            h+=pTa('headerText','Extra Header Line',comp.props.headerText);
+            break;
+        case 'bill_info':
+            h+=`<p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>Auto-filled from bill data: Bill#, Date, Customer, Cashier.</p>`;
+            break;
+        case 'items_table':
+            h+=pChk('showHsn','Show HSN Code Column',comp.props.showHsn);
+            h+=dynInfo(['{{item_name}}','{{qty}}','{{rate}}','{{amount}}','{{hsn}}']);
+            break;
+        case 'totals':
+            h+=pChk('showDiscount','Show Discount Row',comp.props.showDiscount);
+            h+=dynInfo(['{{sub_total}}','{{tax_total}}','{{discount}}','{{grand_total}}']);
+            break;
+        case 'payments':
+            h+=dynInfo(['{{payment_method}}','{{payment_amount}}','{{change}}']);
+            break;
+        case 'tax_summary':
+            h+=dynInfo(['{{tax_rate}}','{{tax_amount}}']);
+            break;
+        case 'footer':
+            h+=pTa('text','Footer Message',comp.props.text);
+            h+=pChk('showItemCount','Show Item Count & Timestamp',comp.props.showItemCount);
+            break;
+        case 'text_block':
+            h+=pTa('text','Content',comp.props.text);
+            h+=`<div class="row g-2 mb-2">`;
+            h+=`<div class="col-6">`+pNum('fontSize','Size (px)',comp.props.fontSize,8,40)+`</div>`;
+            h+=`<div class="col-6">`+pSel('fontFamily','Font',comp.props.fontFamily,[['sans-serif','Sans'],['serif','Serif'],['monospace','Mono']])+`</div>`;
+            h+=`</div>`;
+            h+=pSel('align','Alignment',comp.props.align,[['left','Left'],['center','Center'],['right','Right']]);
+            h+=`<div class="d-flex align-items-center gap-3 mb-2">`;
+            h+=pChkInline('bold','<b>B</b>',comp.props.bold);
+            h+=pChkInline('italic','<i>I</i>',comp.props.italic);
+            h+=`<div>`+pColor('color','',comp.props.color)+`</div>`;
+            h+=`</div>`;
+            h+=`<div class="mt-1"><small class="text-muted">Placeholders (click to insert):</small><div class="mt-1">`
+              +badge('{{company_name}}')+badge('{{bill_no}}')+badge('{{date}}')+badge('{{grand_total}}')+badge('{{customer_name}}')
+              +`</div></div>`;
+            break;
+        case 'separator':
+            h+=pSel('style','Style',comp.props.style,[['solid','Solid'],['dashed','Dashed'],['dotted','Dotted']]);
+            h+=pRange('thickness','Thickness',comp.props.thickness,1,5);
+            h+=pColor('color','Color',comp.props.color);
+            break;
+        case 'spacer':
+            h+=pRange('height','Height (px)',comp.props.height,4,60);
+            break;
+    }
+
+    // Delete button
+    h+=`<button class="btn btn-outline-danger btn-sm w-100 btn-del-comp"><i class="bi bi-trash me-1"></i>Remove this block</button>`;
+
+    $p.innerHTML=h;
+
+    // Bind prop changes
+    $p.querySelectorAll('[data-prop]').forEach(inp=>{
+        const ev=(inp.type==='checkbox'||inp.tagName==='SELECT')?'change':'input';
+        inp.addEventListener(ev,function(){
+            const k=this.dataset.prop;
+            let v=this.type==='checkbox'?this.checked:this.value;
+            if(this.type==='number'||this.type==='range')v=parseFloat(v)||0;
+            comp.props[k]=v;
+            // Update range label
+            if(this.type==='range'){const lbl=this.closest('.pg')?.querySelector('.rv');if(lbl)lbl.textContent=v}
+            // Re-render block in place
+            const blk=document.querySelector(`[data-uid="${comp.uid}"] .cv-inner`);
+            if(blk)blk.innerHTML=renderWysiwyg(comp);
+        });
+    });
+
+    // Delete handler
+    $p.querySelector('.btn-del-comp')?.addEventListener('click',()=>{
+        comps=comps.filter(c=>c.uid!==comp.uid);sel=null;renderProps();render();
+    });
+
+    // Badge click-to-insert
+    $p.querySelectorAll('.field-badge').forEach(b=>{
+        b.addEventListener('click',()=>{
+            const ta=$p.querySelector('textarea[data-prop="text"]');
+            if(!ta)return;
+            const pos=ta.selectionStart||ta.value.length;
+            const before=ta.value.substring(0,pos),after=ta.value.substring(pos);
+            ta.value=before+b.textContent+after;
+            comp.props.text=ta.value;
+            const blk=document.querySelector(`[data-uid="${comp.uid}"] .cv-inner`);
+            if(blk)blk.innerHTML=renderWysiwyg(comp);
+            ta.focus();ta.setSelectionRange(pos+b.textContent.length,pos+b.textContent.length);
+        });
+    });
+}
+
+// Prop helpers
+function pTa(k,l,v){return `<div class="pg"><div class="pl">${l}</div><textarea data-prop="${k}" class="form-control form-control-sm" rows="2">${esc(v||'')}</textarea></div>`}
+function pNum(k,l,v,mn,mx){return `<div class="pg"><div class="pl">${l}</div><input type="number" data-prop="${k}" class="form-control form-control-sm" value="${v}" min="${mn}" max="${mx}"/></div>`}
+function pRange(k,l,v,mn,mx){return `<div class="pg"><div class="pl">${l}: <span class="rv">${v}</span></div><input type="range" data-prop="${k}" class="form-range" value="${v}" min="${mn}" max="${mx}"/></div>`}
+function pSel(k,l,v,opts){let h=`<div class="pg"><div class="pl">${l}</div><select data-prop="${k}" class="form-select form-select-sm">`;opts.forEach(([o,t])=>{h+=`<option value="${o}"${o===v?' selected':''}>${t}</option>`});return h+'</select></div>'}
+function pChk(k,l,v){return `<div class="pg"><div class="form-check"><input type="checkbox" data-prop="${k}" class="form-check-input"${v?' checked':''}/><label class="form-check-label small">${l}</label></div></div>`}
+function pChkInline(k,l,v){return `<div class="form-check"><input type="checkbox" data-prop="${k}" class="form-check-input"${v?' checked':''}/><label class="form-check-label">${l}</label></div>`}
+function pColor(k,l,v){return `<div class="pg">${l?'<div class="pl">'+l+'</div>':''}<input type="color" data-prop="${k}" class="form-control form-control-sm form-control-color" value="${v||'#000000'}" style="width:36px;height:28px;padding:2px"/></div>`}
+function dynInfo(tags){return `<div class="pg"><small class="text-muted">Dynamic fields (auto-filled):</small><div class="mt-1">${tags.map(t=>`<span class="field-badge">${t}</span>`).join(' ')}</div></div>`}
+function badge(t){return `<span class="field-badge">${t}</span> `}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function toast(m,t){const d=document.createElement('div');d.className=`alert alert-${t||'info'} alert-dismissible fade show position-fixed`;d.style.cssText='top:12px;right:12px;z-index:9999;min-width:220px;font-size:13px';d.innerHTML=m+'<button class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>';document.body.appendChild(d);setTimeout(()=>d.remove(),3000)}
+
+// Paper size
+document.getElementById('paperSize').addEventListener('change',function(){
+    const w={'Thermal58mm':220,'Thermal80mm':300,'A4':400,'A5':320}[this.value]||300;
+    document.getElementById('canvasWrap').style.width=w+'px';
+});
+document.getElementById('paperSize').dispatchEvent(new Event('change'));
+
+// ═══ SAVE ═══
+document.getElementById('btnSave').addEventListener('click',async function(){
+    const btn=this;btn.disabled=true;btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+    const arr=comps.map(c=>({type:c.type,props:c.props}));
+    try{
+        const res=await fetch('@Url.Action("SaveLayout")',{method:'POST',headers:{'Content-Type':'application/json','X-XSRF-TOKEN':XSRF,'RequestVerificationToken':XSRF},body:JSON.stringify({billTemplateId:TID,layoutJson:JSON.stringify(arr),paperSize:document.getElementById('paperSize').value})});
+        const data=await res.json();
+        if(data.success){btn.innerHTML='<i class="bi bi-check-lg me-1"></i>Saved!';btn.classList.replace('btn-primary','btn-success');setTimeout(()=>{btn.classList.replace('btn-success','btn-primary');btn.innerHTML='<i class="bi bi-save me-1"></i>Save';btn.disabled=false},1500)}
+        else{toast('Save failed — '+JSON.stringify(data),'danger');btn.innerHTML='<i class="bi bi-save me-1"></i>Save';btn.disabled=false}
+    }catch(e){toast('Network error','danger');btn.innerHTML='<i class="bi bi-save me-1"></i>Save';btn.disabled=false}
+});
+
+// ═══ LOGO UPLOAD ═══
+document.getElementById('btnUploadLogo').addEventListener('click',async function(){
+    const file=document.getElementById('logoFile').files[0];
+    if(!file){toast('Select a file first','warning');return}
+    const form=new FormData();form.append('logo',file);
+    const btn=this;btn.disabled=true;btn.innerHTML='<span class="spinner-border spinner-border-sm"></span>';
+    try{
+        const res=await fetch('@Url.Action("UploadLogo")',{method:'POST',headers:{'X-XSRF-TOKEN':XSRF,'RequestVerificationToken':XSRF},body:form});
+        const data=await res.json();
+        if(data.success){toast('Logo uploaded!','success');setTimeout(()=>location.reload(),600)}
+        else toast(data.message||'Upload failed','danger');
+    }catch(e){toast('Network error','danger')}
+    btn.innerHTML='<i class="bi bi-upload me-1"></i>Upload';btn.disabled=false;
+});
+
+render();
+})();
+</script>
+}
