@@ -320,3 +320,99 @@ public sealed class DailySalesDto
     public int BillCount { get; set; }
     public decimal Revenue { get; set; }
 }
+
+// ══════════════════════════════════════════
+// Invoice DTOs
+// ══════════════════════════════════════════
+
+public sealed class InvoiceDto
+{
+    public Guid InvoiceId { get; set; }
+    public string InvoiceNo { get; set; } = string.Empty;
+    public DateTime InvoiceDate { get; set; }
+    public Guid CustomerId { get; set; }
+    public string? CustomerName { get; set; }
+    public Guid WarehouseId { get; set; }
+    public string? WarehouseName { get; set; }
+    public string? EmployeeName { get; set; }
+    public decimal TotalAmount { get; set; }
+    public byte Status { get; set; }
+    public string StatusName { get; set; } = string.Empty;
+    public DateTime? PostedAt { get; set; }
+    public List<InvoiceLineDto> Lines { get; set; } = new();
+}
+
+public sealed class InvoiceLineDto
+{
+    public Guid InvoiceLineId { get; set; }
+    public Guid ItemId { get; set; }
+    public string ItemName { get; set; } = string.Empty;
+    public decimal Qty { get; set; }
+    public decimal UnitPrice { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal LineTotal { get; set; }
+}
+
+// ══════════════════════════════════════════
+// Purchase DTOs
+// ══════════════════════════════════════════
+
+public sealed class PurchaseDto
+{
+    public Guid PurchaseId { get; set; }
+    public string PurchaseNo { get; set; } = string.Empty;
+    public DateTime PurchaseDate { get; set; }
+    public Guid SupplierId { get; set; }
+    public string? SupplierName { get; set; }
+    public Guid WarehouseId { get; set; }
+    public string? WarehouseName { get; set; }
+    public string? EmployeeName { get; set; }
+    public decimal TotalAmount { get; set; }
+    public byte Status { get; set; }
+    public string StatusName { get; set; } = string.Empty;
+    public DateTime? ReceivedAt { get; set; }
+    public string? Notes { get; set; }
+    public List<PurchaseLineDto> Lines { get; set; } = new();
+}
+
+public sealed class PurchaseLineDto
+{
+    public Guid PurchaseLineId { get; set; }
+    public Guid ItemId { get; set; }
+    public string ItemName { get; set; } = string.Empty;
+    public decimal Qty { get; set; }
+    public decimal UnitCost { get; set; }
+    public decimal LineTotal { get; set; }
+}
+
+// ══════════════════════════════════════════
+// Promotion DTOs
+// ══════════════════════════════════════════
+
+public sealed class PromotionDto
+{
+    public Guid PromotionId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string PromoType { get; set; } = string.Empty;
+    public decimal DiscountPercent { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public Guid? ItemId { get; set; }
+    public string? ItemName { get; set; }
+    public Guid? CategoryId { get; set; }
+    public string? CategoryName { get; set; }
+    public int BuyQty { get; set; }
+    public int GetQty { get; set; }
+    public Guid? FreeItemId { get; set; }
+    public string? FreeItemName { get; set; }
+    public DateTime ValidFrom { get; set; }
+    public DateTime ValidTo { get; set; }
+    public TimeSpan? HappyHourStart { get; set; }
+    public TimeSpan? HappyHourEnd { get; set; }
+    public decimal MinBillAmount { get; set; }
+    public int MaxUsesTotal { get; set; }
+    public int UsedCount { get; set; }
+    public int Priority { get; set; }
+    public bool IsExclusive { get; set; }
+    public bool IsActive { get; set; }
+}

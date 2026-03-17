@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data.Auditing;
 
@@ -20,6 +20,16 @@ public class Stock : IAuditableEntity, ITenantEntity
     [Precision(18, 2)]
     [Range(0, 999999999)]
     public decimal Quantity { get; set; } = 0;
+
+    // Sprint 7: Batch expiry tracking
+    [StringLength(50)]
+    public string? BatchNumber { get; set; }
+
+    [DataType(DataType.Date)]
+    public DateTime? ManufactureDate { get; set; }
+
+    [DataType(DataType.Date)]
+    public DateTime? ExpiryDate { get; set; }
 
     // Optional multi-company support
     public Guid? CompanyId { get; set; }

@@ -414,35 +414,48 @@ public class PosBillingService
 
         var storeId = bill.StoreId;
 
-        // Stock validation + deduction + ledger entries
+        // Stock validation + FIFO deduction + ledger entries
         foreach (var line in bill.Lines)
         {
-            var stock = await _db.Stocks.FirstOrDefaultAsync(s =>
-                s.ItemId == line.ItemId && s.WarehouseId == bill.WarehouseId);
+            // FIFO: get all stock batches for this item+warehouse, ordered by expiry (soonest first), then oldest first
+            var batches = await _db.Stocks
+                .Where(s => s.ItemId == line.ItemId && s.WarehouseId == bill.WarehouseId && s.Quantity > 0)
+                .OrderBy(s => s.ExpiryDate ?? DateTime.MaxValue)
+                .ThenBy(s => s.ManufactureDate ?? DateTime.MinValue)
+                .ThenBy(s => s.CreatedAtUtc)
+                .ToListAsync();
 
-            if (stock is null)
+            var totalAvailable = batches.Sum(s => s.Quantity);
+            if (batches.Count == 0)
                 throw new InvalidOperationException($"No stock record for {line.ItemNameSnapshot} in this warehouse.");
+            if (totalAvailable < line.Qty)
+                throw new InvalidOperationException($"Insufficient stock for {line.ItemNameSnapshot}: available {totalAvailable}, required {line.Qty}.");
 
-            if (stock.Quantity < line.Qty)
-                throw new InvalidOperationException($"Insufficient stock for {line.ItemNameSnapshot}: available {stock.Quantity}, required {line.Qty}.");
-
-            stock.Quantity -= line.Qty;
-
-            _db.StockTransactions.Add(new StockTransaction
+            var remaining = line.Qty;
+            foreach (var batch in batches)
             {
-                StockTransactionId = Guid.NewGuid(),
-                OccurredAtUtc = DateTime.UtcNow,
-                Type = "OUT",
-                ItemId = line.ItemId,
-                WarehouseId = bill.WarehouseId,
-                StoreId = storeId,
-                Qty = -line.Qty,
-                RefType = "PosBill",
-                RefId = bill.PosBillId.ToString(),
-                Reason = $"POS Bill {bill.BillNo}",
-                UnitPrice = line.UnitPrice,
-                CompanyId = bill.CompanyId
-            });
+                if (remaining <= 0) break;
+
+                var deduct = Math.Min(batch.Quantity, remaining);
+                batch.Quantity -= deduct;
+                remaining -= deduct;
+
+                _db.StockTransactions.Add(new StockTransaction
+                {
+                    StockTransactionId = Guid.NewGuid(),
+                    OccurredAtUtc = DateTime.UtcNow,
+                    Type = "OUT",
+                    ItemId = line.ItemId,
+                    WarehouseId = bill.WarehouseId,
+                    StoreId = storeId,
+                    Qty = -deduct,
+                    RefType = "PosBill",
+                    RefId = bill.PosBillId.ToString(),
+                    Reason = $"POS Bill {bill.BillNo}" + (batch.BatchNumber != null ? $" [Batch: {batch.BatchNumber}]" : ""),
+                    UnitPrice = line.UnitPrice,
+                    CompanyId = bill.CompanyId
+                });
+            }
         }
 
         bill.Status = 2; // Completed

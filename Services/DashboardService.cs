@@ -250,7 +250,21 @@ public sealed class DashboardService
 
             "expiring-items" => new
             {
-                rows = new List<object>() // ExpiryDate field not yet on Item entity
+                rows = await _db.Stocks.AsNoTracking()
+                    .Include(s => s.Item)
+                    .Include(s => s.Warehouse)
+                    .Where(s => s.ExpiryDate != null && s.ExpiryDate <= DateTime.Today.AddDays(90) && s.Quantity > 0)
+                    .OrderBy(s => s.ExpiryDate)
+                    .Take(10)
+                    .Select(s => new {
+                        itemName = s.Item != null ? s.Item.Name : "-",
+                        sku = s.Item != null ? s.Item.SKU : "-",
+                        warehouse = s.Warehouse != null ? s.Warehouse.Name : "-",
+                        batch = s.BatchNumber ?? "-",
+                        expiryDate = s.ExpiryDate!.Value.ToString("dd-MMM-yyyy"),
+                        daysLeft = (s.ExpiryDate!.Value - DateTime.Today).Days,
+                        qty = s.Quantity
+                    }).ToListAsync()
             },
 
             "eod-summary" => new
