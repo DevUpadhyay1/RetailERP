@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data.Entities;
 using RetailERP.Data.Identity;
@@ -82,6 +82,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     // Sprint 8 – GST E-Invoice & E-Way Bill
     public DbSet<EInvoice> EInvoices => Set<EInvoice>();
     public DbSet<EWayBill> EWayBills => Set<EWayBill>();
+
+    // Sprint 11 – Notifications
+    public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
+    public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -1,0 +1,49 @@
+@{ ViewData["Title"] = "Send Campaign"; }
+
+<h4 class="mb-3"><i class="bi bi-megaphone"></i> Send Campaign</h4>
+
+<form asp-action="SendCampaign" method="post" class="card p-4" style="max-width:700px;">
+    @Html.AntiForgeryToken()
+
+    <div class="alert alert-info">
+        <i class="bi bi-people"></i> Total customers: <strong>@ViewBag.CustomerCount</strong>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Channel</label>
+            <select name="channel" class="form-select" required>
+                <option value="Sms">SMS</option>
+                <option value="WhatsApp">WhatsApp</option>
+                <option value="Email">Email</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Target Group</label>
+            <select name="targetGroup" class="form-select">
+                <option value="all">All Customers</option>
+                <option value="withPhone">Customers with Phone</option>
+                <option value="withEmail">Customers with Email</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Subject <small class="text-muted">(Email only)</small></label>
+        <input name="subject" class="form-control" placeholder="e.g. Special Offer at RetailERP Store!" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Message Body</label>
+        <textarea name="body" class="form-control" rows="6" required
+                  placeholder="Dear {CustomerName}, we have an exciting offer for you! Visit our store today and get 20% off on all items. Limited time only!"></textarea>
+        <small class="text-muted">Placeholders: {CustomerName}, {Phone}, {Email}</small>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" onclick="return confirm('Send this campaign to all selected customers?');">
+            <i class="bi bi-send"></i> Send Campaign
+        </button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>

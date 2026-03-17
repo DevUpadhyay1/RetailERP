@@ -1,0 +1,59 @@
+@model RetailERP.Data.Entities.NotificationTemplate
+@{ ViewData["Title"] = "Edit Template"; }
+
+<h4 class="mb-3"><i class="bi bi-pencil"></i> Edit Template: @Model.Name</h4>
+
+<form asp-action="EditTemplate" asp-route-id="@Model.NotificationTemplateId" method="post" class="card p-4" style="max-width:700px;">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+    <div class="mb-3">
+        <label class="form-label">Template Name</label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Channel</label>
+            <select asp-for="Channel" class="form-select">
+                <option value="Sms">SMS</option>
+                <option value="WhatsApp">WhatsApp</option>
+                <option value="Email">Email</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Category</label>
+            <select asp-for="Category" class="form-select">
+                <option value="BillReceipt">Bill Receipt</option>
+                <option value="PaymentConfirmation">Payment Confirmation</option>
+                <option value="LoyaltyUpdate">Loyalty Update</option>
+                <option value="Promotional">Promotional</option>
+                <option value="LowStockAlert">Low Stock Alert</option>
+                <option value="Custom">Custom</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Subject <small class="text-muted">(Email only)</small></label>
+        <input asp-for="Subject" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Message Body</label>
+        <textarea asp-for="Body" class="form-control" rows="6"></textarea>
+        <span asp-validation-for="Body" class="text-danger"></span>
+        <small class="text-muted">Placeholders: {CustomerName}, {BillNo}, {Amount}, {StoreName}, {Date}, {Points}</small>
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="IsActive" class="form-check-input" />
+        <label asp-for="IsActive" class="form-check-label">Active</label>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary">Save Changes</button>
+        <a asp-action="Templates" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>

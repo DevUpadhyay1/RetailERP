@@ -1,0 +1,126 @@
+@model List<RetailERP.Data.Entities.NotificationLog>
+@{ ViewData["Title"] = "Notification Log"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0"><i class="bi bi-bell"></i> Notification Log</h4>
+    <div>
+        <a asp-action="Send" class="btn btn-primary btn-sm"><i class="bi bi-send"></i> Quick Send</a>
+        <a asp-action="Campaign" class="btn btn-outline-primary btn-sm"><i class="bi bi-megaphone"></i> Campaign</a>
+        <a asp-action="Templates" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-text"></i> Templates</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="card text-center border-success">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-success">@ViewBag.SentCount</div>
+                <small class="text-muted">Sent</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-danger">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-danger">@ViewBag.FailedCount</div>
+                <small class="text-muted">Failed</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-warning">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-warning">@ViewBag.QueuedCount</div>
+                <small class="text-muted">Queued</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold">@ViewBag.Total</div>
+                <small class="text-muted">Total</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto">
+        <select name="channel" class="form-select form-select-sm">
+            <option value="">All Channels</option>
+            @foreach (var ch in new[] { "Sms", "WhatsApp", "Email" })
+            {
+                <option value="@ch" selected="@(ViewBag.Channel == ch)">@ch</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="status" class="form-select form-select-sm">
+            <option value="">All Status</option>
+            @foreach (var s in new[] { "Queued", "Sent", "Failed" })
+            {
+                <option value="@s" selected="@(ViewBag.Status == s)">@s</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <input name="q" class="form-control form-control-sm" placeholder="Search..." value="@ViewBag.Q" />
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-sm btn-outline-primary">Filter</button>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table table-sm table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Channel</th>
+                <th>Recipient</th>
+                <th>Subject</th>
+                <th>Status</th>
+                <th>Customer</th>
+                <th>Ref</th>
+                <th>Sent</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var n in Model)
+            {
+                <tr>
+                    <td>
+                        @if (n.Channel == "Sms") { <span class="badge bg-info">SMS</span> }
+                        else if (n.Channel == "WhatsApp") { <span class="badge bg-success">WhatsApp</span> }
+                        else { <span class="badge bg-primary">Email</span> }
+                    </td>
+                    <td>@n.Recipient</td>
+                    <td>@(n.Subject ?? "-")</td>
+                    <td>
+                        @if (n.Status == "Sent") { <span class="badge bg-success">Sent</span> }
+                        else if (n.Status == "Failed") { <span class="badge bg-danger" title="@n.ErrorMessage">Failed</span> }
+                        else { <span class="badge bg-warning">Queued</span> }
+                    </td>
+                    <td>@(n.Customer?.Name ?? "-")</td>
+                    <td><small>@(n.RefType ?? "")</small></td>
+                    <td><small>@n.SentAtUtc.ToString("dd-MMM HH:mm")</small></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (ViewBag.TotalPages > 1)
+{
+    <nav>
+        <ul class="pagination pagination-sm justify-content-center">
+            @for (int i = 1; i <= (int)ViewBag.TotalPages; i++)
+            {
+                <li class="page-item @(i == (int)ViewBag.Page ? "active" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-channel="@ViewBag.Channel"
+                       asp-route-status="@ViewBag.Status" asp-route-q="@ViewBag.Q">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

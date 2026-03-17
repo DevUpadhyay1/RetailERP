@@ -1,0 +1,51 @@
+@model List<RetailERP.Data.Entities.NotificationTemplate>
+@{ ViewData["Title"] = "Notification Templates"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0"><i class="bi bi-file-text"></i> Notification Templates</h4>
+    <a asp-action="CreateTemplate" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> New Template</a>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-sm table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Name</th>
+                <th>Channel</th>
+                <th>Category</th>
+                <th>Subject</th>
+                <th>Active</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Model)
+            {
+                <tr>
+                    <td>@t.Name</td>
+                    <td>
+                        @if (t.Channel == "Sms") { <span class="badge bg-info">SMS</span> }
+                        else if (t.Channel == "WhatsApp") { <span class="badge bg-success">WhatsApp</span> }
+                        else { <span class="badge bg-primary">Email</span> }
+                    </td>
+                    <td><small>@t.Category</small></td>
+                    <td>@(t.Subject ?? "-")</td>
+                    <td>@(t.IsActive ? "✓" : "✗")</td>
+                    <td>
+                        <a asp-action="EditTemplate" asp-route-id="@t.NotificationTemplateId" class="btn btn-outline-primary btn-sm">Edit</a>
+                        <form asp-action="DeleteTemplate" asp-route-id="@t.NotificationTemplateId" method="post" class="d-inline"
+                              onsubmit="return confirm('Delete this template?');">
+                            @Html.AntiForgeryToken()
+                            <button class="btn btn-outline-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<div class="alert alert-info mt-3">
+    <strong>Placeholders:</strong> Use <code>{CustomerName}</code>, <code>{BillNo}</code>, <code>{Amount}</code>,
+    <code>{StoreName}</code>, <code>{Date}</code>, <code>{Points}</code>, <code>{Phone}</code>, <code>{Email}</code> in template body.
+</div>

@@ -284,6 +284,13 @@ try
     // Sprint 3: Dashboard service
     builder.Services.AddScoped<DashboardService>();
 
+    // Sprint 11: SMS / WhatsApp / Email notification services
+    builder.Services.Configure<TwilioOptions>(builder.Configuration.GetSection("Twilio"));
+    builder.Services.Configure<WhatsAppOptions>(builder.Configuration.GetSection("WhatsApp"));
+    builder.Services.AddHttpClient<SmsService>();
+    builder.Services.AddHttpClient<WhatsAppService>();
+    builder.Services.AddScoped<NotificationService>();
+
     // Sprint 6: PDF services
     builder.Services.AddScoped<ReceiptPdfService>();
     builder.Services.AddScoped<InvoicePdfService>();

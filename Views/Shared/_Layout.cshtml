@@ -208,6 +208,21 @@
                             </div>
                         </div>
 
+                        @* ── Notifications ── *@
+                        <div class="sidebar-group">
+                            <button class="sidebar-group-toggle @GroupToggleClass("Notifications")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-notif" aria-expanded="@(IsInGroup("Notifications") ? "true" : "false")">
+                                <i class="bi bi-bell sidebar-icon"></i>
+                                <span>Notifications</span>
+                                <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
+                            </button>
+                            <div class="collapse @GroupOpen("Notifications")" id="nav-notif">
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Notifications", "Index")" asp-controller="Notifications" asp-action="Index"><i class="bi bi-clock-history sidebar-icon"></i><span>Notification Log</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Notifications", "Templates")" asp-controller="Notifications" asp-action="Templates"><i class="bi bi-file-text sidebar-icon"></i><span>Templates</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Notifications", "Send")" asp-controller="Notifications" asp-action="Send"><i class="bi bi-send sidebar-icon"></i><span>Quick Send</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Notifications", "Campaign")" asp-controller="Notifications" asp-action="Campaign"><i class="bi bi-megaphone sidebar-icon"></i><span>Campaign</span></a>
+                            </div>
+                        </div>
+
                         @* ── GST & E-Invoice ── *@
                         <div class="sidebar-group">
                             <button class="sidebar-group-toggle @GroupToggleClass("GstReports","EInvoices")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-gst" aria-expanded="@(IsInGroup("GstReports","EInvoices") ? "true" : "false")">
