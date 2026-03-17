@@ -4,7 +4,7 @@
     <div>
         <h2 class="mb-0">@Model.InvoiceNo</h2>
         <div class="text-muted">
-            @Model.InvoiceDate.ToString("yyyy-MM-dd") • @Model.CustomerName • @Model.WarehouseName
+            @Model.InvoiceDate.ToString("yyyy-MM-dd") • @Model.CustomerName • @Model.WarehouseName • @Model.EmployeeName
         </div>
     </div>
 
@@ -106,13 +106,15 @@
                         <input type="hidden" name="InvoiceId" value="@Model.InvoiceId" />
 
                         <label class="form-label mb-0">Item</label>
-                        <select class="form-select" name="ItemId" asp-items="ViewBag.Items"></select>
+                        <select class="form-select" name="ItemId" asp-items="ViewBag.Items">
+                            <option value="" disabled selected>-- Select Item --</option>
+                        </select>
 
                         <label class="form-label mb-0">Qty</label>
-                        <input class="form-control" name="Qty" type="number" step="0.01" value="1" />
+                        <input class="form-control" name="Qty" type="number" step="0.01" min="0.01" value="1" />
 
                         <label class="form-label mb-0">Unit Price</label>
-                        <input class="form-control" name="UnitPrice" type="number" step="0.01" value="0" />
+                        <input class="form-control" name="UnitPrice" type="number" step="0.01" min="0" value="0" />
 
                         <button class="btn btn-primary" type="submit">Add</button>
                         <a class="btn btn-outline-secondary" asp-action="Index">Back to Register</a>

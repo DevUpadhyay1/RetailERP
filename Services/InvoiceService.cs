@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
+using RetailERP.Hubs;
 using RetailERP.Services;
 
 namespace RetailERP.Services;
@@ -9,14 +11,16 @@ public class InvoiceService
 {
     private readonly ApplicationDbContext _db;
     private readonly AuditService _audit;
+    private readonly IHubContext<RetailHub> _hub;
 
 
-    public InvoiceService(ApplicationDbContext db, AuditService audit)
+    public InvoiceService(ApplicationDbContext db, AuditService audit, IHubContext<RetailHub> hub)
     {
         _db = db;
         _audit = audit;
+        _hub = hub;
     }
-    public async Task<Guid> CreateDraftAsync(Guid customerId, Guid warehouseId, DateTime invoiceDate)
+    public async Task<Guid> CreateDraftAsync(Guid customerId, Guid warehouseId, DateTime invoiceDate, Guid? employeeId)
     {
         var invoice = new Invoice
         {
@@ -25,6 +29,7 @@ public class InvoiceService
             CustomerId = customerId,
             WarehouseId = warehouseId,
             InvoiceDate = invoiceDate,
+            EmployeeId = employeeId,
             Status = 1,
             TotalAmount = 0
         };
@@ -43,13 +48,24 @@ public class InvoiceService
         if (invoice is null) throw new InvalidOperationException("Invoice not found.");
         if (invoice.Status != 1) throw new InvalidOperationException("Only Draft invoices can be edited.");
 
+        var item = await _db.Items
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ItemId == itemId);
+
+        if (item is null) throw new InvalidOperationException("Item not found.");
+
         _db.InvoiceLines.Add(new InvoiceLine
         {
             InvoiceLineId = Guid.NewGuid(),
             InvoiceId = invoiceId,
             ItemId = itemId,
             Qty = qty,
-            UnitPrice = unitPrice
+            UnitPrice = unitPrice,
+            ItemSkuSnapshot = item.SKU,
+            ItemNameSnapshot = item.Name,
+            GstPercentSnapshot = item.GstPercent,
+            HsnCodeSnapshot = item.HsnCode,
+            DiscountAmount = 0
         });
 
         await _db.SaveChangesAsync();
@@ -90,6 +106,12 @@ public class InvoiceService
         if (invoice.Status != 1) throw new InvalidOperationException("Invoice already posted.");
         if (invoice.Lines.Count == 0) throw new InvalidOperationException("Add at least one line before posting.");
 
+        var storeId = await _db.Warehouses
+            .AsNoTracking()
+            .Where(w => w.WarehouseId == invoice.WarehouseId)
+            .Select(w => w.StoreId)
+            .FirstOrDefaultAsync();
+
         foreach (var line in invoice.Lines)
         {
             var stock = await _db.Stocks.FirstOrDefaultAsync(s =>
@@ -102,6 +124,22 @@ public class InvoiceService
                 throw new InvalidOperationException("Insufficient stock for one of the items.");
 
             stock.Quantity -= line.Qty;
+
+            _db.StockTransactions.Add(new StockTransaction
+            {
+                StockTransactionId = Guid.NewGuid(),
+                OccurredAtUtc = DateTime.UtcNow,
+                Type = "OUT",
+                ItemId = line.ItemId,
+                WarehouseId = invoice.WarehouseId,
+                StoreId = storeId,
+                Qty = -line.Qty,
+                RefType = "Invoice",
+                RefId = invoice.InvoiceId.ToString(),
+                Reason = "Invoice posted",
+                UnitPrice = line.UnitPrice,
+                CompanyId = invoice.CompanyId
+            });
         }
 
         invoice.TotalAmount = invoice.Lines.Sum(x => x.Qty * x.UnitPrice);
@@ -131,6 +169,21 @@ public class InvoiceService
         {
             // MVP: don't break posting if audit fails
         }
+
+        // Sprint 9: Broadcast real-time event via SignalR
+        try
+        {
+            var companyGroup = $"company-{invoice.CompanyId}";
+            await _hub.Clients.Group(companyGroup).SendAsync("InvoicePosted", new
+            {
+                invoiceId = invoice.InvoiceId,
+                invoiceNo = invoice.InvoiceNo,
+                grandTotal = invoice.TotalAmount,
+                customerId = invoice.CustomerId,
+                postedAt = invoice.PostedAt
+            });
+        }
+        catch { /* don't break posting if SignalR fails */ }
     }
 
     private async Task<string> GenerateInvoiceNoAsync(DateTime date)

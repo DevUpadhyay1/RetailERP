@@ -1,52 +1,113 @@
 ﻿@model RetailERP.Data.Entities.Item
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Edit Item";
 }
 
-<h1>Edit</h1>
-
-<h4>Item</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form asp-action="Edit">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="ItemId" />
-            <div class="form-group">
-                <label asp-for="SKU" class="control-label"></label>
-                <input asp-for="SKU" class="form-control" />
-                <span asp-validation-for="SKU" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Name" class="control-label"></label>
-                <input asp-for="Name" class="form-control" />
-                <span asp-validation-for="Name" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="UnitPrice" class="control-label"></label>
-                <input asp-for="UnitPrice" class="form-control" />
-                <span asp-validation-for="UnitPrice" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="ReorderLevel" class="control-label"></label>
-                <input asp-for="ReorderLevel" class="form-control" />
-                <span asp-validation-for="ReorderLevel" class="text-danger"></span>
-            </div>
-            <div class="form-group form-check">
-                <label class="form-check-label">
-                    <input class="form-check-input" asp-for="IsActive" /> @Html.DisplayNameFor(model => model.IsActive)
-                </label>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
-            </div>
-        </form>
+<div class="vstack gap-3" style="max-width:980px;">
+    <div class="d-flex align-items-center justify-content-between">
+        <div>
+            <h2 class="mb-0">Edit Item</h2>
+            <div class="text-muted small">Update product master details</div>
+        </div>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index"><i class="bi bi-arrow-left me-1"></i>Back to List</a>
     </div>
-</div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <form asp-action="Edit" method="post">
+                <input type="hidden" asp-for="ItemId" />
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 mb-3"></div>
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label asp-for="SKU" class="form-label"></label>
+                        <input asp-for="SKU" class="form-control" />
+                        <span asp-validation-for="SKU" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-8">
+                        <label asp-for="Name" class="form-label"></label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="Barcode" class="form-label"></label>
+                        <input asp-for="Barcode" class="form-control" placeholder="EAN/UPC (optional)" />
+                        <span asp-validation-for="Barcode" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Unit</label>
+                        <select class="form-select" asp-for="UnitId" asp-items="@(ViewData["UnitId"] as SelectList)">
+                            <option value="">— Select Unit —</option>
+                        </select>
+                        <span asp-validation-for="UnitId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Category</label>
+                        <select class="form-select" asp-for="CategoryId" asp-items="@(ViewData["CategoryId"] as SelectList)">
+                            <option value="">— Select Category —</option>
+                        </select>
+                        <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="UnitPrice" class="form-label"></label>
+                        <input asp-for="UnitPrice" class="form-control" type="number" min="0" step="0.01" />
+                        <span asp-validation-for="UnitPrice" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="MRP" class="form-label"></label>
+                        <input asp-for="MRP" class="form-control" type="number" min="0" step="0.01" placeholder="Optional" />
+                        <span asp-validation-for="MRP" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="PurchasePrice" class="form-label"></label>
+                        <input asp-for="PurchasePrice" class="form-control" type="number" min="0" step="0.01" placeholder="Optional" />
+                        <span asp-validation-for="PurchasePrice" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="GstPercent" class="form-label"></label>
+                        <input asp-for="GstPercent" class="form-control" type="number" min="0" max="100" step="0.01" placeholder="e.g., 5, 12, 18" />
+                        <span asp-validation-for="GstPercent" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="HsnCode" class="form-label"></label>
+                        <input asp-for="HsnCode" class="form-control" placeholder="Optional" />
+                        <span asp-validation-for="HsnCode" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="ReorderLevel" class="form-label"></label>
+                        <input asp-for="ReorderLevel" class="form-control" type="number" min="0" step="1" />
+                        <span asp-validation-for="ReorderLevel" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-4 d-flex align-items-end">
+                        <div class="form-check">
+                            <input class="form-check-input" asp-for="IsActive" />
+                            <label class="form-check-label" asp-for="IsActive"></label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <hr class="my-1" />
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save Changes</button>
+                        <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 @section Scripts {

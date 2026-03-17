@@ -7,14 +7,16 @@ namespace RetailERP.Data.Seed;
 
 public sealed class DbSeeder
 {
+    public const string RoleSuperAdmin = "SuperAdmin";
     public const string RoleAdmin = "Admin";
     public const string RoleManager = "Manager";
     public const string RoleCashier = "Cashier";
     public const string RoleInventory = "Inventory";
-
-    // Optional (keep for future if you want)
     public const string RoleFinance = "Finance";
     public const string RoleHR = "HR";
+
+    /// <summary>Well-known default company id for backfilling existing data.</summary>
+    public static readonly Guid DefaultCompanyId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
     private readonly ApplicationDbContext _db;
     private readonly RoleManager<ApplicationRole> _roleManager;
@@ -34,11 +36,11 @@ public sealed class DbSeeder
     {
         await _db.Database.MigrateAsync();
 
-        // 1) Roles (recommended set)
+        // 1) Roles (including new SuperAdmin)
         string[] roles =
         [
-            RoleAdmin, RoleManager, RoleCashier, RoleInventory,
-            RoleFinance, RoleHR // optional
+            RoleSuperAdmin, RoleAdmin, RoleManager, RoleCashier, RoleInventory,
+            RoleFinance, RoleHR
         ];
 
         foreach (var role in roles)
@@ -54,33 +56,66 @@ public sealed class DbSeeder
             }
         }
 
-        // 2) Demo users (admin + one user per role)
+        // 2) Default company (tenant) — Sprint 4
+        var defaultCompany = await _db.Companies.FindAsync(DefaultCompanyId);
+        if (defaultCompany is null)
+        {
+            defaultCompany = new Company
+            {
+                CompanyId = DefaultCompanyId,
+                Code = "DEFAULT",
+                Name = "Default Company",
+                Email = "admin@retailerp.com",
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = DateTime.UtcNow
+            };
+            _db.Companies.Add(defaultCompany);
+            await _db.SaveChangesAsync();
+        }
+
+        // 3) SuperAdmin user — retailerp.global@gmail.com
+        await EnsureUserAsync(
+            email: "retailerp.global@gmail.com",
+            password: "SuperAdmin@12345",
+            roles: [RoleSuperAdmin],
+            companyId: null  // SuperAdmin sees all tenants
+        );
+
+        // 4) Demo users (tenant-scoped to default company)
         await EnsureUserAsync(
             email: "admin@retailerp.com",
             password: "Admin@12345",
-            roles: [RoleAdmin, RoleManager] // admin also acts as manager
+            roles: [RoleAdmin, RoleManager],
+            companyId: DefaultCompanyId
         );
 
         await EnsureUserAsync(
             email: "manager@retailerp.com",
             password: "Manager@12345",
-            roles: [RoleManager]
+            roles: [RoleManager],
+            companyId: DefaultCompanyId
         );
 
         await EnsureUserAsync(
             email: "cashier@retailerp.com",
             password: "Cashier@12345",
-            roles: [RoleCashier]
+            roles: [RoleCashier],
+            companyId: DefaultCompanyId
         );
 
         await EnsureUserAsync(
             email: "inventory@retailerp.com",
             password: "Inventory@12345",
-            roles: [RoleInventory]
+            roles: [RoleInventory],
+            companyId: DefaultCompanyId
         );
 
-        // 3) Demo master data (only if empty)
-        if (!await _db.Warehouses.AnyAsync())
+        // 5) Backfill: set CompanyId on all existing rows that have null CompanyId
+        await BackfillCompanyIdAsync();
+
+        // 6) Demo master data (only if empty — use IgnoreQueryFilters so tenant filters don't hide existing rows)
+        if (!await _db.Warehouses.IgnoreQueryFilters().AnyAsync())
         {
             _db.Warehouses.AddRange(
                 new Warehouse { Name = "Main Warehouse", Address = "Ahmedabad" },
@@ -89,7 +124,7 @@ public sealed class DbSeeder
             await _db.SaveChangesAsync();
         }
 
-        if (!await _db.Items.AnyAsync())
+        if (!await _db.Items.IgnoreQueryFilters().AnyAsync())
         {
             _db.Items.AddRange(
                 new Item { SKU = "SKU-001", Name = "Laptop", UnitPrice = 55000, ReorderLevel = 2, IsActive = true },
@@ -99,7 +134,7 @@ public sealed class DbSeeder
             await _db.SaveChangesAsync();
         }
 
-        if (!await _db.Customers.AnyAsync())
+        if (!await _db.Customers.IgnoreQueryFilters().AnyAsync())
         {
             _db.Customers.AddRange(
                 new Customer { Name = "Walk-in Customer", Phone = "9999999999", Email = "walkin@demo.com" },
@@ -108,11 +143,20 @@ public sealed class DbSeeder
             await _db.SaveChangesAsync();
         }
 
-        // 4) Stock (only if empty)
-        if (!await _db.Stocks.AnyAsync())
+        if (!await _db.Suppliers.IgnoreQueryFilters().AnyAsync())
         {
-            var warehouses = await _db.Warehouses.OrderBy(x => x.Name).ToListAsync();
-            var items = await _db.Items.OrderBy(x => x.SKU).ToListAsync();
+            _db.Suppliers.AddRange(
+                new Supplier { Name = "ABC Distributors", Phone = "7777777777", Email = "abc@suppliers.com", Address = "Ahmedabad", IsActive = true },
+                new Supplier { Name = "Local Wholesale", Phone = "6666666666", Email = "local@suppliers.com", Address = "Surat", IsActive = true }
+            );
+            await _db.SaveChangesAsync();
+        }
+
+        // 7) Stock (only if empty)
+        if (!await _db.Stocks.IgnoreQueryFilters().AnyAsync())
+        {
+            var warehouses = await _db.Warehouses.IgnoreQueryFilters().OrderBy(x => x.Name).ToListAsync();
+            var items = await _db.Items.IgnoreQueryFilters().OrderBy(x => x.SKU).ToListAsync();
 
             var main = warehouses.First();
 
@@ -126,7 +170,57 @@ public sealed class DbSeeder
         }
     }
 
-    private async Task EnsureUserAsync(string email, string password, string[] roles)
+    /// <summary>Sprint 4 – Backfill null CompanyId to DefaultCompanyId on all tenant entities.</summary>
+    private async Task BackfillCompanyIdAsync()
+    {
+        // Use raw SQL for performance — updates all rows in one shot per table
+        var tables = new[]
+        {
+            "Items", "Units", "Categories", "Stores", "Warehouses", "Stocks",
+            "Customers", "Suppliers", "Purchases", "Invoices", "StockMovements",
+            "StockTransactions", "PosBills", "Payments", "PosReturns",
+            "LoyaltyCards", "LoyaltyTransactions", "Coupons", "EodReports", "SyncLogs"
+        };
+
+        // Use raw ADO.NET to avoid EF Core command-error logging on expected conflicts.
+        var conn = _db.Database.GetDbConnection();
+        await conn.OpenAsync();
+        try
+        {
+            foreach (var table in tables)
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = $"UPDATE [{table}] SET [CompanyId] = @cid WHERE [CompanyId] IS NULL";
+                var p = cmd.CreateParameter();
+                p.ParameterName = "@cid";
+                p.Value = DefaultCompanyId;
+                cmd.Parameters.Add(p);
+                try
+                {
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 2601 || ex.Number == 2627)
+                {
+                    // Duplicate-key conflict — skip gracefully; data already has CompanyId.
+                }
+            }
+        }
+        finally
+        {
+            // Let EF Core manage the connection lifetime; only close if we opened it.
+            if (conn.State == System.Data.ConnectionState.Open)
+                await conn.CloseAsync();
+        }
+
+        // Also backfill users
+#pragma warning disable EF1002
+        await _db.Database.ExecuteSqlRawAsync(
+            "UPDATE [AspNetUsers] SET [CompanyId] = {0} WHERE [CompanyId] IS NULL AND [Email] <> {1}",
+            DefaultCompanyId, "retailerp.global@gmail.com");
+#pragma warning restore EF1002
+    }
+
+    private async Task EnsureUserAsync(string email, string password, string[] roles, Guid? companyId)
     {
         var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
 
@@ -136,7 +230,8 @@ public sealed class DbSeeder
             {
                 UserName = email,
                 Email = email,
-                EmailConfirmed = true
+                EmailConfirmed = true,
+                CompanyId = companyId
             };
 
             var created = await _userManager.CreateAsync(user, password);
@@ -146,8 +241,28 @@ public sealed class DbSeeder
                 throw new InvalidOperationException($"User create failed ({email}): {msg}");
             }
         }
+        else
+        {
+            // Update CompanyId if changed
+            if (user.CompanyId != companyId)
+            {
+                user.CompanyId = companyId;
+            }
 
-        // Ensure user has exactly these roles (simple ERP approach)
+            if (!user.EmailConfirmed)
+            {
+                user.EmailConfirmed = true;
+            }
+
+            var updated = await _userManager.UpdateAsync(user);
+            if (!updated.Succeeded)
+            {
+                var msg = string.Join("; ", updated.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"User update failed ({email}): {msg}");
+            }
+        }
+
+        // Ensure user has exactly these roles
         var currentRoles = await _userManager.GetRolesAsync(user);
         if (currentRoles.Count > 0)
         {

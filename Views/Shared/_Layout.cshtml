@@ -6,98 +6,312 @@
     <title>@ViewData["Title"] - RetailERP</title>
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/RetailERP.styles.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-lg bg-white border-bottom shadow-sm">
-            <div class="container-xxl">
-                <a class="navbar-brand fw-semibold" asp-controller="Home" asp-action="Landing">RetailERP</a>
+    @using RetailERP.Data.Identity
+    @inject Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> UserManager
 
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNav"
-                        aria-controls="topNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+    @{
+        static string InferNiceName(string? displayName, string? userName, string? email, string? fallback)
+        {
+            var preferred = displayName;
+            if (string.IsNullOrWhiteSpace(preferred)) preferred = userName;
+            if (string.IsNullOrWhiteSpace(preferred)) preferred = email;
+            if (string.IsNullOrWhiteSpace(preferred)) preferred = fallback;
 
-                <div class="collapse navbar-collapse" id="topNav">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        @if (User?.Identity?.IsAuthenticated == true)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-controller="Home" asp-action="Dashboard">Dashboard</a>
-                            </li>
+            preferred ??= "";
+            var at = preferred.IndexOf('@');
+            if (at > 0) preferred = preferred[..at];
+            preferred = preferred.Replace('.', ' ').Replace('_', ' ').Trim();
+            return string.IsNullOrWhiteSpace(preferred) ? "User" : preferred;
+        }
 
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle text-dark" href="#" role="button" data-bs-toggle="dropdown">
-                                    Modules
-                                </a>
-                                <ul class="dropdown-menu">
-                                    @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Inventory"))
-                                    {
-                                        <li><h6 class="dropdown-header">Inventory</h6></li>
-                                        <li><a class="dropdown-item" asp-controller="Items" asp-action="Index">Items</a></li>
-                                        <li><a class="dropdown-item" asp-controller="Stocks" asp-action="Index">Stock On Hand</a></li>
-                                        <li><a class="dropdown-item" asp-controller="Warehouses" asp-action="Index">Warehouses</a></li>
-                                        <li><a class="dropdown-item" asp-controller="StockTransfers" asp-action="Create">Stock Transfer</a></li>
-                                        <li><hr class="dropdown-divider" /></li>
-                                    }
+        string? currentDisplayName = null;
+        if (User?.Identity?.IsAuthenticated == true)
+        {
+            var currentUser = await UserManager.GetUserAsync(User);
+            currentDisplayName = InferNiceName(currentUser?.DisplayName, currentUser?.UserName, currentUser?.Email, User.Identity?.Name);
+        }
+    }
 
-                                    <li><h6 class="dropdown-header">Sales / CRM</h6></li>
-                                    <li><a class="dropdown-item" asp-controller="Invoices" asp-action="Index">Invoices</a></li>
-                                    <li><a class="dropdown-item" asp-controller="Customers" asp-action="Index">Customers</a></li>
+    @if (User?.Identity?.IsAuthenticated == true)
+    {
+        <div class="app-shell d-flex" id="appShell">
+            <aside class="app-sidebar bg-dark text-white border-end">
+                <div class="px-3 py-3 border-bottom border-secondary">
+                    <a class="text-white text-decoration-none fw-semibold d-flex align-items-center gap-2" asp-controller="Home" asp-action="Dashboard">
+                        <i class="bi bi-box-seam"></i>
+                        <span>RetailERP</span>
+                    </a>
+                    <div class="small text-white-50 d-flex align-items-center gap-2">
+                        <i class="bi bi-person-circle"></i>
+                        <span>@currentDisplayName</span>
+                    </div>
+                </div>
 
-                                    @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("HR"))
-                                    {
-                                        <li><hr class="dropdown-divider" /></li>
-                                        <li><h6 class="dropdown-header">People</h6></li>
-                                        <li><a class="dropdown-item" asp-controller="Employees" asp-action="Index">Employees</a></li>
-                                    }
-                                </ul>
-                            </li>
+                @{
+                    string? currentController = (ViewContext.RouteData.Values["controller"] as string) ?? "";
+                    string? currentAction = (ViewContext.RouteData.Values["action"] as string) ?? "";
 
-                            @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-                            {
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle text-dark" href="#" role="button" data-bs-toggle="dropdown">
-                                        Insights
-                                    </a>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item" asp-controller="Items" asp-action="LowStock">Low Stock</a></li>
-                                        <li><a class="dropdown-item" asp-controller="Reports" asp-action="Sales">Sales Report</a></li>
-                                        <li><a class="dropdown-item" asp-controller="Audit" asp-action="Index">Audit Log</a></li>
-                                    </ul>
-                                </li>
-                            }
+                    string ActiveIf(string controller, string? action = null)
+                    {
+                        if (!string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase))
+                            return "";
 
-                            @if (User.IsInRole("Admin"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-controller="AdminUsers" asp-action="Index">Admin</a>
-                                </li>
-                            }
-                        }
-                    </ul>
+                        if (action is not null && !string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase))
+                            return "";
 
+                        return "active bg-primary";
+                    }
+                }
+
+                @{
+                    /* Helper: returns true when current controller matches any in the array */
+                    bool IsInGroup(params string[] controllers) =>
+                        controllers.Any(c => string.Equals(currentController, c, StringComparison.OrdinalIgnoreCase));
+
+                    string GroupOpen(params string[] controllers) =>
+                        IsInGroup(controllers) ? "show" : "";
+
+                    string GroupToggleClass(params string[] controllers) =>
+                        IsInGroup(controllers) ? "" : "collapsed";
+                }
+
+                <nav class="px-2 py-2">
+                    @* ── Home (always visible, standalone) ── *@
+                    <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Home", "Dashboard")" asp-controller="Home" asp-action="Dashboard">
+                        <i class="bi bi-speedometer2 sidebar-icon"></i>
+                        <span>Home</span>
+                    </a>
+
+                    @if (User.IsInRole("SuperAdmin"))
+                    {
+                        @* ── SuperAdmin: Tenants ── *@
+                        <div class="sidebar-group">
+                            <button class="sidebar-group-toggle @GroupToggleClass("Companies")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-tenants" aria-expanded="@(IsInGroup("Companies") ? "true" : "false")">
+                                <i class="bi bi-buildings sidebar-icon"></i>
+                                <span>Tenants</span>
+                                <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
+                            </button>
+                            <div class="collapse @GroupOpen("Companies")" id="nav-tenants">
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Companies")" asp-controller="Companies" asp-action="Index"><i class="bi bi-buildings sidebar-icon"></i><span>Companies</span></a>
+                            </div>
+                        </div>
+
+                        @* ── SuperAdmin: Platform Users ── *@
+                        <div class="sidebar-group">
+                            <button class="sidebar-group-toggle @GroupToggleClass("AdminUsers")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-sa-users" aria-expanded="@(IsInGroup("AdminUsers") ? "true" : "false")">
+                                <i class="bi bi-people-fill sidebar-icon"></i>
+                                <span>Platform Users</span>
+                                <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
+                            </button>
+                            <div class="collapse @GroupOpen("AdminUsers")" id="nav-sa-users">
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("AdminUsers")" asp-controller="AdminUsers" asp-action="Index"><i class="bi bi-people-fill sidebar-icon"></i><span>All Users</span></a>
+                            </div>
+                        </div>
+
+                        @* ── SuperAdmin: Platform Insights ── *@
+                        <div class="sidebar-group">
+                            <button class="sidebar-group-toggle @GroupToggleClass("Audit")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-sa-insights" aria-expanded="@(IsInGroup("Audit") ? "true" : "false")">
+                                <i class="bi bi-shield-check sidebar-icon"></i>
+                                <span>Platform Insights</span>
+                                <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
+                            </button>
+                            <div class="collapse @GroupOpen("Audit")" id="nav-sa-insights">
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Audit")" asp-controller="Audit" asp-action="Index"><i class="bi bi-shield-check sidebar-icon"></i><span>Audit Log</span></a>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                    @* ── Normal tenant users ── *@
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Inventory"))
+                    {
+                        @* ── Inventory ── *@
+                        <div class="sidebar-group">
+                            <button class="sidebar-group-toggle @GroupToggleClass("Stocks","StockTransactions","StockTransfers","Purchases","Items","Warehouses","Stores","Units","Categories","Suppliers")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-inventory" aria-expanded="@(IsInGroup("Stocks","StockTransactions","StockTransfers","Purchases","Items","Warehouses","Stores","Units","Categories","Suppliers") ? "true" : "false")">
+                                <i class="bi bi-box-seam-fill sidebar-icon"></i>
+                                <span>Inventory</span>
+                                <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
+                            </button>
+                            <div class="collapse @GroupOpen("Stocks","StockTransactions","StockTransfers","Purchases","Items","Warehouses","Stores","Units","Categories","Suppliers")" id="nav-inventory">
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Stocks", "Index")" asp-controller="Stocks" asp-action="Index"><i class="bi bi-boxes sidebar-icon"></i><span>Stock On Hand</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("StockTransactions", "Index")" asp-controller="StockTransactions" asp-action="Index"><i class="bi bi-journal-text sidebar-icon"></i><span>Stock Ledger</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("StockTransfers", "Create")" asp-controller="StockTransfers" asp-action="Create"><i class="bi bi-arrow-left-right sidebar-icon"></i><span>Stock Transfer</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Purchases", "Index")" asp-controller="Purchases" asp-action="Index"><i class="bi bi-bag-check sidebar-icon"></i><span>Purchases</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Items", "Index")" asp-controller="Items" asp-action="Index"><i class="bi bi-upc-scan sidebar-icon"></i><span>Items</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Warehouses", "Index")" asp-controller="Warehouses" asp-action="Index"><i class="bi bi-building sidebar-icon"></i><span>Warehouses</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Stores", "Index")" asp-controller="Stores" asp-action="Index"><i class="bi bi-shop sidebar-icon"></i><span>Stores</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Units", "Index")" asp-controller="Units" asp-action="Index"><i class="bi bi-rulers sidebar-icon"></i><span>Units</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Categories", "Index")" asp-controller="Categories" asp-action="Index"><i class="bi bi-diagram-3 sidebar-icon"></i><span>Categories</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Suppliers", "Index")" asp-controller="Suppliers" asp-action="Index"><i class="bi bi-truck sidebar-icon"></i><span>Suppliers</span></a>
+                            </div>
+                        </div>
+                    }
+
+                    @* ── Sales / CRM ── *@
+                    <div class="sidebar-group">
+                        <button class="sidebar-group-toggle @GroupToggleClass("Pos","Invoices","Customers","Loyalty","Coupons","Promotions")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-sales" aria-expanded="@(IsInGroup("Pos","Invoices","Customers","Loyalty","Coupons","Promotions") ? "true" : "false")">
+                            <i class="bi bi-cart3 sidebar-icon"></i>
+                            <span>Sales / CRM</span>
+                            <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
+                        </button>
+                        <div class="collapse @GroupOpen("Pos","Invoices","Customers","Loyalty","Coupons","Promotions")" id="nav-sales">
+                            <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Pos", "NewBill")@ActiveIf("Pos", "Bill")" asp-controller="Pos" asp-action="NewBill"><i class="bi bi-cart3 sidebar-icon"></i><span>POS Billing</span></a>
+                            <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Pos", "Index")" asp-controller="Pos" asp-action="Index"><i class="bi bi-receipt-cutoff sidebar-icon"></i><span>POS Bills</span></a>
+                            <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Pos", "Returns")" asp-controller="Pos" asp-action="Returns"><i class="bi bi-arrow-return-left sidebar-icon"></i><span>Returns</span></a>
+                            <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Invoices", "Index")" asp-controller="Invoices" asp-action="Index"><i class="bi bi-receipt sidebar-icon"></i><span>Invoices</span></a>
+                            <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Customers", "Index")" asp-controller="Customers" asp-action="Index"><i class="bi bi-people sidebar-icon"></i><span>Customers</span></a>
+                            <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Loyalty", "Index")" asp-controller="Loyalty" asp-action="Index"><i class="bi bi-star sidebar-icon"></i><span>Loyalty Cards</span></a>
+                            <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Coupons", "Index")" asp-controller="Coupons" asp-action="Index"><i class="bi bi-tag sidebar-icon"></i><span>Coupons</span></a>
+                            <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Promotions", "Index")" asp-controller="Promotions" asp-action="Index"><i class="bi bi-percent sidebar-icon"></i><span>Promotions</span></a>
+                        </div>
+                    </div>
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("HR"))
+                    {
+                        @* ── People ── *@
+                        <div class="sidebar-group">
+                            <button class="sidebar-group-toggle @GroupToggleClass("Employees")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-people" aria-expanded="@(IsInGroup("Employees") ? "true" : "false")">
+                                <i class="bi bi-person-badge sidebar-icon"></i>
+                                <span>People</span>
+                                <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
+                            </button>
+                            <div class="collapse @GroupOpen("Employees")" id="nav-people">
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Employees", "Index")" asp-controller="Employees" asp-action="Index"><i class="bi bi-person-badge sidebar-icon"></i><span>Employees</span></a>
+                            </div>
+                        </div>
+                    }
+
+                    @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+                    {
+                        @* ── Insights ── *@
+                        <div class="sidebar-group">
+                            <button class="sidebar-group-toggle @GroupToggleClass("Reports","Audit","Eod") @(IsInGroup("Items") && string.Equals(currentAction, "LowStock", StringComparison.OrdinalIgnoreCase) ? "" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-insights" aria-expanded="@(IsInGroup("Reports","Audit","Eod") || (IsInGroup("Items") && string.Equals(currentAction, "LowStock", StringComparison.OrdinalIgnoreCase)) ? "true" : "false")">
+                                <i class="bi bi-graph-up sidebar-icon"></i>
+                                <span>Insights</span>
+                                <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
+                            </button>
+                            <div class="collapse @(IsInGroup("Reports","Audit","Eod") || (IsInGroup("Items") && string.Equals(currentAction, "LowStock", StringComparison.OrdinalIgnoreCase)) ? "show" : "")" id="nav-insights">
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Items", "LowStock")" href="/Items/LowStock"><i class="bi bi-exclamation-triangle sidebar-icon"></i><span>Low Stock</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Reports", "Sales")" href="/Reports/Sales"><i class="bi bi-graph-up sidebar-icon"></i><span>Sales Report</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Audit", "Index")" asp-controller="Audit" asp-action="Index"><i class="bi bi-shield-check sidebar-icon"></i><span>Audit Log</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Eod", "Index")" asp-controller="Eod" asp-action="Index"><i class="bi bi-calendar-check sidebar-icon"></i><span>EOD Reports</span></a>
+                            </div>
+                        </div>
+
+                        @* ── GST & E-Invoice ── *@
+                        <div class="sidebar-group">
+                            <button class="sidebar-group-toggle @GroupToggleClass("GstReports","EInvoices")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-gst" aria-expanded="@(IsInGroup("GstReports","EInvoices") ? "true" : "false")">
+                                <i class="bi bi-file-earmark-ruled sidebar-icon"></i>
+                                <span>GST &amp; E-Invoice</span>
+                                <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
+                            </button>
+                            <div class="collapse @GroupOpen("GstReports","EInvoices")" id="nav-gst">
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("GstReports", "Gstr1")" asp-controller="GstReports" asp-action="Gstr1"><i class="bi bi-file-earmark-ruled sidebar-icon"></i><span>GSTR-1</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("GstReports", "Gstr3B")" asp-controller="GstReports" asp-action="Gstr3B"><i class="bi bi-file-earmark-bar-graph sidebar-icon"></i><span>GSTR-3B</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("GstReports", "HsnSummary")" asp-controller="GstReports" asp-action="HsnSummary"><i class="bi bi-hash sidebar-icon"></i><span>HSN Summary</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("EInvoices", "Index")@ActiveIf("EInvoices", "Details")@ActiveIf("EInvoices", "Generate")" asp-controller="EInvoices" asp-action="Index"><i class="bi bi-file-earmark-check sidebar-icon"></i><span>E-Invoices</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("EInvoices", "EWayBills")@ActiveIf("EInvoices", "EWayBillDetails")@ActiveIf("EInvoices", "GenerateEWayBill")" asp-controller="EInvoices" asp-action="EWayBills"><i class="bi bi-truck sidebar-icon"></i><span>E-Way Bills</span></a>
+                            </div>
+                        </div>
+                    }
+
+                    @if (User.IsInRole("Admin"))
+                    {
+                        @* ── Admin ── *@
+                        <div class="sidebar-group">
+                            <button class="sidebar-group-toggle @GroupToggleClass("BillTemplates","AdminUsers","Sync","BackgroundJobs")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-admin" aria-expanded="@(IsInGroup("BillTemplates","AdminUsers","Sync","BackgroundJobs") ? "true" : "false")">
+                                <i class="bi bi-gear-fill sidebar-icon"></i>
+                                <span>Admin</span>
+                                <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
+                            </button>
+                            <div class="collapse @GroupOpen("BillTemplates","AdminUsers","Sync","BackgroundJobs")" id="nav-admin">
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("BillTemplates", "Index")@ActiveIf("BillTemplates", "Designer")" asp-controller="BillTemplates" asp-action="Index"><i class="bi bi-palette sidebar-icon"></i><span>Bill Templates</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("AdminUsers", "Index")" asp-controller="AdminUsers" asp-action="Index"><i class="bi bi-person-gear sidebar-icon"></i><span>Users</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Sync", "Index")" asp-controller="Sync" asp-action="Index"><i class="bi bi-arrow-repeat sidebar-icon"></i><span>Sync Queue</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("BackgroundJobs", "Index")" asp-controller="BackgroundJobs" asp-action="Index"><i class="bi bi-gear-wide-connected sidebar-icon"></i><span>Background Jobs</span></a>
+                            </div>
+                        </div>
+                    }
+                    } @* end else (non-SuperAdmin) *@
+                </nav>
+
+                <div class="mt-auto px-3 py-3 border-top border-secondary">
+                    <a class="text-white-50 text-decoration-none" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                </div>
+            </aside>
+
+            <div class="app-main flex-grow-1 d-flex flex-column">
+                <header class="app-topbar">
+                    <div class="container-fluid h-100 py-0 d-flex align-items-center gap-3">
+                        <button type="button" id="sidebarToggle" aria-label="Toggle sidebar"
+                                style="flex-shrink:0;border:1px solid #d1d5db;border-radius:.375rem;background:transparent;padding:6px 11px;cursor:pointer;color:#4b5563;line-height:1;">
+                            <i class="bi bi-list fs-5"></i>
+                        </button>
+
+                        <form class="flex-grow-1" asp-controller="Search" asp-action="Index" method="get" style="max-width:560px;">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input class="form-control" name="q"
+                                       placeholder="Search invoices, purchases, items, customers…" />
+                            </div>
+                        </form>
+
+                        <div class="ms-auto">
+                            <partial name="_LoginPartial" />
+                        </div>
+                    </div>
+                </header>
+
+                <main role="main" class="container-fluid py-3 flex-grow-1">
+                    @RenderBody()
+                </main>
+
+                <footer class="app-footer">
+                    <div class="d-flex justify-content-between">
+                        <div>&copy; @DateTime.Now.Year RetailERP</div>
+                        <div>Inventory &bull; Sales &bull; Audit</div>
+                    </div>
+                </footer>
+            </div>
+        </div>
+    }
+    else
+    {
+        <header>
+            <nav class="navbar navbar-expand-lg bg-white border-bottom">
+                <div class="container-xxl">
+                    <a class="navbar-brand fw-semibold" asp-controller="Home" asp-action="Index">
+                        <i class="bi bi-box-seam me-1"></i>RetailERP
+                    </a>
                     <div class="d-flex align-items-center gap-2">
                         <partial name="_LoginPartial" />
                     </div>
                 </div>
-            </div>
-        </nav>
-    </header>
+            </nav>
+        </header>
 
-    <div class="container-xxl py-3">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container-xxl">
-            &copy; 2026 - RetailERP - <a asp-controller="Home" asp-action="Privacy">Privacy</a>
+        <div class="container-xxl py-4">
+            <main role="main" class="pb-3">
+                @RenderBody()
+            </main>
         </div>
-    </footer>
+
+        <footer class="border-top footer text-muted py-3">
+            <div class="container-xxl d-flex justify-content-between">
+                <span>&copy; @DateTime.Now.Year RetailERP</span>
+                <a asp-controller="Home" asp-action="Privacy" class="text-muted">Privacy</a>
+            </div>
+        </footer>
+    }
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>

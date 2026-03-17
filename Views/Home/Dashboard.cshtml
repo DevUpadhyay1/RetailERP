@@ -1,158 +1,100 @@
-﻿@model RetailERP.Models.DashboardVm
+﻿@using Microsoft.AspNetCore.Identity
+@using RetailERP.Data.Identity
+@inject UserManager<ApplicationUser> UserManager
 @{
     ViewData["Title"] = "Dashboard";
 
     var roleLabel =
+        User.IsInRole("SuperAdmin") ? "SuperAdmin" :
         User.IsInRole("Admin") ? "Admin" :
         User.IsInRole("Manager") ? "Manager" :
         User.IsInRole("Inventory") ? "Inventory" :
         User.IsInRole("Cashier") ? "Cashier" :
+        User.IsInRole("Finance") ? "Finance" :
         "User";
+
+    static string InferNiceName(string? displayName, string? userName, string? email, string? fallback)
+    {
+        var preferred = displayName;
+        if (string.IsNullOrWhiteSpace(preferred)) preferred = userName;
+        if (string.IsNullOrWhiteSpace(preferred)) preferred = email;
+        if (string.IsNullOrWhiteSpace(preferred)) preferred = fallback;
+        preferred ??= "";
+        var at = preferred.IndexOf('@');
+        if (at > 0) preferred = preferred[..at];
+        preferred = preferred.Replace('.', ' ').Replace('_', ' ').Trim();
+        return string.IsNullOrWhiteSpace(preferred) ? "User" : preferred;
+    }
+
+    var currentUser = await UserManager.GetUserAsync(User);
+    var displayName = InferNiceName(currentUser?.DisplayName, currentUser?.UserName, currentUser?.Email, User.Identity?.Name);
 }
 
-<div class="d-flex justify-content-between align-items-end mb-3">
+<!-- Page Header -->
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
-        <h2 class="mb-0">Dashboard</h2>
-        <div class="text-muted">Overview of operations</div>
+        <h2 class="mb-0 fw-bold">Welcome back, @displayName</h2>
+        <div class="text-muted small">@DateTime.Now.ToString("dddd, dd MMMM yyyy") &middot; Role: <span class="badge bg-primary">@roleLabel</span></div>
     </div>
-</div>
-
-<div class="alert alert-light border d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
-    <div>
-        <div class="fw-semibold">Welcome, @User.Identity?.Name</div>
-        <div class="text-muted small">Role: @roleLabel</div>
-    </div>
-
-    <div class="d-flex flex-wrap gap-2">
-        @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Cashier"))
+    <div class="d-flex gap-2">
+        @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Cashier") || User.IsInRole("Finance"))
         {
-            <a class="btn btn-sm btn-primary" asp-controller="Invoices" asp-action="Index">New Invoice</a>
+            <a class="btn btn-primary" asp-controller="Invoices" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>New Sale</a>
+            <a class="btn btn-warning" asp-controller="Pos" asp-action="NewBill"><i class="bi bi-cart3 me-1"></i>New POS Bill</a>
         }
-        @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Inventory"))
+        @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Inventory") || User.IsInRole("Finance"))
         {
-            <a class="btn btn-sm btn-outline-primary" asp-controller="Stocks" asp-action="Index">View Stock</a>
-            <a class="btn btn-sm btn-outline-primary" asp-controller="StockTransfers" asp-action="Create">Transfer Stock</a>
+            <a class="btn btn-outline-primary" asp-controller="Purchases" asp-action="Create"><i class="bi bi-bag-plus me-1"></i>New Purchase</a>
         }
-    </div>
-</div>
-
-<div class="row g-3">
-    <div class="col-12 col-md-6 col-xl-3">
-        <div class="card shadow-sm border-0">
-            <div class="card-body">
-                <div class="text-muted small">Items</div>
-                <div class="fs-3 fw-semibold">@Model.ItemsCount</div>
-                <a class="small text-decoration-none" asp-controller="Items" asp-action="Index">Open Items →</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-3">
-        <div class="card shadow-sm border-0">
-            <div class="card-body">
-                <div class="text-muted small">Customers</div>
-                <div class="fs-3 fw-semibold">@Model.CustomersCount</div>
-                <a class="small text-decoration-none" asp-controller="Customers" asp-action="Index">Open Customers →</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-3">
-        <div class="card shadow-sm border-0">
-            <div class="card-body">
-                <div class="text-muted small">Employees</div>
-                <div class="fs-3 fw-semibold">@Model.EmployeesCount</div>
-                <a class="small text-decoration-none" asp-controller="Employees" asp-action="Index">Open Employees →</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-3">
-        <div class="card shadow-sm border-0">
-            <div class="card-body">
-                <div class="text-muted small">Warehouses</div>
-                <div class="fs-3 fw-semibold">@Model.WarehousesCount</div>
-                <a class="small text-decoration-none" asp-controller="Warehouses" asp-action="Index">Open Warehouses →</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-7">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="mb-0">Quick Actions</h5>
-                    <span class="text-muted small">Role-based shortcuts</span>
-                </div>
-
-                <div class="d-flex flex-wrap gap-2">
-                    @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Cashier"))
-                    {
-                        <a class="btn btn-outline-primary" asp-controller="Invoices" asp-action="Index">Invoices</a>
-                    }
-
-                    @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Inventory"))
-                    {
-                        <a class="btn btn-outline-primary" asp-controller="Items" asp-action="Index">Items</a>
-                        <a class="btn btn-outline-primary" asp-controller="Stocks" asp-action="Index">Stock</a>
-                        <a class="btn btn-outline-primary" asp-controller="StockTransfers" asp-action="Create">Transfer</a>
-                    }
-
-                    @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-                    {
-                        <a class="btn btn-outline-primary" asp-controller="Warehouses" asp-action="Index">Warehouses</a>
-                        <a class="btn btn-outline-primary" asp-controller="Customers" asp-action="Index">Customers</a>
-                        <a class="btn btn-outline-primary" asp-controller="Reports" asp-action="Sales">Reports</a>
-                    }
-
-                    @if (User.IsInRole("Admin"))
-                    {
-                        <a class="btn btn-outline-primary" asp-controller="AdminUsers" asp-action="Index">Users</a>
-                    }
-
-                    @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
-                    {
-                        <a class="btn btn-outline-primary" asp-controller="Audit" asp-action="Index">Audit Log</a>
-                    }
-
-                    @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Inventory"))
-                    {
-                        <a class="btn btn-outline-primary" asp-controller="Items" asp-action="LowStock">Low Stock</a>
-                    }
-                </div>
-
-                <div class="text-muted small mt-3">
-                    Tip: Use “Low Stock” for reorder decisions, and “Audit Log” to track invoice posting and stock changes.
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-12 col-lg-5">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <h5 class="mb-2">What to do next</h5>
-
-                <ul class="text-muted small mb-0">
-                    @if (User.IsInRole("Cashier"))
-                    {
-                        <li>Create draft invoice → add lines → post invoice.</li>
-                        <li>Use Reports (if enabled) to verify posted totals.</li>
-                    }
-                    else if (User.IsInRole("Inventory"))
-                    {
-                        <li>Maintain stock rows, adjust stock with reason.</li>
-                        <li>Transfer stock between warehouses when required.</li>
-                        <li>Check Low Stock list for reorder planning.</li>
-                    }
-                    else
-                    {
-                        <li>Maintain master data (Items, Warehouses, Customers).</li>
-                        <li>Review Audit Log for critical actions.</li>
-                        <li>Use Sales Report for daily/weekly summary.</li>
-                    }
-                </ul>
-            </div>
+        <div class="btn-group">
+            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" type="button">Quick Add</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" asp-controller="Items" asp-action="Create"><i class="bi bi-upc-scan me-2"></i>Item</a></li>
+                <li><a class="dropdown-item" asp-controller="Customers" asp-action="Create"><i class="bi bi-person-plus me-2"></i>Customer</a></li>
+                @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Inventory"))
+                {
+                    <li><a class="dropdown-item" asp-controller="Suppliers" asp-action="Create"><i class="bi bi-truck me-2"></i>Supplier</a></li>
+                }
+            </ul>
         </div>
     </div>
 </div>
+
+<!-- Dashboard Toolbar -->
+<div class="dashboard-toolbar">
+    <button id="btn-lock-toggle" class="btn btn-sm btn-outline-dark" title="Lock / Unlock dashboard editing">
+        <i class="bi bi-unlock me-1"></i><span>Lock</span>
+    </button>
+    <button id="btn-add-widget" class="btn btn-sm btn-outline-primary edit-mode-btn"><i class="bi bi-plus-circle me-1"></i>Add Widget</button>
+    <button id="btn-refresh-all" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-clockwise me-1"></i>Refresh All</button>
+    <button id="btn-reset-layout" class="btn btn-sm btn-outline-danger edit-mode-btn"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset Layout</button>
+    <span class="text-muted small ms-2 edit-mode-hint"><i class="bi bi-arrows-move me-1"></i>Drag headers to rearrange &middot; Resize from corners</span>
+</div>
+
+<!-- Gridstack Dashboard Grid -->
+<div class="grid-stack" id="dashboard-grid"></div>
+
+<!-- Widget Picker Sidebar -->
+<div id="widget-picker-overlay" class="widget-picker-overlay"></div>
+<div id="widget-picker" class="widget-picker">
+    <div class="widget-picker-header">
+        <span><i class="bi bi-columns-gap me-2"></i>Add Widget</span>
+        <button id="picker-close" class="btn btn-sm btn-light"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div id="picker-body" class="widget-picker-body"></div>
+</div>
+
+<!-- Antiforgery token for AJAX -->
+@Html.AntiForgeryToken()
+
+@section Styles {
+    <link href="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack.min.css" rel="stylesheet" />
+    <link href="~/css/dashboard.css" rel="stylesheet" />
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack-all.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+    <script src="~/js/dashboard.js"></script>
+}

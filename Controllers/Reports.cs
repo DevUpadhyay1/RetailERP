@@ -5,7 +5,7 @@ using RetailERP.Data;
 
 namespace RetailERP.Controllers;
 
-[Authorize(Roles = "Admin,Manager")]
+[Authorize(Roles = "Admin,Manager,Cashier,Finance,Inventory")]
 public class ReportsController : Controller
 {
     private readonly ApplicationDbContext _db;

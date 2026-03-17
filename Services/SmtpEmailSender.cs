@@ -30,6 +30,18 @@ public sealed class SmtpEmailSender : IEmailSender
 
     public async Task SendEmailAsync(string email, string subject, string htmlMessage)
     {
+        if (string.IsNullOrWhiteSpace(_opts.Host))
+            throw new InvalidOperationException("SMTP Host is not configured (Smtp:Host).");
+
+        var smtpUser = (_opts.User ?? string.Empty).Trim();
+        var smtpPassword = (_opts.Password ?? string.Empty);
+        smtpPassword = string.Concat(smtpPassword.Where(c => !char.IsWhiteSpace(c)));
+
+        if (string.IsNullOrWhiteSpace(smtpUser))
+            throw new InvalidOperationException("SMTP User is not configured (Smtp:User).");
+        if (string.IsNullOrWhiteSpace(smtpPassword))
+            throw new InvalidOperationException("SMTP Password is not configured (Smtp:Password). Use User Secrets or environment variables in development.");
+
         var fromEmail = string.IsNullOrWhiteSpace(_opts.FromEmail) ? _opts.User : _opts.FromEmail;
 
         var message = new MimeMessage();
@@ -42,7 +54,7 @@ public sealed class SmtpEmailSender : IEmailSender
         var secure = _opts.UseStartTls ? SecureSocketOptions.StartTls : SecureSocketOptions.Auto;
 
         await client.ConnectAsync(_opts.Host, _opts.Port, secure);
-        await client.AuthenticateAsync(_opts.User, _opts.Password);
+        await client.AuthenticateAsync(smtpUser, smtpPassword);
         await client.SendAsync(message);
         await client.DisconnectAsync(true);
     }
