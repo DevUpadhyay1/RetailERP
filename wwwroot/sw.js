@@ -40,6 +40,9 @@ self.addEventListener('fetch', event => {
 
     if (request.method !== 'GET') return;
 
+    // Ignore non-http(s) schemes (chrome-extension://, etc.)
+    if (!request.url.startsWith('http')) return;
+
     // API calls: network-first, no cache fallback
     if (request.url.includes('/api/')) {
         event.respondWith(

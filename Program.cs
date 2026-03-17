@@ -382,7 +382,7 @@ try
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
             "font-src 'self' https://cdn.jsdelivr.net data:; " +
             "img-src 'self' data: https://rzp.io https://lumberjack.razorpay.com; " +
-            "connect-src 'self' wss: ws: https://api.razorpay.com https://lumberjack.razorpay.com; " +
+            "connect-src 'self' wss: ws: https://cdn.jsdelivr.net https://api.razorpay.com https://lumberjack.razorpay.com; " +
             "frame-src https://api.razorpay.com https://checkout.razorpay.com; " +
             "frame-ancestors 'none';");
         await next();
