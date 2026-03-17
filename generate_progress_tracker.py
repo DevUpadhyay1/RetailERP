@@ -84,7 +84,7 @@ SPRINTS = [
     ("Sprint 8", "GST Reports + E-Invoice", "GSTR-1, GSTR-3B auto-generation, E-Invoice IRN, E-Way Bill", "✅ COMPLETED"),
     ("Sprint 9", "SignalR + Background Jobs", "Real-time POS updates, BackgroundService workers, async email/sync", "✅ COMPLETED"),
     ("Sprint 10", "PWA Offline Mode", "Service worker, IndexedDB, offline POS billing, auto-sync on reconnect", "✅ COMPLETED"),
-    ("Sprint 11", "SMS / WhatsApp / Email", "WhatsApp receipts, SMS alerts, promotional campaigns, templates", "🔲 NOT STARTED"),
+    ("Sprint 11", "SMS / WhatsApp / Email", "WhatsApp receipts, SMS alerts, promotional campaigns, templates", "✅ COMPLETED"),
     ("Sprint 12", "Barcode Printing + 2FA", "Barcode/QR label printing, TOTP two-factor authentication", "🔲 NOT STARTED"),
     ("Sprint 13", "AI Forecasting + Reorder", "ML.NET sales prediction, auto-reorder suggestions, anomaly detection", "🔲 NOT STARTED"),
     ("Sprint 14", "Customer & Supplier Portals", "Self-service portals, purchase history, online returns, PO management", "🔲 NOT STARTED"),
@@ -645,6 +645,60 @@ SPRINT10 = [
 ]
 
 add_table(["Feature", "What Was Done", "Benefit"], SPRINT10)
+
+# ── SPRINT 11 ──
+doc.add_page_break()
+doc.add_heading("Sprint 11 — SMS / WhatsApp / Email Notifications (Completed)", level=1)
+doc.add_paragraph(
+    "Sprint 11 adds multi-channel notification capabilities: SMS via Twilio, WhatsApp via Meta Cloud API, "
+    "and enhanced email. Includes reusable templates with placeholders, promotional campaigns, "
+    "auto-receipts on bill completion, and a full notification log with delivery tracking."
+)
+
+SPRINT11 = [
+    ("SmsService (Twilio REST API)",
+     "HttpClient-based Twilio SMS integration. Basic Auth with AccountSid:AuthToken. "
+     "Auto-prepends +91 for Indian numbers. Falls back to simulated logging when Twilio not configured. "
+     "TwilioOptions bound from appsettings/User Secrets.",
+     "SMS alerts and receipts to customers. Works in production with Twilio credentials, "
+     "simulates in development for testing."),
+    ("WhatsAppService (Meta Cloud API)",
+     "HttpClient-based Meta Graph API v18.0 integration. Sends text messages to WhatsApp numbers. "
+     "WhatsAppOptions with PhoneNumberId and AccessToken. Falls back to simulated logging. "
+     "Auto-formats Indian phone numbers (adds 91 prefix).",
+     "WhatsApp receipts and promotional messages. Most popular messaging app in India — "
+     "higher engagement than SMS."),
+    ("NotificationTemplate Entity",
+     "Reusable templates with: Name, Channel (Sms/WhatsApp/Email), Category (BillReceipt/PaymentConfirmation/"
+     "LoyaltyUpdate/Promotional/LowStockAlert/Custom), Subject, Body with placeholders. Tenant-scoped.",
+     "Each company creates their own branded message templates. Placeholders auto-replaced at send time."),
+    ("NotificationLog Entity",
+     "Tracks every notification: Channel, Recipient, Subject, Body, Status (Queued/Sent/Failed), "
+     "ErrorMessage, ExternalId (Twilio/Meta message ID), linked Customer and reference (PosBill/Invoice). Tenant-scoped.",
+     "Complete audit trail. See delivery status for every SMS, WhatsApp, and Email sent."),
+    ("NotificationService (Orchestrator)",
+     "Central service that: sends via template with placeholder replacement, sends direct messages, "
+     "auto-sends bill receipts (SMS + WhatsApp + Email), runs promotional campaigns to customer lists. "
+     "Async fire-and-forget delivery with status logging.",
+     "One service handles all notification channels. Bill receipts sent automatically. "
+     "Campaigns reach all customers with one click."),
+    ("NotificationsController + 6 Views",
+     "Notification Log (index with filter by channel/status/search, KPI cards for Sent/Failed/Queued). "
+     "Templates CRUD (Create/Edit/Delete with channel and category selectors). "
+     "Quick Send (single notification to any recipient). Campaign (bulk send to customer groups "
+     "with target filters: all, with phone, with email).",
+     "Complete notification management UI. Admin can monitor delivery, manage templates, "
+     "send individual messages, and run campaigns."),
+    ("Sidebar Navigation",
+     "Added Notifications section in sidebar with: Notification Log, Templates, Quick Send, Campaign links.",
+     "Easy access to all notification features from the main navigation."),
+    ("Configuration (appsettings.json)",
+     "Added Twilio section (AccountSid, AuthToken, FromNumber, IsEnabled) and WhatsApp section "
+     "(PhoneNumberId, AccessToken, IsEnabled). Credentials set via User Secrets, IsEnabled=false by default.",
+     "Secure credential management. Services gracefully fall back when not configured."),
+]
+
+add_table(["Feature", "What Was Done", "Benefit"], SPRINT11)
 
 # ═══════════════════════════════════════════════════════════════
 # SPRINT 1 — TESTING GUIDE
@@ -1622,7 +1676,7 @@ doc.add_heading("Cumulative Feature Summary", level=1)
 
 total_features = (len(PRE_SPRINT) + len(SPRINT1) + len(SPRINT2) + len(SPRINT3)
                   + len(SPRINT4) + len(SPRINT5) + len(SPRINT6) + len(SPRINT7)
-                  + len(SPRINT8) + len(SPRINT9) + len(SPRINT10))
+                  + len(SPRINT8) + len(SPRINT9) + len(SPRINT10) + len(SPRINT11))
 doc.add_paragraph(f"Total features implemented as of {datetime.date.today().strftime('%B %d, %Y')}: {total_features}+")
 doc.add_paragraph()
 
@@ -1647,6 +1701,7 @@ add_table(["Category", "Count"], [
     ["Bill Template Designer", "WYSIWYG SortableJS + QuestPDF (58mm/80mm thermal + A4/A5)"],
     ["POS Features", "Enterprise POS v3, FIFO stock deduction, hold/unhold, line/bill discounts"],
     ["PWA Offline Mode", "Service Worker, IndexedDB, offline POS billing, auto-sync on reconnect, item cache"],
+    ["Notifications", "SMS (Twilio), WhatsApp (Meta API), Email — templates, campaigns, auto-receipts, delivery log"],
     ["Chart Types", "5 (Line, Bar, Doughnut, Pie, Horizontal Bar)"],
     ["JS Libraries (CDN)", "Gridstack.js v10.3.1, Chart.js 4.4.1, SortableJS 1.15.6, SignalR"],
     ["NuGet Packages", "Serilog, Redis, JwtBearer, Swashbuckle, QuestPDF, HealthChecks.SqlServer"],
