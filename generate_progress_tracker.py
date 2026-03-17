@@ -79,10 +79,10 @@ SPRINTS = [
     ("Sprint 3", "Customizable Dashboard", "Drag-and-drop widget-based dashboard, per-user layout, Gridstack.js, lock/unlock", "✅ COMPLETED"),
     ("Sprint 4", "Multi-Tenant + Redis Cache", "ITenantEntity, EF global query filters, SuperAdmin role, CacheService (Redis + fallback), Companies CRUD", "✅ COMPLETED"),
     ("Sprint 5", "REST API + JWT Auth", "Full REST API layer, JWT tokens, Swagger docs, mobile-ready", "✅ COMPLETED"),
-    ("Sprint 6", "Bill Template Designer", "Visual bill/receipt designer, QuestPDF, thermal printer support", "🔲 NOT STARTED"),
-    ("Sprint 7", "Expiry + Discount Engine", "Batch expiry tracking, FIFO, BOGO, happy-hour, combo deals", "🔲 NOT STARTED"),
-    ("Sprint 8", "GST Reports + E-Invoice", "GSTR-1, GSTR-3B auto-generation, E-Invoice IRN, E-Way Bill", "🔲 NOT STARTED"),
-    ("Sprint 9", "SignalR + Background Jobs", "Real-time POS updates, Hangfire job processing, async email/sync", "🔲 NOT STARTED"),
+    ("Sprint 6", "Bill Template Designer", "Visual bill/receipt designer, QuestPDF, thermal printer support, POS v3 redesign", "✅ COMPLETED"),
+    ("Sprint 7", "Expiry + Discount Engine", "Batch expiry tracking, FIFO, BOGO, happy-hour, combo deals, hold/unhold bills", "✅ COMPLETED"),
+    ("Sprint 8", "GST Reports + E-Invoice", "GSTR-1, GSTR-3B auto-generation, E-Invoice IRN, E-Way Bill", "✅ COMPLETED"),
+    ("Sprint 9", "SignalR + Background Jobs", "Real-time POS updates, BackgroundService workers, async email/sync", "✅ COMPLETED"),
     ("Sprint 10", "PWA Offline Mode", "Service worker, IndexedDB, offline POS billing, auto-sync on reconnect", "🔲 NOT STARTED"),
     ("Sprint 11", "SMS / WhatsApp / Email", "WhatsApp receipts, SMS alerts, promotional campaigns, templates", "🔲 NOT STARTED"),
     ("Sprint 12", "Barcode Printing + 2FA", "Barcode/QR label printing, TOTP two-factor authentication", "🔲 NOT STARTED"),
@@ -438,6 +438,157 @@ SPRINT5 = [
 ]
 
 add_table(["Feature", "What Was Done", "Benefit"], SPRINT5)
+
+# ── SPRINT 6 ──
+doc.add_page_break()
+doc.add_heading("Sprint 6 — Bill Template Designer + POS Redesign (Completed)", level=1)
+doc.add_paragraph(
+    "Sprint 6 adds a visual WYSIWYG bill template designer using SortableJS for "
+    "drag-and-drop element arrangement, QuestPDF for thermal/A4 PDF generation, "
+    "and a complete POS billing screen redesign (v1→v2→v3) inspired by enterprise POS systems."
+)
+
+SPRINT6 = [
+    ("WYSIWYG Bill Template Designer",
+     "Visual drag-and-drop designer built with SortableJS v1.15.6. Users arrange template "
+     "elements (Header, Text, Divider, ItemTable, TotalsBlock, Footer, Barcode) via drag handles. "
+     "Live preview updates in real-time. BillTemplatesController with full CRUD + Designer view.",
+     "Non-technical users can customize bill layouts without code. Each company can have unique branded receipts."),
+    ("ReceiptPdfService (QuestPDF)",
+     "Complete PDF generation service using QuestPDF 2024.3.0. Renders bill templates from "
+     "{type, props} JSON format. Supports thermal printer widths (58mm, 80mm) and A4/A5 paper.",
+     "Professional PDF receipts generated server-side. Thermal printer support enables direct printing at POS counters."),
+    ("POS v1→v2→v3 Redesign",
+     "Three iterative redesigns: v1 (professional two-panel layout), v2 (session-based auto-next bill), "
+     "v3 (enterprise-grade with dark gradient topbar, color-coded payment buttons, scan readout fields, "
+     "F10 checkout shortcut, hold/unhold bills, loyalty+coupon inline inputs). pos.css 530+ lines.",
+     "Enterprise-grade POS aesthetics matching professional retail software. Continuous billing sessions."),
+    ("PDF Preview & Download",
+     "Preview PDF in browser before printing. Download PDF button on completed bill receipts.",
+     "Cashiers can preview before printing to avoid paper waste. Digital receipts for email/WhatsApp sharing."),
+    ("Bug Fixes Sprint",
+     "Fixed: Dashboard KPI scrollbars, API dual auth (Cookie+JWT), TenantProvider 404, barcode double-price, "
+     "Preview PDF font error, SetDefault duplicate key, NewBill duplicate BillNo, sidebar navigation links.",
+     "Stable multi-tenant operation. Reliable barcode scanning, PDF generation, and bill creation."),
+]
+
+add_table(["Feature", "What Was Done", "Benefit"], SPRINT6)
+
+# ── SPRINT 7 ──
+doc.add_page_break()
+doc.add_heading("Sprint 7 — Expiry + Discount Engine (Completed)", level=1)
+doc.add_paragraph(
+    "Sprint 7 adds a full promotion/discount engine (BOGO, happy-hour, combos, flat discounts), "
+    "batch expiry tracking with FIFO stock deduction, hold/unhold bills, and line/bill-level discounts."
+)
+
+SPRINT7 = [
+    ("Promotion Entity & Service",
+     "Promotion entity with 6 types: FlatPercent, FlatAmount, BOGO, BuyXGetY, ComboDiscount, HappyHour. "
+     "PromotionService with ApplyPromotionsAsync, GetApplicablePromotionsAsync, ApplyBogo, ApplyCombo. "
+     "Priority-based application with exclusive promotion support.",
+     "Complete discount engine covering all common retail promotion scenarios."),
+    ("PromotionsController + Views",
+     "Full CRUD: Index (search/sort/paginate), Create, Edit, Details, ToggleActive, Delete. "
+     "ActiveList AJAX endpoint for POS integration. Views with dropdowns for items/categories.",
+     "Admin/Manager can manage promotions from the UI. POS auto-applies applicable promotions."),
+    ("Batch Expiry Tracking",
+     "Added BatchNumber, ManufactureDate, ExpiryDate fields to Stock entity. "
+     "Expiring-items dashboard widget shows stock expiring within 90 days with days-left countdown.",
+     "Critical for grocery/pharma retail. Managers see at-a-glance which stock is about to expire."),
+    ("FIFO Stock Deduction",
+     "PosBillingService.CompleteBillAsync uses FIFO: deducts from oldest expiry date first, then oldest "
+     "manufacture date, then oldest created. Multiple batches consumed per line if needed.",
+     "Oldest stock sold first. Reduces expired stock waste. Compliant with accounting best practices."),
+    ("Hold / Unhold Bills",
+     "HoldBillAsync (Status=4), UnholdBillAsync (back to Status=1), GetHeldBillsAsync for 'Pop Hold Bills' UI. "
+     "Cashier can park a bill and serve another customer, then resume.",
+     "Essential retail feature. No lost sales when customer steps away temporarily."),
+    ("Line-Level & Bill-Level Discounts",
+     "SetLineDiscountAsync (per-line discount %), SetAddDiscountAsync (bill-level %), SetAddChargeAsync (bill-level charge %). "
+     "RecalcTotals handles all discount layers + round-off calculation.",
+     "Flexible discounting at both item and bill level. Round-off to nearest rupee."),
+    ("Promotions API (REST)",
+     "API controller at /api/v1/promotions with GET (list + pagination + search), GET by ID, GET /active (current promotions).",
+     "Mobile apps and third-party integrations can access promotion data."),
+]
+
+add_table(["Feature", "What Was Done", "Benefit"], SPRINT7)
+
+# ── SPRINT 8 ──
+doc.add_page_break()
+doc.add_heading("Sprint 8 — GST Reports + E-Invoice (Completed)", level=1)
+doc.add_paragraph(
+    "Sprint 8 adds Indian GST compliance: GSTR-1 and GSTR-3B report auto-generation, "
+    "E-Invoice IRN generation, and E-Way Bill support."
+)
+
+SPRINT8 = [
+    ("GstReportService",
+     "Complete service with GetB2BAsync (Table 4A), GetB2CSAsync (Table 7), GetHsnSummaryAsync (Table 12), "
+     "GetGstr3BAsync (outward supplies, ITC, net tax). Date-range filtering.",
+     "Auto-generates GST return data. No manual calculation needed for filing."),
+    ("GstReportsController + Views",
+     "Gstr1 action (B2B + B2CS + HSN tables), Gstr3B action (summary return), HsnSummary action. "
+     "Razor views with print-friendly layouts and export-ready tables.",
+     "Manager/Finance can generate GST reports directly from the app. Print or export for filing."),
+    ("E-Invoice Service",
+     "EInvoiceService with GenerateForPosBillAsync, GenerateForInvoiceAsync, CancelAsync. "
+     "IRN generated via SHA-256 hash of SupplierGSTIN + DocNo + FY. Simulated ACK number.",
+     "E-Invoice compliance for B2B invoices. IRN and QR code on every invoice."),
+    ("EInvoice Entity + E-Way Bill Entity",
+     "EInvoice entity (Irn, AckNo, SignedInvoice, SignedQrCode, Status). "
+     "EWayBill entity (EwbNo, transport fields, validity). Both tenant-scoped.",
+     "Full audit trail for compliance. E-Way Bills for inter-state transfers > ₹50,000."),
+    ("EInvoicesController + Views",
+     "Index (list with search/filter), Details, Generate, Cancel actions. "
+     "E-Way Bill generation and cancellation. Status tracking (Active/Cancelled).",
+     "Complete E-Invoice and E-Way Bill lifecycle management from the UI."),
+]
+
+add_table(["Feature", "What Was Done", "Benefit"], SPRINT8)
+
+# ── SPRINT 9 ──
+doc.add_page_break()
+doc.add_heading("Sprint 9 — SignalR + Background Jobs (Completed)", level=1)
+doc.add_paragraph(
+    "Sprint 9 adds real-time updates via SignalR and background job processing using "
+    ".NET BackgroundService/IHostedService for async email, stock alerts, sync queue, and EOD reports."
+)
+
+SPRINT9 = [
+    ("SignalR Hub (RetailHub)",
+     "RetailHub.cs with company-group-based broadcasting. Clients join company group on connect. "
+     "Events: BillCompleted, InvoicePosted, StockAlert, EodReportGenerated. "
+     "Mapped at /hubs/retail in Program.cs.",
+     "Real-time dashboard updates. When cashier completes a bill, manager's dashboard refreshes live."),
+    ("EmailSenderWorker",
+     "BackgroundService that drains EmailQueueService (Channel<T>). Processes queued emails asynchronously. "
+     "Retry logic with exponential backoff.",
+     "Email sending never blocks the main request. Bills complete instantly, emails sent in background."),
+    ("StockAlertWorker",
+     "Periodic BackgroundService that checks for low-stock items every 15 minutes. "
+     "Broadcasts StockAlert via SignalR to company group when stock falls below reorder level.",
+     "Managers get instant low-stock notifications on their dashboard without refreshing."),
+    ("SyncQueueWorker",
+     "BackgroundService that processes offline sync queue entries. "
+     "Resolves pending SyncLog records and applies changes from offline POS devices.",
+     "Foundation for offline-first POS. Sync operations happen asynchronously without blocking."),
+    ("EodAutoWorker",
+     "BackgroundService that auto-generates EOD (End of Day) reports at configurable time. "
+     "Creates EodReport records for each store with daily totals.",
+     "No manual EOD trigger needed. Reports auto-generated daily for cash reconciliation."),
+    ("BackgroundJobsController",
+     "Monitoring view showing status of all background workers. "
+     "Displays queue depths, last run times, and error counts.",
+     "Admin can monitor background job health from the UI."),
+    ("Dashboard SignalR Integration",
+     "dashboard.js initSignalR() connects to /hubs/retail. Listens for BillCompleted, InvoicePosted, "
+     "StockAlert events. Auto-refreshes affected widgets on event receipt.",
+     "Live dashboard — no manual refresh needed. KPIs update in real-time as transactions happen."),
+]
+
+add_table(["Feature", "What Was Done", "Benefit"], SPRINT9)
 
 # ═══════════════════════════════════════════════════════════════
 # SPRINT 1 — TESTING GUIDE
@@ -1413,30 +1564,35 @@ add_table(["Credential", "Value"], RZP_TEST)
 doc.add_page_break()
 doc.add_heading("Cumulative Feature Summary", level=1)
 
-total_features = len(PRE_SPRINT) + len(SPRINT1) + len(SPRINT2) + len(SPRINT3) + len(SPRINT4) + len(SPRINT5)
-doc.add_paragraph(f"Total features implemented as of {datetime.date.today().strftime('%B %d, %Y')}: {total_features}")
+total_features = (len(PRE_SPRINT) + len(SPRINT1) + len(SPRINT2) + len(SPRINT3)
+                  + len(SPRINT4) + len(SPRINT5) + len(SPRINT6) + len(SPRINT7)
+                  + len(SPRINT8) + len(SPRINT9))
+doc.add_paragraph(f"Total features implemented as of {datetime.date.today().strftime('%B %d, %Y')}: {total_features}+")
 doc.add_paragraph()
 
 add_table(["Category", "Count"], [
     ["Foundation & CRUD Modules", "8 phases"],
-    ["Entities (DB Tables)", "29+ (20 ITenantEntity, Company, UserDashboardLayout, BusinessType, RefreshToken)"],
-    ["Controllers", "29 (18 MVC + 11 API controllers)"],
-    ["Views (Razor Pages)", "84+ (Dashboard + 4 Companies views)"],
-    ["Services (Business Logic)", "15 (+JwtTokenService)"],
-    ["API Endpoints", "30+ REST endpoints across 11 API controllers"],
-    ["Security Enhancements", "5 (Sprint 1) + 1 Antiforgery fix + Multi-Tenant Isolation + JWT Bearer Auth"],
-    ["Payment Gateway Integration", "1 (Razorpay — Sprint 2)"],
+    ["Entities (DB Tables)", "36+ (22 ITenantEntity, Company, UserDashboardLayout, RefreshToken, BillTemplate, "
+     "Promotion, EInvoice, EWayBill, etc.)"],
+    ["Controllers", "31 MVC + 14 API = 45 total"],
+    ["Views (Razor Pages)", "134+"],
+    ["Services (Business Logic)", "24 (including BackgroundJobs)"],
+    ["API Endpoints", "40+ REST endpoints across 14 API controllers"],
+    ["Security Enhancements", "Rate limiting, CSRF, CSP, Serilog, Health checks, Multi-Tenant, JWT"],
+    ["Payment Gateway Integration", "Razorpay (UPI/Card/NetBanking/Wallet) — Sprint 2"],
     ["Multi-Tenant Architecture", "EF global query filters, auto-stamp, claims-based tenant resolution"],
     ["Distributed Caching", "Redis (StackExchange.Redis) with automatic in-memory fallback"],
-    ["Dashboard Widgets", "25 (15 KPI, 5 Charts, 5 Tables)"],
+    ["Dashboard Widgets", "25 (15 KPI, 5 Charts, 5 Tables) with real-time SignalR updates"],
     ["Business Type Presets", "9 (Other, Kirana, Supermarket, Hardware, Pharmacy, Fashion, Restaurant, Chain, Franchise)"],
+    ["Promotion Types", "6 (FlatPercent, FlatAmount, BOGO, BuyXGetY, ComboDiscount, HappyHour)"],
+    ["GST Compliance", "GSTR-1, GSTR-3B, HSN Summary, E-Invoice IRN, E-Way Bill"],
+    ["Real-Time Updates", "SignalR hub with company-group broadcasting"],
+    ["Background Workers", "4 (EmailSender, StockAlert, SyncQueue, EodAuto)"],
+    ["Bill Template Designer", "WYSIWYG SortableJS + QuestPDF (58mm/80mm thermal + A4/A5)"],
+    ["POS Features", "Enterprise POS v3, FIFO stock deduction, hold/unhold, line/bill discounts"],
     ["Chart Types", "5 (Line, Bar, Doughnut, Pie, Horizontal Bar)"],
-    ["JS Libraries (CDN)", "Gridstack.js v10.3.1, Chart.js 4.4.1"],
-    ["DB Migrations", "Sprint2_Razorpay_Payment_Fields, Sprint3_Dashboard_Widgets, Sprint4_MultiTenant_Redis, "
-     "Sprint4_TenantScopedUniqueIndexes, Sprint4_1_SuperAdmin_Enhancements, Sprint5_JWT_RefreshTokens"],
-    ["NuGet Packages Added", "Serilog.AspNetCore, Serilog.Enrichers.Environment, HealthChecks.SqlServer, "
-     "Microsoft.Extensions.Caching.StackExchangeRedis, StackExchange.Redis, "
-     "Microsoft.AspNetCore.Authentication.JwtBearer, Swashbuckle.AspNetCore"],
+    ["JS Libraries (CDN)", "Gridstack.js v10.3.1, Chart.js 4.4.1, SortableJS 1.15.6, SignalR"],
+    ["NuGet Packages", "Serilog, Redis, JwtBearer, Swashbuckle, QuestPDF, HealthChecks.SqlServer"],
     ["Roles", "7 (SuperAdmin, Admin, Manager, Cashier, Inventory, Finance, HR)"],
     ["Authentication Schemes", "2 (Cookie for MVC views + JWT Bearer for REST API)"],
     ["API Documentation", "Swagger UI at /swagger with JWT security definition"],
