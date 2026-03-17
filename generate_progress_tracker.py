@@ -83,7 +83,7 @@ SPRINTS = [
     ("Sprint 7", "Expiry + Discount Engine", "Batch expiry tracking, FIFO, BOGO, happy-hour, combo deals, hold/unhold bills", "✅ COMPLETED"),
     ("Sprint 8", "GST Reports + E-Invoice", "GSTR-1, GSTR-3B auto-generation, E-Invoice IRN, E-Way Bill", "✅ COMPLETED"),
     ("Sprint 9", "SignalR + Background Jobs", "Real-time POS updates, BackgroundService workers, async email/sync", "✅ COMPLETED"),
-    ("Sprint 10", "PWA Offline Mode", "Service worker, IndexedDB, offline POS billing, auto-sync on reconnect", "🔲 NOT STARTED"),
+    ("Sprint 10", "PWA Offline Mode", "Service worker, IndexedDB, offline POS billing, auto-sync on reconnect", "✅ COMPLETED"),
     ("Sprint 11", "SMS / WhatsApp / Email", "WhatsApp receipts, SMS alerts, promotional campaigns, templates", "🔲 NOT STARTED"),
     ("Sprint 12", "Barcode Printing + 2FA", "Barcode/QR label printing, TOTP two-factor authentication", "🔲 NOT STARTED"),
     ("Sprint 13", "AI Forecasting + Reorder", "ML.NET sales prediction, auto-reorder suggestions, anomaly detection", "🔲 NOT STARTED"),
@@ -589,6 +589,62 @@ SPRINT9 = [
 ]
 
 add_table(["Feature", "What Was Done", "Benefit"], SPRINT9)
+
+# ── SPRINT 10 ──
+doc.add_page_break()
+doc.add_heading("Sprint 10 — PWA Offline Mode (Completed)", level=1)
+doc.add_paragraph(
+    "Sprint 10 adds Progressive Web App capabilities: the app can be installed on any device's "
+    "home screen, works offline using Service Worker + IndexedDB, and auto-syncs offline POS bills "
+    "when the connection is restored."
+)
+
+SPRINT10 = [
+    ("Web App Manifest (manifest.json)",
+     "Created manifest.json with app name, theme color (#1e3a5f), display: standalone, "
+     "PWA icons (192px + 512px). Added manifest link, theme-color meta, and apple-touch-icon to _Layout.cshtml.",
+     "App installable on mobile/tablet home screen. Launches in standalone mode without browser chrome."),
+    ("Service Worker (sw.js)",
+     "Network-first for navigation (falls back to cached pages or offline.html). "
+     "Cache-first for static assets (CSS, JS, images). Network-only for API calls with offline JSON fallback. "
+     "Auto-cleans old cache versions on activate. Listens for Background Sync events.",
+     "App shell loads instantly from cache. Works offline. Static assets never re-downloaded unnecessarily."),
+    ("Offline Fallback Page (offline.html)",
+     "Beautiful branded offline page with RetailERP theme. Displays 'You're Offline' message with "
+     "retry button and note about offline POS bill sync.",
+     "Professional offline experience instead of browser's default 'No Internet' page."),
+    ("Online/Offline Detection UI",
+     "NetworkStatus module detects online/offline events. Shows green banner when back online, "
+     "red banner when offline. Auto-triggers sync on reconnect. Banner auto-hides after 4 seconds.",
+     "Users always know their connectivity status. No confusion about whether data was saved."),
+    ("IndexedDB Offline Storage (OfflineDB)",
+     "Three object stores: offlineBills (pending POS bills), offlineItems (item catalog cache), "
+     "syncQueue (general sync entries). Full CRUD operations with status indexing. "
+     "Supports bill save, update, delete, and status tracking (pending/synced).",
+     "Complete local database for offline operation. Bills survive browser restart. "
+     "Item catalog cached for offline barcode lookup."),
+    ("Item Cache Pre-Loader",
+     "ItemCacheLoader fetches all active items via /Pos/AllItems on app load (when online). "
+     "Stores in IndexedDB offlineItems store. Enables offline barcode/SKU lookup. "
+     "PosController.AllItems endpoint returns compact item data (id, sku, barcode, name, price, unit, category).",
+     "Cashier can scan barcodes and look up items even when offline. "
+     "Prices and tax rates available locally."),
+    ("Auto-Sync on Reconnect (OfflineSync)",
+     "OfflineSync module detects reconnect via online event. Iterates all pending offline bills, "
+     "POSTs each to /Sync/QueueChange with device ID, entity type, and full bill payload. "
+     "Updates bill status to 'synced' on success. Shows sync result count in green banner. "
+     "Unique device ID generated and persisted in localStorage.",
+     "Zero manual intervention. Offline bills sync automatically when internet returns. "
+     "Device tracking enables audit trail for offline operations."),
+    ("PWA Script Integration",
+     "pwa.js loaded on every page via _Layout.cshtml. Registers Service Worker, "
+     "initializes NetworkStatus, opens IndexedDB, pre-caches items. "
+     "Exposes window.RetailERP.OfflineDB, OfflineSync, NetworkStatus for POS page use.",
+     "PWA capabilities available app-wide. POS billing page can use OfflineDB directly "
+     "for creating offline bills."),
+]
+
+add_table(["Feature", "What Was Done", "Benefit"], SPRINT10)
 
 # ═══════════════════════════════════════════════════════════════
 # SPRINT 1 — TESTING GUIDE
@@ -1566,7 +1622,7 @@ doc.add_heading("Cumulative Feature Summary", level=1)
 
 total_features = (len(PRE_SPRINT) + len(SPRINT1) + len(SPRINT2) + len(SPRINT3)
                   + len(SPRINT4) + len(SPRINT5) + len(SPRINT6) + len(SPRINT7)
-                  + len(SPRINT8) + len(SPRINT9))
+                  + len(SPRINT8) + len(SPRINT9) + len(SPRINT10))
 doc.add_paragraph(f"Total features implemented as of {datetime.date.today().strftime('%B %d, %Y')}: {total_features}+")
 doc.add_paragraph()
 
@@ -1590,6 +1646,7 @@ add_table(["Category", "Count"], [
     ["Background Workers", "4 (EmailSender, StockAlert, SyncQueue, EodAuto)"],
     ["Bill Template Designer", "WYSIWYG SortableJS + QuestPDF (58mm/80mm thermal + A4/A5)"],
     ["POS Features", "Enterprise POS v3, FIFO stock deduction, hold/unhold, line/bill discounts"],
+    ["PWA Offline Mode", "Service Worker, IndexedDB, offline POS billing, auto-sync on reconnect, item cache"],
     ["Chart Types", "5 (Line, Bar, Doughnut, Pie, Horizontal Bar)"],
     ["JS Libraries (CDN)", "Gridstack.js v10.3.1, Chart.js 4.4.1, SortableJS 1.15.6, SignalR"],
     ["NuGet Packages", "Serilog, Redis, JwtBearer, Swashbuckle, QuestPDF, HealthChecks.SqlServer"],
