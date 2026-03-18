@@ -1,0 +1,129 @@
+@model List<RetailERP.Data.Entities.Item>
+@{ ViewData["Title"] = "Barcode Label Printing"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0"><i class="bi bi-upc-scan"></i> Barcode / QR Label Printing</h4>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto">
+        <input name="q" class="form-control form-control-sm" placeholder="Search items..." value="@ViewBag.Q" />
+    </div>
+    <div class="col-auto">
+        <select name="categoryId" class="form-select form-select-sm">
+            <option value="">All Categories</option>
+            @foreach (var cat in (List<RetailERP.Data.Entities.Category>)ViewBag.Categories)
+            {
+                <option value="@cat.CategoryId" selected="@(ViewBag.CategoryId?.ToString() == cat.CategoryId.ToString())">@cat.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i> Search</button>
+    </div>
+</form>
+
+<form asp-action="GeneratePdf" method="post">
+    @Html.AntiForgeryToken()
+
+    <div class="card mb-3">
+        <div class="card-header bg-dark text-white">
+            <strong>Label Settings</strong>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label">Paper Size</label>
+                    <select name="paperSize" class="form-select form-select-sm" id="paperSize">
+                        <option value="Thermal">Thermal (per label)</option>
+                        <option value="A4" selected>A4 Sheet</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Columns (A4)</label>
+                    <input name="columns" type="number" class="form-control form-control-sm" value="3" min="1" max="5" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Label W (mm)</label>
+                    <input name="labelWidth" type="number" class="form-control form-control-sm" value="50" step="1" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Label H (mm)</label>
+                    <input name="labelHeight" type="number" class="form-control form-control-sm" value="30" step="1" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Font Size</label>
+                    <input name="fontSize" type="number" class="form-control form-control-sm" value="8" min="5" max="16" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Copies Each</label>
+                    <input name="copies" type="number" class="form-control form-control-sm" value="1" min="1" max="100" />
+                </div>
+            </div>
+            <div class="row g-3 mt-1">
+                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showName" value="true" checked /><label class="form-check-label">Item Name</label></div></div>
+                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showSku" value="true" checked /><label class="form-check-label">SKU</label></div></div>
+                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showBarcode" value="true" checked /><label class="form-check-label">Barcode</label></div></div>
+                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showQrCode" value="true" checked /><label class="form-check-label">QR Code</label></div></div>
+                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showPrice" value="true" checked /><label class="form-check-label">Price/MRP</label></div></div>
+                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showExpiry" value="true" /><label class="form-check-label">Expiry Date</label></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th><input type="checkbox" id="selectAll" /></th>
+                    <th>SKU</th>
+                    <th>Barcode</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>MRP</th>
+                    <th>Price</th>
+                    <th>QR Preview</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td><input type="checkbox" name="selectedItems" value="@item.ItemId" class="item-check" /></td>
+                        <td><code>@item.SKU</code></td>
+                        <td><code>@(item.Barcode ?? "-")</code></td>
+                        <td>@item.Name</td>
+                        <td>@(item.Category?.Name ?? "-")</td>
+                        <td>@(item.MRP?.ToString("N2") ?? "-")</td>
+                        <td>₹@item.UnitPrice.ToString("N2")</td>
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(item.Barcode))
+                            {
+                                <img src="/BarcodeLabels/QrCode?data=@(item.Barcode)&size=3" alt="QR" style="width:40px;height:40px;" />
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center">
+        <span class="text-muted"><span id="selectedCount">0</span> item(s) selected</span>
+        <button class="btn btn-primary"><i class="bi bi-printer"></i> Generate Label PDF</button>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    document.getElementById('selectAll').addEventListener('change', function() {
+        document.querySelectorAll('.item-check').forEach(cb => cb.checked = this.checked);
+        updateCount();
+    });
+    document.querySelectorAll('.item-check').forEach(cb => cb.addEventListener('change', updateCount));
+    function updateCount() {
+        document.getElementById('selectedCount').textContent =
+            document.querySelectorAll('.item-check:checked').length;
+    }
+</script>
+}

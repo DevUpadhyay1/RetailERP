@@ -284,6 +284,9 @@ try
     // Sprint 3: Dashboard service
     builder.Services.AddScoped<DashboardService>();
 
+    // Sprint 12: Barcode label printing
+    builder.Services.AddScoped<BarcodeLabelService>();
+
     // Sprint 11: SMS / WhatsApp / Email notification services
     builder.Services.Configure<TwilioOptions>(builder.Configuration.GetSection("Twilio"));
     builder.Services.Configure<WhatsAppOptions>(builder.Configuration.GetSection("WhatsApp"));

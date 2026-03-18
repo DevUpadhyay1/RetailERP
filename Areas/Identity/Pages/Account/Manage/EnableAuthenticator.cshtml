@@ -1,0 +1,45 @@
+@page
+@model RetailERP.Areas.Identity.Pages.Account.Manage.EnableAuthenticatorModel
+@{ ViewData["Title"] = "Set Up Authenticator"; }
+
+<h4><i class="bi bi-phone"></i> Set Up Authenticator App</h4>
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="alert alert-info">
+            <strong>Step 1:</strong> Install an authenticator app on your phone:
+            <ul class="mb-0 mt-1">
+                <li><strong>Google Authenticator</strong> (Android / iOS)</li>
+                <li><strong>Microsoft Authenticator</strong> (Android / iOS)</li>
+                <li><strong>Authy</strong> (Android / iOS / Desktop)</li>
+            </ul>
+        </div>
+
+        <div class="alert alert-info">
+            <strong>Step 2:</strong> Scan this QR code with your authenticator app, or enter the key manually:
+        </div>
+
+        <div class="text-center my-3">
+            <img src="@Model.QrCodeDataUri" alt="QR Code" style="width:200px;height:200px;" />
+        </div>
+
+        <div class="text-center mb-3">
+            <strong>Manual key:</strong> <code>@Model.SharedKey</code>
+        </div>
+
+        <div class="alert alert-info">
+            <strong>Step 3:</strong> Enter the 6-digit code from your authenticator app:
+        </div>
+
+        <form method="post" style="max-width:400px;margin:0 auto;">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+            <div class="mb-3">
+                <label asp-for="Input.Code" class="form-label">Verification Code</label>
+                <input asp-for="Input.Code" class="form-control text-center" style="font-size:1.5rem;letter-spacing:8px;"
+                       placeholder="000000" maxlength="6" autofocus />
+                <span asp-validation-for="Input.Code" class="text-danger"></span>
+            </div>
+            <button class="btn btn-primary w-100">Verify & Enable 2FA</button>
+        </form>
+    </div>
+</div>

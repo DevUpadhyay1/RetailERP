@@ -208,6 +208,9 @@
                             </div>
                         </div>
 
+                        @* ── Barcode Labels ── *@
+                        <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("BarcodeLabels", "Index")" asp-controller="BarcodeLabels" asp-action="Index"><i class="bi bi-upc-scan sidebar-icon"></i><span>Barcode Labels</span></a>
+
                         @* ── Notifications ── *@
                         <div class="sidebar-group">
                             <button class="sidebar-group-toggle @GroupToggleClass("Notifications")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-notif" aria-expanded="@(IsInGroup("Notifications") ? "true" : "false")">
