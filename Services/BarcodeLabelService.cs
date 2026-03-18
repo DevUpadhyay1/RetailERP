@@ -2,7 +2,7 @@ using QRCoder;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
-using RetailERP.Data.Entities;
+using Unit = QuestPDF.Infrastructure.Unit;
 
 namespace RetailERP.Services;
 
