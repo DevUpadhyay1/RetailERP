@@ -85,7 +85,7 @@ SPRINTS = [
     ("Sprint 9", "SignalR + Background Jobs", "Real-time POS updates, BackgroundService workers, async email/sync", "✅ COMPLETED"),
     ("Sprint 10", "PWA Offline Mode", "Service worker, IndexedDB, offline POS billing, auto-sync on reconnect", "✅ COMPLETED"),
     ("Sprint 11", "SMS / WhatsApp / Email", "WhatsApp receipts, SMS alerts, promotional campaigns, templates", "✅ COMPLETED"),
-    ("Sprint 12", "Barcode Printing + 2FA", "Barcode/QR label printing, TOTP two-factor authentication", "🔲 NOT STARTED"),
+    ("Sprint 12", "Barcode Printing + 2FA", "Barcode/QR label printing, TOTP two-factor authentication", "✅ COMPLETED"),
     ("Sprint 13", "AI Forecasting + Reorder", "ML.NET sales prediction, auto-reorder suggestions, anomaly detection", "🔲 NOT STARTED"),
     ("Sprint 14", "Customer & Supplier Portals", "Self-service portals, purchase history, online returns, PO management", "🔲 NOT STARTED"),
     ("Sprint 15", "Franchise + Multi-Language", "Franchise management, royalty calc, Hindi/Gujarati/Marathi i18n", "🔲 NOT STARTED"),
@@ -699,6 +699,53 @@ SPRINT11 = [
 ]
 
 add_table(["Feature", "What Was Done", "Benefit"], SPRINT11)
+
+# ── SPRINT 12 ──
+doc.add_page_break()
+doc.add_heading("Sprint 12 — Barcode Printing + 2FA (Completed)", level=1)
+doc.add_paragraph(
+    "Sprint 12 adds barcode/QR code label generation and printing using QuestPDF + QRCoder, "
+    "and TOTP-based Two-Factor Authentication using ASP.NET Identity with Google/Microsoft Authenticator support."
+)
+
+SPRINT12 = [
+    ("BarcodeLabelService",
+     "Generates barcode/QR label PDFs using QuestPDF + QRCoder. Supports thermal label printers "
+     "(configurable width/height in mm) and A4 sheet layouts (configurable columns). "
+     "Each label can show: item name, SKU, barcode number, QR code, MRP/price, expiry date. "
+     "Batch generation with configurable copies per item.",
+     "Print barcode labels for new stock arrivals. Supports Zebra, TSC, and standard thermal printers."),
+    ("BarcodeLabelsController + View",
+     "Item selection page with search by name/SKU/barcode and category filter. Checkbox multi-select "
+     "with select-all. Label settings panel: paper size (Thermal/A4), dimensions, columns, font size, "
+     "copies, toggle for each label element. QR code preview in the item table. "
+     "GeneratePdf action creates downloadable PDF.",
+     "One-click label generation. Select items, configure layout, download PDF, print."),
+    ("QR Code Endpoint",
+     "/BarcodeLabels/QrCode?data=xxx — generates PNG QR code on-the-fly for any data. "
+     "Used for label preview and standalone QR generation.",
+     "Dynamic QR codes for items, bills, or any data. Usable anywhere in the app."),
+    ("TOTP Two-Factor Authentication",
+     "Full 2FA setup flow using ASP.NET Identity's built-in TOTP support. "
+     "EnableAuthenticator page: generates secret key, displays QR code for scanning with "
+     "Google Authenticator / Microsoft Authenticator / Authy. Verifies 6-digit code. "
+     "Generates 10 recovery codes on enable.",
+     "Strong account security. Mandatory for Admin/Manager roles in production."),
+    ("2FA Management Page",
+     "TwoFactorAuthentication page shows 2FA status (enabled/disabled), recovery codes remaining. "
+     "Enable button links to authenticator setup. Disable button resets authenticator key. "
+     "Added '2FA' link in account Manage navigation.",
+     "Users can self-service enable/disable 2FA from their account settings."),
+    ("NuGet Packages Added",
+     "BarcodeStandard 4.0.3.3 (barcode generation), QRCoder 1.6.0 (QR code generation), "
+     "SkiaSharp 3.116.1 (image rendering for barcodes).",
+     "Industry-standard barcode and QR code libraries. No external service dependencies."),
+    ("Sidebar Navigation",
+     "Added 'Barcode Labels' link in sidebar (visible to Admin/Manager/Inventory roles).",
+     "Quick access to label printing from main navigation."),
+]
+
+add_table(["Feature", "What Was Done", "Benefit"], SPRINT12)
 
 # ═══════════════════════════════════════════════════════════════
 # SPRINT 1 — TESTING GUIDE
@@ -1676,7 +1723,8 @@ doc.add_heading("Cumulative Feature Summary", level=1)
 
 total_features = (len(PRE_SPRINT) + len(SPRINT1) + len(SPRINT2) + len(SPRINT3)
                   + len(SPRINT4) + len(SPRINT5) + len(SPRINT6) + len(SPRINT7)
-                  + len(SPRINT8) + len(SPRINT9) + len(SPRINT10) + len(SPRINT11))
+                  + len(SPRINT8) + len(SPRINT9) + len(SPRINT10) + len(SPRINT11)
+                  + len(SPRINT12))
 doc.add_paragraph(f"Total features implemented as of {datetime.date.today().strftime('%B %d, %Y')}: {total_features}+")
 doc.add_paragraph()
 
@@ -1702,6 +1750,8 @@ add_table(["Category", "Count"], [
     ["POS Features", "Enterprise POS v3, FIFO stock deduction, hold/unhold, line/bill discounts"],
     ["PWA Offline Mode", "Service Worker, IndexedDB, offline POS billing, auto-sync on reconnect, item cache"],
     ["Notifications", "SMS (Twilio), WhatsApp (Meta API), Email — templates, campaigns, auto-receipts, delivery log"],
+    ["Barcode/QR Labels", "QuestPDF + QRCoder label generation, thermal/A4 printing, batch label PDFs"],
+    ["Two-Factor Auth (2FA)", "TOTP via Google/Microsoft Authenticator, recovery codes, self-service enable/disable"],
     ["Chart Types", "5 (Line, Bar, Doughnut, Pie, Horizontal Bar)"],
     ["JS Libraries (CDN)", "Gridstack.js v10.3.1, Chart.js 4.4.1, SortableJS 1.15.6, SignalR"],
     ["NuGet Packages", "Serilog, Redis, JwtBearer, Swashbuckle, QuestPDF, HealthChecks.SqlServer"],
