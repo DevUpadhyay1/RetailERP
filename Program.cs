@@ -268,6 +268,8 @@ try
     builder.Services.AddScoped<PromotionService>();  // Sprint 7
     builder.Services.AddScoped<GstReportService>();   // Sprint 8
     builder.Services.AddScoped<EInvoiceService>();    // Sprint 8
+    builder.Services.AddScoped<ItemOnboardingService>();
+    builder.Services.AddScoped<PortalService>();      // Sprint 14
 
     // Sprint 9: SignalR + Background Jobs
     builder.Services.AddSignalR();
@@ -286,6 +288,9 @@ try
 
     // Sprint 12: Barcode label printing
     builder.Services.AddScoped<BarcodeLabelService>();
+
+    // Sprint 13: Forecasting + reorder + anomaly detection
+    builder.Services.AddScoped<ForecastService>();
 
     // Sprint 11: SMS / WhatsApp / Email notification services
     builder.Services.Configure<TwilioOptions>(builder.Configuration.GetSection("Twilio"));

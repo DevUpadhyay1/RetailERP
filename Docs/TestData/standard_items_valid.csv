@@ -1,0 +1,5 @@
+SKU,Name,UnitPrice,MRP,PurchasePrice,GstPercent,HsnCode,Barcode,ReorderLevel,UnitName,CategoryName,IsActive
+GRC-RICE-001,Basmati Rice 5kg,525,549,480,5,100630,8901234567101,10,PCS,Grocery,true
+GRC-OIL-002,Sunflower Oil 1L,170,185,152,5,151219,8901234567102,20,LTR,Grocery,true
+GRC-SOAP-003,Bathing Soap 125g,38,40,31,18,340111,8901234567103,40,PCS,Personal Care,true
+GRC-SALT-004,Iodized Salt 1kg,24,26,19,5,250100,8901234567104,30,PCS,Grocery,true

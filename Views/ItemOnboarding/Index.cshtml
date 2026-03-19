@@ -1,0 +1,157 @@
+@model RetailERP.Controllers.ItemOnboardingController.OnboardingPageVm
+@{
+    ViewData["Title"] = "Item Onboarding";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-0">Item Onboarding</h2>
+        <div class="text-muted small">Bulk import, supplier catalog upload, quick setup starter packs</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary btn-sm" asp-action="DownloadTemplate" asp-route-type="standard">Download Standard CSV</a>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="DownloadTemplate" asp-route-type="supplier">Download Supplier CSV</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.GeneralError))
+{
+    <div class="alert alert-danger">@Model.GeneralError</div>
+}
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header">Import Items (CSV)</div>
+            <div class="card-body">
+                <form asp-action="ImportCsv" method="post" enctype="multipart/form-data" class="vstack gap-3">
+                    @Html.AntiForgeryToken()
+
+                    <div>
+                        <label class="form-label">CSV File</label>
+                        <input class="form-control" type="file" name="file" accept=".csv" required />
+                        <div class="form-text">Supports both standard and supplier-style column names.</div>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="updateExisting" name="updateExisting" value="true" checked="@Model.UpdateExisting" />
+                        <input type="hidden" name="updateExisting" value="false" />
+                        <label class="form-check-label" for="updateExisting">Update existing items when SKU already exists</label>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="createMissingLookups" name="createMissingLookups" value="true" checked="@Model.CreateMissingLookups" />
+                        <input type="hidden" name="createMissingLookups" value="false" />
+                        <label class="form-check-label" for="createMissingLookups">Auto-create missing Units/Categories</label>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary" type="submit">Import Now</button>
+                        <a class="btn btn-outline-dark" asp-action="Index">Reset</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        @if (Model.ImportResult is not null)
+        {
+            var r = Model.ImportResult;
+            <div class="card shadow-sm mt-3">
+                <div class="card-header">Import Result - @r.SourceName</div>
+                <div class="card-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Rows</div><div class="fw-semibold">@r.TotalRows</div></div></div>
+                        <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Inserted</div><div class="fw-semibold text-success">@r.Inserted</div></div></div>
+                        <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Updated</div><div class="fw-semibold text-primary">@r.Updated</div></div></div>
+                        <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Skipped</div><div class="fw-semibold text-secondary">@r.Skipped</div></div></div>
+                    </div>
+
+                    @if (r.Errors.Any())
+                    {
+                        <div class="alert alert-warning mb-2">Found @r.Errors.Count row issues. Review below.</div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width:90px;">Row</th>
+                                        <th style="width:160px;">SKU</th>
+                                        <th>Issue</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var e in r.Errors.Take(200))
+                                    {
+                                        <tr>
+                                            <td>@e.RowNumber</td>
+                                            <td>@(string.IsNullOrWhiteSpace(e.Sku) ? "-" : e.Sku)</td>
+                                            <td>@e.Message</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-success mb-0">Import completed without row errors.</div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header">Apply Starter Pack</div>
+            <div class="card-body">
+                <form asp-action="ApplyStarterPack" method="post" class="vstack gap-3">
+                    @Html.AntiForgeryToken()
+                    <div>
+                        <label class="form-label">Business Type</label>
+                        <select class="form-select" name="businessType">
+                            @foreach (var bt in Model.BusinessTypes)
+                            {
+                                <option value="@bt.Value" selected="@(bt.Value == Model.SelectedBusinessType)">@bt.Label</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="updateExistingPack" name="updateExistingPack" value="true" checked="@Model.UpdateExistingPack" />
+                        <input type="hidden" name="updateExistingPack" value="false" />
+                        <label class="form-check-label" for="updateExistingPack">Update existing items if SKU already exists</label>
+                    </div>
+
+                    <button class="btn btn-outline-primary" type="submit">Apply Pack</button>
+                </form>
+            </div>
+        </div>
+
+        @if (Model.StarterPackResult is not null)
+        {
+            var s = Model.StarterPackResult;
+            <div class="card shadow-sm mt-3">
+                <div class="card-header">Starter Pack Result</div>
+                <div class="card-body">
+                    <div class="mb-2"><span class="text-muted">Business Type:</span> <strong>@s.BusinessType</strong></div>
+                    <div class="row g-2">
+                        <div class="col-6"><div class="border rounded p-2"><div class="text-muted small">Pack Rows</div><div class="fw-semibold">@s.TotalItems</div></div></div>
+                        <div class="col-6"><div class="border rounded p-2"><div class="text-muted small">Inserted</div><div class="fw-semibold text-success">@s.Inserted</div></div></div>
+                        <div class="col-6"><div class="border rounded p-2"><div class="text-muted small">Updated</div><div class="fw-semibold text-primary">@s.Updated</div></div></div>
+                        <div class="col-6"><div class="border rounded p-2"><div class="text-muted small">Skipped</div><div class="fw-semibold text-secondary">@s.Skipped</div></div></div>
+                    </div>
+
+                    @if (s.Warnings.Any())
+                    {
+                        <div class="alert alert-warning mt-3 mb-0">
+                            @foreach (var w in s.Warnings)
+                            {
+                                <div>@w</div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>

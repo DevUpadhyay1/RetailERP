@@ -1,0 +1,251 @@
+@model RetailERP.Controllers.PortalAdminController.PortalAdminVm
+@{
+    ViewData["Title"] = "Portal Admin";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Customer & Supplier Portals</h2>
+</div>
+
+@if (TempData["Ok"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["Err"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+@if (TempData["PortalLink"] is string link)
+{
+    <div class="alert alert-info">
+        <div class="fw-semibold">Generated Link</div>
+        <div class="small"><a href="@link" target="_blank">@link</a></div>
+    </div>
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Create Customer Portal Link</div>
+            <div class="card-body">
+                <form asp-action="GenerateCustomerLink" method="post" class="row g-2">
+                    @Html.AntiForgeryToken()
+                    <div class="col-12">
+                        <label class="form-label">Customer</label>
+                        <select name="customerId" class="form-select" required>
+                            <option value="">Select customer</option>
+                            @foreach (var c in Model.Customers)
+                            {
+                                <option value="@c.Id">@c.Label</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Valid Hours</label>
+                        <input class="form-control" type="number" min="1" max="720" name="validHours" value="72" />
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label">Label (optional)</label>
+                        <input class="form-control" name="label" maxlength="120" />
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-primary">Generate Customer Link</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Create Supplier Portal Link</div>
+            <div class="card-body">
+                <form asp-action="GenerateSupplierLink" method="post" class="row g-2">
+                    @Html.AntiForgeryToken()
+                    <div class="col-12">
+                        <label class="form-label">Supplier</label>
+                        <select name="supplierId" class="form-select" required>
+                            <option value="">Select supplier</option>
+                            @foreach (var s in Model.Suppliers)
+                            {
+                                <option value="@s.Id">@s.Label</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Valid Hours</label>
+                        <input class="form-control" type="number" min="1" max="720" name="validHours" value="72" />
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label">Label (optional)</label>
+                        <input class="form-control" name="label" maxlength="120" />
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-primary">Generate Supplier Link</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header fw-semibold">Online Return Requests</div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>When (UTC)</th>
+                    <th>Customer</th>
+                    <th>Bill</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Review</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.ReturnRequests.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-muted text-center py-3">No requests.</td></tr>
+                }
+                else
+                {
+                    @foreach (var r in Model.ReturnRequests)
+                    {
+                        <tr>
+                            <td>@r.RequestedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@r.CustomerName</td>
+                            <td>@r.BillNo</td>
+                            <td class="small">@r.Reason</td>
+                            <td>
+                                <span class="badge @(r.Status == 1 ? "bg-warning text-dark" : r.Status == 2 ? "bg-success" : r.Status == 3 ? "bg-danger" : "bg-primary")">
+                                    @(r.Status == 1 ? "Requested" : r.Status == 2 ? "Approved" : r.Status == 3 ? "Rejected" : "Processed")
+                                </span>
+                            </td>
+                            <td>
+                                <form asp-action="UpdateReturnRequest" method="post" class="d-flex gap-1 align-items-center">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="portalReturnRequestId" value="@r.PortalReturnRequestId" />
+                                    <select class="form-select form-select-sm" style="width: 110px;" name="status">
+                                        <option value="2">Approve</option>
+                                        <option value="3">Reject</option>
+                                        <option value="4">Processed</option>
+                                    </select>
+                                    <input class="form-control form-control-sm" style="min-width: 180px;" name="adminNote" value="@r.AdminNote" placeholder="Admin note" />
+                                    <button class="btn btn-sm btn-outline-primary">Save</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header fw-semibold">Recent Portal Links</div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Target</th>
+                    <th>Hint</th>
+                    <th>Label</th>
+                    <th>Created (UTC)</th>
+                    <th>Expires (UTC)</th>
+                    <th>Last Access (UTC)</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.RecentLinks.Count == 0)
+                {
+                    <tr><td colspan="9" class="text-muted text-center py-3">No links.</td></tr>
+                }
+                else
+                {
+                    @foreach (var l in Model.RecentLinks)
+                    {
+                        <tr>
+                            <td>@(l.PortalType == 1 ? "Customer" : "Supplier")</td>
+                            <td>@l.TargetName</td>
+                            <td class="small text-muted">...@l.TokenHint</td>
+                            <td>@l.Label</td>
+                            <td>@l.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@l.ExpiresAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@(l.LastAccessedAtUtc?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                            <td>
+                                @if (l.IsRevoked)
+                                {
+                                    <span class="badge bg-secondary">Revoked</span>
+                                }
+                                else if (l.ExpiresAtUtc < DateTime.UtcNow)
+                                {
+                                    <span class="badge bg-danger">Expired</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!l.IsRevoked)
+                                {
+                                    <form asp-action="RevokeLink" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="portalAccessLinkId" value="@l.PortalAccessLinkId" />
+                                        <button class="btn btn-sm btn-outline-danger">Revoke</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header fw-semibold">Supplier PO Responses</div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Supplier</th>
+                    <th>PO No</th>
+                    <th>Response</th>
+                    <th>Responded (UTC)</th>
+                    <th>Expected Delivery</th>
+                    <th>Supplier Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.SupplierPoResponses.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-muted text-center py-3">No supplier responses yet.</td></tr>
+                }
+                else
+                {
+                    @foreach (var p in Model.SupplierPoResponses)
+                    {
+                        <tr>
+                            <td>@p.SupplierName</td>
+                            <td>@p.PurchaseNo</td>
+                            <td>
+                                <span class="badge @(p.ResponseStatus == 2 ? "bg-success" : p.ResponseStatus == 3 ? "bg-danger" : "bg-warning text-dark")">
+                                    @(p.ResponseStatus == 2 ? "Accepted" : p.ResponseStatus == 3 ? "Rejected" : "Pending")
+                                </span>
+                            </td>
+                            <td>@(p.RespondedAtUtc?.ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                            <td>@(p.ExpectedDeliveryDate?.ToString("yyyy-MM-dd") ?? "-")</td>
+                            <td class="small">@p.SupplierNote</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

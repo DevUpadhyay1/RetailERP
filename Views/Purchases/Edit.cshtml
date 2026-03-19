@@ -101,24 +101,75 @@
                 }
                 else
                 {
-                    <form asp-action="AddLine" method="post" class="vstack gap-2">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="PurchaseId" value="@Model.PurchaseId" />
+                    <div class="vstack gap-3">
+                        <form asp-action="AddLine" method="post" class="vstack gap-2">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="PurchaseId" value="@Model.PurchaseId" />
 
-                        <label class="form-label mb-0">Item</label>
-                        <select class="form-select" name="ItemId" asp-items="ViewBag.Items">
-                            <option value="" disabled selected>-- Select Item --</option>
-                        </select>
+                            <label class="form-label mb-0">Item</label>
+                            <select class="form-select" name="ItemId" asp-items="ViewBag.Items">
+                                <option value="" disabled selected>-- Select Item --</option>
+                            </select>
 
-                        <label class="form-label mb-0">Qty</label>
-                        <input class="form-control" name="Qty" type="number" step="0.01" min="0.01" value="1" />
+                            <label class="form-label mb-0">Qty</label>
+                            <input class="form-control" name="Qty" type="number" step="0.01" min="0.01" value="1" />
 
-                        <label class="form-label mb-0">Unit Cost</label>
-                        <input class="form-control" name="UnitCost" type="number" step="0.01" min="0" value="0" />
+                            <label class="form-label mb-0">Unit Cost</label>
+                            <input class="form-control" name="UnitCost" type="number" step="0.01" min="0" value="0" />
 
-                        <button class="btn btn-primary" type="submit">Add</button>
+                            <button class="btn btn-primary" type="submit">Add</button>
+                        </form>
+
+                        <hr class="my-1" />
+
+                        <div>
+                            <div class="fw-semibold mb-2">Quick Create Item (if missing)</div>
+                            <form asp-action="QuickCreateItem" method="post" class="vstack gap-2">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="PurchaseId" value="@Model.PurchaseId" />
+
+                                <div class="row g-2">
+                                    <div class="col-5">
+                                        <input class="form-control" name="SKU" placeholder="SKU*" required maxlength="50" />
+                                    </div>
+                                    <div class="col-7">
+                                        <input class="form-control" name="Name" placeholder="Item Name*" required maxlength="200" />
+                                    </div>
+                                </div>
+
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <input class="form-control" name="UnitCost" type="number" min="0" step="0.01" placeholder="Unit Cost" />
+                                    </div>
+                                    <div class="col-6">
+                                        <input class="form-control" name="UnitPrice" type="number" min="0" step="0.01" placeholder="Unit Price" />
+                                    </div>
+                                </div>
+
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <input class="form-control" name="CategoryName" placeholder="Category (optional)" maxlength="100" />
+                                    </div>
+                                    <div class="col-6">
+                                        <input class="form-control" name="UnitName" placeholder="Unit (optional, e.g. PCS)" maxlength="50" />
+                                    </div>
+                                </div>
+
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <input class="form-control" name="GstPercent" type="number" min="0" max="100" step="0.01" placeholder="GST %" />
+                                    </div>
+                                    <div class="col-6">
+                                        <input class="form-control" name="HsnCode" placeholder="HSN Code" maxlength="20" />
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-outline-primary" type="submit">Create Item</button>
+                            </form>
+                        </div>
+
                         <a class="btn btn-outline-secondary" asp-action="Index">Back to Purchases</a>
-                    </form>
+                    </div>
                 }
             </div>
         </div>

@@ -1,0 +1,231 @@
+@model RetailERP.Controllers.ForecastController.ForecastReorderVm
+@{
+    ViewData["Title"] = "Reorder Suggestions";
+
+    string ToggleDir(string nextSort)
+    {
+        if (!string.Equals(Model.Sort, nextSort, StringComparison.OrdinalIgnoreCase)) return "asc";
+        return string.Equals(Model.Dir, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+    }
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-0">Reorder Suggestions</h2>
+        <div class="text-muted small">Showing @Model.FromRow-@Model.ToRow of @Model.Total rows</div>
+    </div>
+    <a class="btn btn-outline-secondary btn-sm"
+       asp-action="Index"
+       asp-route-from="@Model.From.ToString("yyyy-MM-dd")"
+       asp-route-to="@Model.To.ToString("yyyy-MM-dd")"
+       asp-route-horizonDays="@Model.HorizonDays"
+       asp-route-leadTimeDays="@Model.LeadTimeDays"
+       asp-route-warehouseId="@Model.WarehouseId">Forecast Dashboard</a>
+</div>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label mb-1">From</label>
+                <input type="date" name="from" class="form-control" value="@Model.From.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">To</label>
+                <input type="date" name="to" class="form-control" value="@Model.To.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-1">
+                <label class="form-label mb-1">Horizon</label>
+                <input type="number" min="1" max="90" name="horizonDays" class="form-control" value="@Model.HorizonDays" />
+            </div>
+            <div class="col-md-1">
+                <label class="form-label mb-1">Lead</label>
+                <input type="number" min="1" max="30" name="leadTimeDays" class="form-control" value="@Model.LeadTimeDays" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">Warehouse</label>
+                <select name="warehouseId" class="form-select">
+                    <option value="">All Warehouses</option>
+                    @foreach (var w in Model.Warehouses)
+                    {
+                        <option value="@w.WarehouseId" selected="@(Model.WarehouseId == w.WarehouseId)">@w.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">Risk</label>
+                <select name="risk" class="form-select">
+                    <option value="">All</option>
+                    <option value="High" selected="@(string.Equals(Model.Risk, "High", StringComparison.OrdinalIgnoreCase))">High</option>
+                    <option value="Medium" selected="@(string.Equals(Model.Risk, "Medium", StringComparison.OrdinalIgnoreCase))">Medium</option>
+                    <option value="Low" selected="@(string.Equals(Model.Risk, "Low", StringComparison.OrdinalIgnoreCase))">Low</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">Search</label>
+                <input name="q" value="@Model.Q" class="form-control" placeholder="SKU / item / warehouse" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">Rows</label>
+                <select name="pageSize" class="form-select">
+                    <option value="10" selected="@(Model.PageSize == 10)">10</option>
+                    <option value="25" selected="@(Model.PageSize == 25)">25</option>
+                    <option value="50" selected="@(Model.PageSize == 50)">50</option>
+                    <option value="100" selected="@(Model.PageSize == 100)">100</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">Mode</label>
+                <select name="onlyReorder" class="form-select">
+                    <option value="true" selected="@(Model.OnlyReorder)">Only Reorder Needed</option>
+                    <option value="false" selected="@(!Model.OnlyReorder)">Show All Items</option>
+                </select>
+            </div>
+            <input type="hidden" name="sort" value="@Model.Sort" />
+            <input type="hidden" name="dir" value="@Model.Dir" />
+            <input type="hidden" name="page" value="1" />
+            <div class="col-md-2 d-grid">
+                <button class="btn btn-primary" type="submit">Apply</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="card text-center border-warning shadow-sm">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-warning">@Model.ItemsNeedingReorder</div>
+                <small class="text-muted">Need Reorder</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-danger shadow-sm">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-danger">@Model.HighRiskItems</div>
+                <small class="text-muted">High Risk</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-info shadow-sm">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-info">@Model.TotalSuggestedQty.ToString("0.##")</div>
+                <small class="text-muted">Suggested Qty</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-success shadow-sm">
+            <div class="card-body py-2">
+                <div class="fs-5 fw-bold text-success">@Model.TotalSuggestedValue.ToString("0.00")</div>
+                <small class="text-muted">Suggested Purchase Value</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:120px;">
+                            <a class="text-decoration-none" asp-action="Reorder" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-horizonDays="@Model.HorizonDays" asp-route-leadTimeDays="@Model.LeadTimeDays" asp-route-warehouseId="@Model.WarehouseId" asp-route-q="@Model.Q" asp-route-risk="@Model.Risk" asp-route-onlyReorder="@Model.OnlyReorder" asp-route-sort="sku" asp-route-dir="@ToggleDir("sku")" asp-route-page="1" asp-route-pageSize="@Model.PageSize">SKU</a>
+                        </th>
+                        <th>
+                            <a class="text-decoration-none" asp-action="Reorder" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-horizonDays="@Model.HorizonDays" asp-route-leadTimeDays="@Model.LeadTimeDays" asp-route-warehouseId="@Model.WarehouseId" asp-route-q="@Model.Q" asp-route-risk="@Model.Risk" asp-route-onlyReorder="@Model.OnlyReorder" asp-route-sort="item" asp-route-dir="@ToggleDir("item")" asp-route-page="1" asp-route-pageSize="@Model.PageSize">Item</a>
+                        </th>
+                        <th style="width:180px;">
+                            <a class="text-decoration-none" asp-action="Reorder" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-horizonDays="@Model.HorizonDays" asp-route-leadTimeDays="@Model.LeadTimeDays" asp-route-warehouseId="@Model.WarehouseId" asp-route-q="@Model.Q" asp-route-risk="@Model.Risk" asp-route-onlyReorder="@Model.OnlyReorder" asp-route-sort="warehouse" asp-route-dir="@ToggleDir("warehouse")" asp-route-page="1" asp-route-pageSize="@Model.PageSize">Warehouse</a>
+                        </th>
+                        <th class="text-end" style="width:120px;">
+                            <a class="text-decoration-none" asp-action="Reorder" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-horizonDays="@Model.HorizonDays" asp-route-leadTimeDays="@Model.LeadTimeDays" asp-route-warehouseId="@Model.WarehouseId" asp-route-q="@Model.Q" asp-route-risk="@Model.Risk" asp-route-onlyReorder="@Model.OnlyReorder" asp-route-sort="onhand" asp-route-dir="@ToggleDir("onhand")" asp-route-page="1" asp-route-pageSize="@Model.PageSize">On Hand</a>
+                        </th>
+                        <th class="text-end" style="width:120px;">
+                            <a class="text-decoration-none" asp-action="Reorder" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-horizonDays="@Model.HorizonDays" asp-route-leadTimeDays="@Model.LeadTimeDays" asp-route-warehouseId="@Model.WarehouseId" asp-route-q="@Model.Q" asp-route-risk="@Model.Risk" asp-route-onlyReorder="@Model.OnlyReorder" asp-route-sort="daily" asp-route-dir="@ToggleDir("daily")" asp-route-page="1" asp-route-pageSize="@Model.PageSize">Forecast/Day</a>
+                        </th>
+                        <th class="text-end" style="width:120px;">
+                            <a class="text-decoration-none" asp-action="Reorder" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-horizonDays="@Model.HorizonDays" asp-route-leadTimeDays="@Model.LeadTimeDays" asp-route-warehouseId="@Model.WarehouseId" asp-route-q="@Model.Q" asp-route-risk="@Model.Risk" asp-route-onlyReorder="@Model.OnlyReorder" asp-route-sort="reorderpoint" asp-route-dir="@ToggleDir("reorderpoint")" asp-route-page="1" asp-route-pageSize="@Model.PageSize">Reorder Pt</a>
+                        </th>
+                        <th class="text-end" style="width:130px;">
+                            <a class="text-decoration-none" asp-action="Reorder" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-horizonDays="@Model.HorizonDays" asp-route-leadTimeDays="@Model.LeadTimeDays" asp-route-warehouseId="@Model.WarehouseId" asp-route-q="@Model.Q" asp-route-risk="@Model.Risk" asp-route-onlyReorder="@Model.OnlyReorder" asp-route-sort="suggested" asp-route-dir="@ToggleDir("suggested")" asp-route-page="1" asp-route-pageSize="@Model.PageSize">Suggested</a>
+                        </th>
+                        <th class="text-end" style="width:110px;">
+                            <a class="text-decoration-none" asp-action="Reorder" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-horizonDays="@Model.HorizonDays" asp-route-leadTimeDays="@Model.LeadTimeDays" asp-route-warehouseId="@Model.WarehouseId" asp-route-q="@Model.Q" asp-route-risk="@Model.Risk" asp-route-onlyReorder="@Model.OnlyReorder" asp-route-sort="cover" asp-route-dir="@ToggleDir("cover")" asp-route-page="1" asp-route-pageSize="@Model.PageSize">Cover (d)</a>
+                        </th>
+                        <th class="text-center" style="width:90px;">Risk</th>
+                        <th class="text-end" style="width:110px;">
+                            <a class="text-decoration-none" asp-action="Reorder" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-horizonDays="@Model.HorizonDays" asp-route-leadTimeDays="@Model.LeadTimeDays" asp-route-warehouseId="@Model.WarehouseId" asp-route-q="@Model.Q" asp-route-risk="@Model.Risk" asp-route-onlyReorder="@Model.OnlyReorder" asp-route-sort="confidence" asp-route-dir="@ToggleDir("confidence")" asp-route-page="1" asp-route-pageSize="@Model.PageSize">Confidence</a>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Rows.Any())
+                    {
+                        <tr><td colspan="10" class="text-center text-muted py-4">No rows found for the selected filters.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var r in Model.Rows)
+                        {
+                            <tr class="@(r.ShouldReorder ? "table-warning" : "")">
+                                <td class="fw-semibold">@r.ItemSku</td>
+                                <td>
+                                    <div>@r.ItemName</div>
+                                    <div class="small text-muted">Last demand: @(r.LastDemandDate?.ToString("dd-MMM-yyyy") ?? "-")</div>
+                                </td>
+                                <td>@r.WarehouseName</td>
+                                <td class="text-end">@r.OnHand.ToString("0.##")</td>
+                                <td class="text-end">@r.ForecastDailyQty.ToString("0.###")</td>
+                                <td class="text-end">@r.ReorderPoint.ToString("0.##")</td>
+                                <td class="text-end fw-semibold">@r.SuggestedReorderQty.ToString("0.##")</td>
+                                <td class="text-end">@r.DaysOfCover.ToString("0.0")</td>
+                                <td class="text-center">
+                                    @if (string.Equals(r.RiskLevel, "High", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <span class="badge bg-danger">High</span>
+                                    }
+                                    else if (string.Equals(r.RiskLevel, "Medium", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <span class="badge bg-warning text-dark">Medium</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">Low</span>
+                                    }
+                                </td>
+                                <td class="text-end">@r.Confidence.ToString("0.0")%</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="text-muted small">Page @Model.Page of @Model.TotalPages | Avg confidence: @Model.AvgConfidence.ToString("0.0")%</div>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="Reorder" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-horizonDays="@Model.HorizonDays" asp-route-leadTimeDays="@Model.LeadTimeDays" asp-route-warehouseId="@Model.WarehouseId" asp-route-q="@Model.Q" asp-route-risk="@Model.Risk" asp-route-onlyReorder="@Model.OnlyReorder" asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-page="@(Model.Page-1)" asp-route-pageSize="@Model.PageSize">Prev</a>
+                    </li>
+                    @for (var p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+                    {
+                        <li class="page-item @(p == Model.Page ? "active" : "")">
+                            <a class="page-link" asp-action="Reorder" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-horizonDays="@Model.HorizonDays" asp-route-leadTimeDays="@Model.LeadTimeDays" asp-route-warehouseId="@Model.WarehouseId" asp-route-q="@Model.Q" asp-route-risk="@Model.Risk" asp-route-onlyReorder="@Model.OnlyReorder" asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-page="@p" asp-route-pageSize="@Model.PageSize">@p</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="Reorder" asp-route-from="@Model.From.ToString("yyyy-MM-dd")" asp-route-to="@Model.To.ToString("yyyy-MM-dd")" asp-route-horizonDays="@Model.HorizonDays" asp-route-leadTimeDays="@Model.LeadTimeDays" asp-route-warehouseId="@Model.WarehouseId" asp-route-q="@Model.Q" asp-route-risk="@Model.Risk" asp-route-onlyReorder="@Model.OnlyReorder" asp-route-sort="@Model.Sort" asp-route-dir="@Model.Dir" asp-route-page="@(Model.Page+1)" asp-route-pageSize="@Model.PageSize">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>

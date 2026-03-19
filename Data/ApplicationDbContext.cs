@@ -87,6 +87,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
 
+    // Sprint 14 – Customer/Supplier Portals
+    public DbSet<PortalAccessLink> PortalAccessLinks => Set<PortalAccessLink>();
+    public DbSet<PortalReturnRequest> PortalReturnRequests => Set<PortalReturnRequest>();
+    public DbSet<SupplierPoResponse> SupplierPoResponses => Set<SupplierPoResponse>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -464,6 +469,83 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .HasForeignKey(x => x.ItemId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Sprint 14 - Customer/Supplier Portals
+        builder.Entity<PortalAccessLink>()
+            .HasIndex(x => new { x.TokenHash, x.CompanyId })
+            .IsUnique();
+
+        builder.Entity<PortalAccessLink>()
+            .ToTable(t => t.HasCheckConstraint("CK_PortalAccessLinks_PortalType", "[PortalType] IN (1,2)"));
+
+        builder.Entity<PortalAccessLink>()
+            .ToTable(t => t.HasCheckConstraint("CK_PortalAccessLinks_Target",
+                "(([PortalType] = 1 AND [CustomerId] IS NOT NULL AND [SupplierId] IS NULL) " +
+                "OR ([PortalType] = 2 AND [SupplierId] IS NOT NULL AND [CustomerId] IS NULL))"));
+
+        builder.Entity<PortalAccessLink>()
+            .HasOne(x => x.Customer)
+            .WithMany()
+            .HasForeignKey(x => x.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<PortalAccessLink>()
+            .HasOne(x => x.Supplier)
+            .WithMany()
+            .HasForeignKey(x => x.SupplierId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<PortalReturnRequest>()
+            .HasIndex(x => new { x.CustomerId, x.RequestedAtUtc });
+
+        builder.Entity<PortalReturnRequest>()
+            .ToTable(t => t.HasCheckConstraint("CK_PortalReturnRequests_Status", "[Status] IN (1,2,3,4)"));
+
+        builder.Entity<PortalReturnRequest>()
+            .HasOne(x => x.Customer)
+            .WithMany()
+            .HasForeignKey(x => x.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<PortalReturnRequest>()
+            .HasOne(x => x.PosBill)
+            .WithMany()
+            .HasForeignKey(x => x.PosBillId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<PortalReturnRequest>()
+            .HasOne(x => x.PosReturn)
+            .WithMany()
+            .HasForeignKey(x => x.PosReturnId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<PortalReturnRequest>()
+            .HasOne(x => x.ReviewedByUser)
+            .WithMany()
+            .HasForeignKey(x => x.ReviewedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SupplierPoResponse>()
+            .HasIndex(x => x.PurchaseId)
+            .IsUnique();
+
+        builder.Entity<SupplierPoResponse>()
+            .HasIndex(x => new { x.SupplierId, x.ResponseStatus });
+
+        builder.Entity<SupplierPoResponse>()
+            .ToTable(t => t.HasCheckConstraint("CK_SupplierPoResponses_ResponseStatus", "[ResponseStatus] IN (1,2,3)"));
+
+        builder.Entity<SupplierPoResponse>()
+            .HasOne(x => x.Purchase)
+            .WithMany()
+            .HasForeignKey(x => x.PurchaseId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<SupplierPoResponse>()
+            .HasOne(x => x.Supplier)
+            .WithMany()
+            .HasForeignKey(x => x.SupplierId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // ═══════════════════════════════════════════════════════════
         // Phase 6 – Loyalty + Coupons
         // ═══════════════════════════════════════════════════════════
@@ -592,6 +674,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureAuditUserFks<CouponUsage>(builder);
         ConfigureAuditUserFks<EodReport>(builder);
         ConfigureAuditUserFks<SyncLog>(builder);
+        ConfigureAuditUserFks<PortalAccessLink>(builder);
+        ConfigureAuditUserFks<PortalReturnRequest>(builder);
+        ConfigureAuditUserFks<SupplierPoResponse>(builder);
 
         ConfigureAuditDefaults<Item>(builder);
         ConfigureAuditDefaults<Unit>(builder);
@@ -618,6 +703,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureAuditDefaults<CouponUsage>(builder);
         ConfigureAuditDefaults<EodReport>(builder);
         ConfigureAuditDefaults<SyncLog>(builder);
+        ConfigureAuditDefaults<PortalAccessLink>(builder);
+        ConfigureAuditDefaults<PortalReturnRequest>(builder);
+        ConfigureAuditDefaults<SupplierPoResponse>(builder);
 
         // ---- Company FK (optional) ----
         ConfigureCompanyFk<Item>(builder);
@@ -641,6 +729,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureCompanyFk<EodReport>(builder);
         ConfigureCompanyFk<SyncLog>(builder);
         ConfigureCompanyFk<Promotion>(builder);
+        ConfigureCompanyFk<PortalAccessLink>(builder);
+        ConfigureCompanyFk<PortalReturnRequest>(builder);
+        ConfigureCompanyFk<SupplierPoResponse>(builder);
 
         // ═══════════════════════════════════════════════════════════
         // Sprint 7 – Promotions

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
 using RetailERP.Services;
+using System.ComponentModel.DataAnnotations;
 
 namespace RetailERP.Controllers;
 
@@ -12,11 +13,13 @@ public class PurchasesController : Controller
 {
     private readonly ApplicationDbContext _db;
     private readonly PurchaseService _purchaseService;
+    private readonly ItemOnboardingService _itemOnboarding;
 
-    public PurchasesController(ApplicationDbContext db, PurchaseService purchaseService)
+    public PurchasesController(ApplicationDbContext db, PurchaseService purchaseService, ItemOnboardingService itemOnboarding)
     {
         _db = db;
         _purchaseService = purchaseService;
+        _itemOnboarding = itemOnboarding;
     }
 
     public async Task<IActionResult> Index(string? q, byte? status = null, string sort = "date", string dir = "desc", int page = 1, int pageSize = 20)
@@ -152,6 +155,42 @@ public class PurchasesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> QuickCreateItem(QuickCreatePurchaseItemVm vm)
+    {
+        if (!ModelState.IsValid)
+        {
+            TempData["Err"] = "Quick add failed. SKU and Name are required.";
+            return RedirectToAction(nameof(Edit), new { id = vm.PurchaseId });
+        }
+
+        var req = new ItemOnboardingService.QuickCreateItemRequest
+        {
+            SKU = vm.SKU.Trim(),
+            Name = vm.Name.Trim(),
+            Barcode = vm.Barcode,
+            UnitPrice = vm.UnitPrice,
+            MRP = vm.MRP,
+            PurchasePrice = vm.UnitCost,
+            GstPercent = vm.GstPercent,
+            HsnCode = vm.HsnCode,
+            ReorderLevel = vm.ReorderLevel,
+            UnitName = vm.UnitName,
+            CategoryName = vm.CategoryName
+        };
+
+        var result = await _itemOnboarding.QuickCreateItemAsync(req);
+        if (!result.Success)
+        {
+            TempData["Err"] = result.Message;
+            return RedirectToAction(nameof(Edit), new { id = vm.PurchaseId });
+        }
+
+        TempData["Ok"] = result.Message + " You can now add it in purchase lines.";
+        return RedirectToAction(nameof(Edit), new { id = vm.PurchaseId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveLine(Guid purchaseLineId, Guid purchaseId)
     {
         await _purchaseService.RemoveLineAsync(purchaseLineId);
@@ -238,5 +277,45 @@ public class PurchasesController : Controller
         public Guid ItemId { get; set; }
         public decimal Qty { get; set; }
         public decimal UnitCost { get; set; }
+    }
+
+    public sealed class QuickCreatePurchaseItemVm
+    {
+        public Guid PurchaseId { get; set; }
+
+        [Required]
+        [StringLength(50)]
+        public string SKU { get; set; } = "";
+
+        [Required]
+        [StringLength(200)]
+        public string Name { get; set; } = "";
+
+        [StringLength(50)]
+        public string? Barcode { get; set; }
+
+        [Range(0, 999999999)]
+        public decimal UnitCost { get; set; }
+
+        [Range(0, 999999999)]
+        public decimal UnitPrice { get; set; }
+
+        [Range(0, 999999999)]
+        public decimal? MRP { get; set; }
+
+        [Range(0, 100)]
+        public decimal? GstPercent { get; set; }
+
+        [StringLength(20)]
+        public string? HsnCode { get; set; }
+
+        [Range(0, 999999)]
+        public int ReorderLevel { get; set; }
+
+        [StringLength(50)]
+        public string? UnitName { get; set; }
+
+        [StringLength(100)]
+        public string? CategoryName { get; set; }
     }
 }

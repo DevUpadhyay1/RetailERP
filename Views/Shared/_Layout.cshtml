@@ -137,22 +137,24 @@
                     {
                         @* ── Inventory ── *@
                         <div class="sidebar-group">
-                            <button class="sidebar-group-toggle @GroupToggleClass("Stocks","StockTransactions","StockTransfers","Purchases","Items","Warehouses","Stores","Units","Categories","Suppliers")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-inventory" aria-expanded="@(IsInGroup("Stocks","StockTransactions","StockTransfers","Purchases","Items","Warehouses","Stores","Units","Categories","Suppliers") ? "true" : "false")">
+                            <button class="sidebar-group-toggle @GroupToggleClass("Stocks","StockTransactions","StockTransfers","Purchases","Items","ItemOnboarding","Warehouses","Stores","Units","Categories","Suppliers","PortalAdmin")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-inventory" aria-expanded="@(IsInGroup("Stocks","StockTransactions","StockTransfers","Purchases","Items","ItemOnboarding","Warehouses","Stores","Units","Categories","Suppliers","PortalAdmin") ? "true" : "false")">
                                 <i class="bi bi-box-seam-fill sidebar-icon"></i>
                                 <span>Inventory</span>
                                 <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
                             </button>
-                            <div class="collapse @GroupOpen("Stocks","StockTransactions","StockTransfers","Purchases","Items","Warehouses","Stores","Units","Categories","Suppliers")" id="nav-inventory">
+                            <div class="collapse @GroupOpen("Stocks","StockTransactions","StockTransfers","Purchases","Items","ItemOnboarding","Warehouses","Stores","Units","Categories","Suppliers","PortalAdmin")" id="nav-inventory">
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Stocks", "Index")" asp-controller="Stocks" asp-action="Index"><i class="bi bi-boxes sidebar-icon"></i><span>Stock On Hand</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("StockTransactions", "Index")" asp-controller="StockTransactions" asp-action="Index"><i class="bi bi-journal-text sidebar-icon"></i><span>Stock Ledger</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("StockTransfers", "Create")" asp-controller="StockTransfers" asp-action="Create"><i class="bi bi-arrow-left-right sidebar-icon"></i><span>Stock Transfer</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Purchases", "Index")" asp-controller="Purchases" asp-action="Index"><i class="bi bi-bag-check sidebar-icon"></i><span>Purchases</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Items", "Index")" asp-controller="Items" asp-action="Index"><i class="bi bi-upc-scan sidebar-icon"></i><span>Items</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("ItemOnboarding", "Index")" asp-controller="ItemOnboarding" asp-action="Index"><i class="bi bi-cloud-upload sidebar-icon"></i><span>Item Onboarding</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Warehouses", "Index")" asp-controller="Warehouses" asp-action="Index"><i class="bi bi-building sidebar-icon"></i><span>Warehouses</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Stores", "Index")" asp-controller="Stores" asp-action="Index"><i class="bi bi-shop sidebar-icon"></i><span>Stores</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Units", "Index")" asp-controller="Units" asp-action="Index"><i class="bi bi-rulers sidebar-icon"></i><span>Units</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Categories", "Index")" asp-controller="Categories" asp-action="Index"><i class="bi bi-diagram-3 sidebar-icon"></i><span>Categories</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Suppliers", "Index")" asp-controller="Suppliers" asp-action="Index"><i class="bi bi-truck sidebar-icon"></i><span>Suppliers</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("PortalAdmin", "Index")" asp-controller="PortalAdmin" asp-action="Index"><i class="bi bi-person-lines-fill sidebar-icon"></i><span>Partner Portals</span></a>
                             </div>
                         </div>
                     }
@@ -195,14 +197,17 @@
                     {
                         @* ── Insights ── *@
                         <div class="sidebar-group">
-                            <button class="sidebar-group-toggle @GroupToggleClass("Reports","Audit","Eod") @(IsInGroup("Items") && string.Equals(currentAction, "LowStock", StringComparison.OrdinalIgnoreCase) ? "" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-insights" aria-expanded="@(IsInGroup("Reports","Audit","Eod") || (IsInGroup("Items") && string.Equals(currentAction, "LowStock", StringComparison.OrdinalIgnoreCase)) ? "true" : "false")">
+                            <button class="sidebar-group-toggle @GroupToggleClass("Reports","Audit","Eod","Forecast") @(IsInGroup("Items") && string.Equals(currentAction, "LowStock", StringComparison.OrdinalIgnoreCase) ? "" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-insights" aria-expanded="@(IsInGroup("Reports","Audit","Eod","Forecast") || (IsInGroup("Items") && string.Equals(currentAction, "LowStock", StringComparison.OrdinalIgnoreCase)) ? "true" : "false")">
                                 <i class="bi bi-graph-up sidebar-icon"></i>
                                 <span>Insights</span>
                                 <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
                             </button>
-                            <div class="collapse @(IsInGroup("Reports","Audit","Eod") || (IsInGroup("Items") && string.Equals(currentAction, "LowStock", StringComparison.OrdinalIgnoreCase)) ? "show" : "")" id="nav-insights">
+                            <div class="collapse @(IsInGroup("Reports","Audit","Eod","Forecast") || (IsInGroup("Items") && string.Equals(currentAction, "LowStock", StringComparison.OrdinalIgnoreCase)) ? "show" : "")" id="nav-insights">
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Items", "LowStock")" href="/Items/LowStock"><i class="bi bi-exclamation-triangle sidebar-icon"></i><span>Low Stock</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Reports", "Sales")" href="/Reports/Sales"><i class="bi bi-graph-up sidebar-icon"></i><span>Sales Report</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Forecast", "Index")" asp-controller="Forecast" asp-action="Index"><i class="bi bi-activity sidebar-icon"></i><span>Forecast</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Forecast", "Reorder")" asp-controller="Forecast" asp-action="Reorder"><i class="bi bi-box-arrow-in-down sidebar-icon"></i><span>Reorder Plan</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Forecast", "Anomalies")" asp-controller="Forecast" asp-action="Anomalies"><i class="bi bi-exclamation-octagon sidebar-icon"></i><span>Anomalies</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Audit", "Index")" asp-controller="Audit" asp-action="Index"><i class="bi bi-shield-check sidebar-icon"></i><span>Audit Log</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Eod", "Index")" asp-controller="Eod" asp-action="Index"><i class="bi bi-calendar-check sidebar-icon"></i><span>EOD Reports</span></a>
                             </div>

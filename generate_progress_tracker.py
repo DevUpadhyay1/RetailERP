@@ -86,8 +86,8 @@ SPRINTS = [
     ("Sprint 10", "PWA Offline Mode", "Service worker, IndexedDB, offline POS billing, auto-sync on reconnect", "✅ COMPLETED"),
     ("Sprint 11", "SMS / WhatsApp / Email", "WhatsApp receipts, SMS alerts, promotional campaigns, templates", "✅ COMPLETED"),
     ("Sprint 12", "Barcode Printing + 2FA", "Barcode/QR label printing, TOTP two-factor authentication", "✅ COMPLETED"),
-    ("Sprint 13", "AI Forecasting + Reorder", "ML.NET sales prediction, auto-reorder suggestions, anomaly detection", "🔲 NOT STARTED"),
-    ("Sprint 14", "Customer & Supplier Portals", "Self-service portals, purchase history, online returns, PO management", "🔲 NOT STARTED"),
+    ("Sprint 13", "AI Forecasting + Reorder", "Demand forecasting service, auto-reorder suggestions, anomaly detection", "✅ COMPLETED"),
+    ("Sprint 14", "Customer & Supplier Portals", "Self-service portals, purchase history, online returns, PO management", "✅ COMPLETED"),
     ("Sprint 15", "Franchise + Multi-Language", "Franchise management, royalty calc, Hindi/Gujarati/Marathi i18n", "🔲 NOT STARTED"),
     ("Sprint 16", "Testing + CI/CD + DevOps", "xUnit tests, GitHub Actions pipeline, Docker, deployment automation", "🔲 NOT STARTED"),
 ]
@@ -746,6 +746,96 @@ SPRINT12 = [
 ]
 
 add_table(["Feature", "What Was Done", "Benefit"], SPRINT12)
+
+# ── SPRINT 13 ──
+doc.add_page_break()
+doc.add_heading("Sprint 13 — AI Forecasting + Reorder (Completed)", level=1)
+doc.add_paragraph(
+    "Sprint 13 adds forecasting and decision-support tools for inventory planning: "
+    "historical demand analysis, auto-reorder quantity suggestions, and demand anomaly detection. "
+    "The module includes dashboard, detailed reorder planner, and anomaly monitor screens."
+)
+
+SPRINT13 = [
+    ("ForecastService (Demand + Reorder Engine)",
+     "Created Services/ForecastService.cs. Combines completed POS bills + posted invoice lines "
+     "to build daily demand series by item and warehouse. Computes weighted daily forecast, "
+     "forecast horizon quantity, safety stock, reorder point, suggested reorder quantity, days-of-cover, "
+     "confidence score, growth %, and risk level.",
+     "Data-driven replenishment planning from actual sales history. Reduces stockouts and over-ordering."),
+    ("Sales Anomaly Detection",
+     "Added anomaly detection in ForecastService using rolling baseline + standard deviation / z-score logic. "
+     "Classifies anomalies as Spike or Drop with severity levels (Low/Medium/High/Critical), "
+     "including expected vs actual quantity and deviation %. ",
+     "Early warning for unusual demand behavior, helping teams react before inventory impact worsens."),
+    ("ForecastController (MVC Orchestration)",
+     "Created Controllers/ForecastController.cs with 3 endpoints: "
+     "Index (overview dashboard), Reorder (detailed reorder planning with filters/sorting/pagination), "
+     "Anomalies (detailed anomaly log with filters/sorting/pagination).",
+     "Clean module structure following existing controller/service/view pattern."),
+    ("Forecast Dashboard View",
+     "Created Views/Forecast/Index.cshtml with date/horizon/lead-time filters, warehouse selector, KPI cards, "
+     "top reorder suggestions table, and recent anomalies table with deep links.",
+     "Manager gets a quick control-tower view of demand, risk, and purchase value impact."),
+    ("Reorder Planner View",
+     "Created Views/Forecast/Reorder.cshtml with full list analysis: "
+     "risk filter, search, only-reorder toggle, sortable columns (SKU/item/warehouse/on-hand/forecast/reorder point/suggested qty/cover/confidence), "
+     "summary cards, and pagination.",
+     "Actionable purchase-planning sheet that inventory/admin teams can use daily."),
+    ("Anomaly Monitor View",
+     "Created Views/Forecast/Anomalies.cshtml with severity/direction filters, search, sortable anomaly grid, "
+     "summary cards (critical/high, spikes, drops), and pagination.",
+     "Faster root-cause analysis of sudden sales jumps/drops by item and warehouse."),
+    ("Navigation + DI Wiring",
+     "Registered ForecastService in Program.cs and added sidebar links under Insights: "
+     "Forecast, Reorder Plan, and Anomalies. Sidebar group now auto-expands when Forecast controller is active.",
+     "Feature is fully discoverable and available through existing role-based navigation."),
+]
+
+add_table(["Feature", "What Was Done", "Benefit"], SPRINT13)
+
+# Sprint 14
+doc.add_page_break()
+doc.add_heading("Sprint 14 - Customer & Supplier Portals (Completed)", level=1)
+doc.add_paragraph(
+    "Sprint 14 introduces external self-service portal capabilities for customers and suppliers: "
+    "secure expiring access links, customer purchase history views, online return requests, "
+    "and supplier purchase-order response workflow."
+)
+
+SPRINT14 = [
+    ("Portal Data Model",
+     "Added new tenant-aware entities with auditing + constraints: PortalAccessLink (secure token links), "
+     "PortalReturnRequest (online return workflow), SupplierPoResponse (supplier PO acceptance/rejection). "
+     "Configured in ApplicationDbContext with status check constraints, relationships, indexes, and tenant filtering.",
+     "Production-ready persistence for self-service portal workflows with full traceability."),
+    ("Secure Token Link Architecture",
+     "Implemented PortalService token workflow using cryptographically secure random tokens. "
+     "Only SHA-256 token hash is stored in DB (raw token never persisted). "
+     "Link lifecycle supported: generation, expiry, revoke, and last-access timestamp updates.",
+     "Safer external access model for customer/supplier portal entry without exposing internal user accounts."),
+    ("Customer Self-Service Portal",
+     "Added CustomerPortalController + Views/CustomerPortal (Access + Invalid). "
+     "Customer portal shows POS bill history, invoice history, and return request status tracking. "
+     "Includes online return request submission linked to customer's completed POS bills.",
+     "Customers can self-serve purchase visibility and initiate returns without calling store staff."),
+    ("Supplier Self-Service Portal",
+     "Added SupplierPortalController + Views/SupplierPortal (Access + Invalid). "
+     "Supplier portal lists purchase orders and allows PO response (Accept/Reject), "
+     "optional expected delivery date, and supplier notes.",
+     "Streamlined supplier communication and acknowledgement loop for purchase orders."),
+    ("Portal Admin Console",
+     "Added PortalAdminController + Views/PortalAdmin/Index as internal control center. "
+     "Admin/Manager/Inventory roles can generate customer/supplier portal links, revoke links, "
+     "review and update online return requests, and monitor supplier PO responses.",
+     "Single operational screen for managing all portal lifecycle and external interactions."),
+    ("DI + Navigation + Migration",
+     "Registered PortalService in Program.cs and added 'Partner Portals' navigation entry under Inventory. "
+     "Created EF migration Sprint14_CustomerSupplierPortals with all new tables/indexes/constraints.",
+     "Feature is discoverable in UI and deployable with standard EF migration flow."),
+]
+
+add_table(["Feature", "What Was Done", "Benefit"], SPRINT14)
 
 # ═══════════════════════════════════════════════════════════════
 # SPRINT 1 — TESTING GUIDE
@@ -1724,7 +1814,7 @@ doc.add_heading("Cumulative Feature Summary", level=1)
 total_features = (len(PRE_SPRINT) + len(SPRINT1) + len(SPRINT2) + len(SPRINT3)
                   + len(SPRINT4) + len(SPRINT5) + len(SPRINT6) + len(SPRINT7)
                   + len(SPRINT8) + len(SPRINT9) + len(SPRINT10) + len(SPRINT11)
-                  + len(SPRINT12))
+                  + len(SPRINT12) + len(SPRINT13) + len(SPRINT14))
 doc.add_paragraph(f"Total features implemented as of {datetime.date.today().strftime('%B %d, %Y')}: {total_features}+")
 doc.add_paragraph()
 
@@ -1732,9 +1822,9 @@ add_table(["Category", "Count"], [
     ["Foundation & CRUD Modules", "8 phases"],
     ["Entities (DB Tables)", "36+ (22 ITenantEntity, Company, UserDashboardLayout, RefreshToken, BillTemplate, "
      "Promotion, EInvoice, EWayBill, etc.)"],
-    ["Controllers", "31 MVC + 14 API = 45 total"],
-    ["Views (Razor Pages)", "134+"],
-    ["Services (Business Logic)", "24 (including BackgroundJobs)"],
+    ["Controllers", "32 MVC + 14 API = 46 total"],
+    ["Views (Razor Pages)", "137+"],
+    ["Services (Business Logic)", "25 (including BackgroundJobs)"],
     ["API Endpoints", "40+ REST endpoints across 14 API controllers"],
     ["Security Enhancements", "Rate limiting, CSRF, CSP, Serilog, Health checks, Multi-Tenant, JWT"],
     ["Payment Gateway Integration", "Razorpay (UPI/Card/NetBanking/Wallet) — Sprint 2"],

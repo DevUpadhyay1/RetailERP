@@ -1,0 +1,168 @@
+@model RetailERP.Services.PortalService.CustomerPortalVm
+@{
+    ViewData["Title"] = "Customer Portal";
+    var token = (ViewBag.Token as string) ?? "";
+    DateTime? exp = ViewBag.ExpiresAtUtc as DateTime?;
+}
+
+<div class="container-xxl py-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-0">Customer Self-Service Portal</h2>
+            <div class="text-muted small">@Model.CustomerName</div>
+        </div>
+        <div class="text-end small text-muted">
+            <div>Phone: @(Model.Phone ?? "-")</div>
+            <div>Email: @(Model.Email ?? "-")</div>
+            <div>Link Expires (UTC): @(exp?.ToString("yyyy-MM-dd HH:mm") ?? "-")</div>
+        </div>
+    </div>
+
+    @if (TempData["Ok"] is string ok)
+    {
+        <div class="alert alert-success">@ok</div>
+    }
+    @if (TempData["Err"] is string err)
+    {
+        <div class="alert alert-danger">@err</div>
+    }
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header fw-semibold">Request Online Return</div>
+        <div class="card-body">
+            <form asp-action="RequestReturn" method="post" class="row g-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="token" value="@token" />
+                <div class="col-md-5">
+                    <label class="form-label">Select Bill</label>
+                    <select class="form-select" name="posBillId" required>
+                        <option value="">Select completed bill</option>
+                        @foreach (var b in Model.Bills)
+                        {
+                            <option value="@b.PosBillId">@b.BillNo - @b.BillDate.ToString("yyyy-MM-dd") - ₹@b.GrandTotal.ToString("0.##")</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-7">
+                    <label class="form-label">Reason</label>
+                    <input class="form-control" name="reason" maxlength="500" placeholder="Reason for return request" />
+                </div>
+                <div class="col-12">
+                    <button class="btn btn-primary">Submit Return Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header fw-semibold">Purchase History (POS Bills)</div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Bill No</th>
+                        <th>Date</th>
+                        <th>Store</th>
+                        <th>Grand Total</th>
+                        <th>Paid</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Bills.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-center text-muted py-3">No POS bill history found.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var b in Model.Bills)
+                        {
+                            <tr>
+                                <td>@b.BillNo</td>
+                                <td>@b.BillDate.ToString("yyyy-MM-dd")</td>
+                                <td>@b.StoreName</td>
+                                <td>₹@b.GrandTotal.ToString("0.##")</td>
+                                <td>₹@b.PaidAmount.ToString("0.##")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header fw-semibold">Invoice History</div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Invoice No</th>
+                        <th>Date</th>
+                        <th>Warehouse</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Invoices.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-center text-muted py-3">No invoice history found.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var i in Model.Invoices)
+                        {
+                            <tr>
+                                <td>@i.InvoiceNo</td>
+                                <td>@i.InvoiceDate.ToString("yyyy-MM-dd")</td>
+                                <td>@i.WarehouseName</td>
+                                <td>₹@i.TotalAmount.ToString("0.##")</td>
+                                <td>@(i.Status == 2 ? "Posted" : "Draft")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header fw-semibold">Return Request Status</div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Requested (UTC)</th>
+                        <th>Bill</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Store Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.ReturnRequests.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-center text-muted py-3">No return requests yet.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var r in Model.ReturnRequests)
+                        {
+                            <tr>
+                                <td>@r.RequestedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@r.BillNo</td>
+                                <td>@r.Reason</td>
+                                <td>
+                                    <span class="badge @(r.Status == 1 ? "bg-warning text-dark" : r.Status == 2 ? "bg-success" : r.Status == 3 ? "bg-danger" : "bg-primary")">
+                                        @(r.Status == 1 ? "Requested" : r.Status == 2 ? "Approved" : r.Status == 3 ? "Rejected" : "Processed")
+                                    </span>
+                                </td>
+                                <td>@r.AdminNote</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

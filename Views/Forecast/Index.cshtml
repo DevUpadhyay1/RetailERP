@@ -1,0 +1,247 @@
+@model RetailERP.Controllers.ForecastController.ForecastDashboardVm
+@{
+    ViewData["Title"] = "Forecast Dashboard";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-0">Forecast Dashboard</h2>
+        <div class="text-muted small">Demand forecast, reorder planning, and anomaly monitoring</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary btn-sm"
+           asp-action="Reorder"
+           asp-route-from="@Model.From.ToString("yyyy-MM-dd")"
+           asp-route-to="@Model.To.ToString("yyyy-MM-dd")"
+           asp-route-horizonDays="@Model.HorizonDays"
+           asp-route-leadTimeDays="@Model.LeadTimeDays"
+           asp-route-warehouseId="@Model.WarehouseId">Reorder Suggestions</a>
+        <a class="btn btn-outline-danger btn-sm"
+           asp-action="Anomalies"
+           asp-route-from="@Model.From.ToString("yyyy-MM-dd")"
+           asp-route-to="@Model.To.ToString("yyyy-MM-dd")"
+           asp-route-warehouseId="@Model.WarehouseId">Anomaly Monitor</a>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label mb-1">From</label>
+                <input type="date" name="from" class="form-control" value="@Model.From.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">To</label>
+                <input type="date" name="to" class="form-control" value="@Model.To.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">Forecast Horizon (Days)</label>
+                <input type="number" min="1" max="90" name="horizonDays" class="form-control" value="@Model.HorizonDays" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">Lead Time (Days)</label>
+                <input type="number" min="1" max="30" name="leadTimeDays" class="form-control" value="@Model.LeadTimeDays" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-1">Warehouse</label>
+                <select name="warehouseId" class="form-select">
+                    <option value="">All Warehouses</option>
+                    @foreach (var w in Model.Warehouses)
+                    {
+                        <option value="@w.WarehouseId" selected="@(Model.WarehouseId == w.WarehouseId)">@w.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-1 d-grid">
+                <button class="btn btn-primary" type="submit">Run</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-6 col-xl-2">
+        <div class="card h-100 border-start border-4 border-primary shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Items Analysed</div>
+                <div class="fs-4 fw-semibold">@Model.TotalItems</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-2">
+        <div class="card h-100 border-start border-4 border-warning shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Need Reorder</div>
+                <div class="fs-4 fw-semibold">@Model.ReorderItems</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-2">
+        <div class="card h-100 border-start border-4 border-danger shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">High Risk</div>
+                <div class="fs-4 fw-semibold">@Model.HighRiskItems</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-2">
+        <div class="card h-100 border-start border-4 border-success shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Projected Qty</div>
+                <div class="fs-5 fw-semibold">@Model.TotalForecastQty.ToString("0.##")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-2">
+        <div class="card h-100 border-start border-4 border-info shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Suggested Qty</div>
+                <div class="fs-5 fw-semibold">@Model.TotalSuggestedQty.ToString("0.##")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-2">
+        <div class="card h-100 border-start border-4 border-dark shadow-sm">
+            <div class="card-body">
+                <div class="text-muted small">Suggested Value</div>
+                <div class="fs-5 fw-semibold">@Model.TotalSuggestedValue.ToString("0.00")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Top Reorder Suggestions</span>
+                <a class="btn btn-sm btn-outline-primary"
+                   asp-action="Reorder"
+                   asp-route-from="@Model.From.ToString("yyyy-MM-dd")"
+                   asp-route-to="@Model.To.ToString("yyyy-MM-dd")"
+                   asp-route-horizonDays="@Model.HorizonDays"
+                   asp-route-leadTimeDays="@Model.LeadTimeDays"
+                   asp-route-warehouseId="@Model.WarehouseId">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:120px;">SKU</th>
+                                <th>Item</th>
+                                <th style="width:180px;">Warehouse</th>
+                                <th class="text-end" style="width:120px;">On Hand</th>
+                                <th class="text-end" style="width:130px;">Reorder</th>
+                                <th class="text-center" style="width:120px;">Risk</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.TopReorders.Any())
+                            {
+                                <tr><td colspan="6" class="text-center text-muted py-4">No forecast data for selected period.</td></tr>
+                            }
+                            else
+                            {
+                                @foreach (var r in Model.TopReorders)
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">@r.ItemSku</td>
+                                        <td>@r.ItemName</td>
+                                        <td>@r.WarehouseName</td>
+                                        <td class="text-end">@r.OnHand.ToString("0.##")</td>
+                                        <td class="text-end fw-semibold">@r.SuggestedReorderQty.ToString("0.##")</td>
+                                        <td class="text-center">
+                                            @if (string.Equals(r.RiskLevel, "High", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="badge bg-danger">High</span>
+                                            }
+                                            else if (string.Equals(r.RiskLevel, "Medium", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="badge bg-warning text-dark">Medium</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success">Low</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Recent Anomalies</span>
+                <a class="btn btn-sm btn-outline-danger"
+                   asp-action="Anomalies"
+                   asp-route-from="@Model.From.ToString("yyyy-MM-dd")"
+                   asp-route-to="@Model.To.ToString("yyyy-MM-dd")"
+                   asp-route-warehouseId="@Model.WarehouseId">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:115px;">Date</th>
+                                <th>Item</th>
+                                <th class="text-end" style="width:120px;">Deviation %</th>
+                                <th class="text-center" style="width:110px;">Severity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.RecentAnomalies.Any())
+                            {
+                                <tr><td colspan="4" class="text-center text-muted py-4">No anomalies detected.</td></tr>
+                            }
+                            else
+                            {
+                                @foreach (var a in Model.RecentAnomalies)
+                                {
+                                    <tr>
+                                        <td class="text-muted">@a.Date.ToString("dd-MMM-yyyy")</td>
+                                        <td>
+                                            <div class="fw-semibold">@a.ItemSku</div>
+                                            <div class="small text-muted">@a.ItemName</div>
+                                        </td>
+                                        <td class="text-end">@a.DeviationPercent.ToString("0.0")%</td>
+                                        <td class="text-center">
+                                            @if (string.Equals(a.Severity, "Critical", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="badge bg-danger">Critical</span>
+                                            }
+                                            else if (string.Equals(a.Severity, "High", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="badge bg-warning text-dark">High</span>
+                                            }
+                                            else if (string.Equals(a.Severity, "Medium", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="badge bg-info text-dark">Medium</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">Low</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between small text-muted">
+                <span>Total anomalies: @Model.AnomalyCount</span>
+                <span>Critical/High: @Model.CriticalAnomalyCount</span>
+            </div>
+        </div>
+    </div>
+</div>

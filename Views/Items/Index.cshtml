@@ -27,9 +27,14 @@
             <div class="text-muted small">Showing @from-@to of @total</div>
         </div>
 
-        <a class="btn btn-primary" asp-action="Create">
-            + Add Item
-        </a>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" asp-controller="ItemOnboarding" asp-action="Index">
+                Import / Starter Pack
+            </a>
+            <a class="btn btn-primary" asp-action="Create">
+                + Add Item
+            </a>
+        </div>
     </div>
 
     <div class="card shadow-sm mb-3">
