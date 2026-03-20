@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+    volumes:
+      - sql_data:/var/opt/mssql
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  app:
+    image: ${APP_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      - sqlserver
+      - redis
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Server=sqlserver;Database=RetailERPDb;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=true
+      ConnectionStrings__Redis: redis:6379
+      Jwt__SecretKey: ${JWT_SECRET}
+      Smtp__Host: ${SMTP_HOST}
+      Smtp__Port: ${SMTP_PORT}
+      Smtp__UseStartTls: ${SMTP_USE_STARTTLS}
+      Smtp__User: ${SMTP_USER}
+      Smtp__Password: ${SMTP_PASSWORD}
+      Smtp__FromEmail: ${SMTP_FROM_EMAIL}
+      Smtp__FromName: ${SMTP_FROM_NAME}
+      Razorpay__KeyId: ${RAZORPAY_KEY_ID}
+      Razorpay__KeySecret: ${RAZORPAY_KEY_SECRET}
+      Twilio__AccountSid: ${TWILIO_ACCOUNT_SID}
+      Twilio__AuthToken: ${TWILIO_AUTH_TOKEN}
+      Twilio__FromNumber: ${TWILIO_FROM_NUMBER}
+      Twilio__IsEnabled: ${TWILIO_IS_ENABLED}
+      WhatsApp__PhoneNumberId: ${WHATSAPP_PHONE_NUMBER_ID}
+      WhatsApp__AccessToken: ${WHATSAPP_ACCESS_TOKEN}
+      WhatsApp__IsEnabled: ${WHATSAPP_IS_ENABLED}
+    ports:
+      - "8080:8080"
+    volumes:
+      - app_uploads:/app/wwwroot/uploads
+      - app_logs:/app/Logs
+
+volumes:
+  sql_data:
+  redis_data:
+  app_uploads:
+  app_logs:

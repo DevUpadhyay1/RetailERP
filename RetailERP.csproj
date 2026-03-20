@@ -8,6 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="RetailERP.Tests\**\*.cs" />
+    <Content Remove="RetailERP.Tests\**\*" />
+    <EmbeddedResource Remove="RetailERP.Tests\**\*" />
+    <None Remove="RetailERP.Tests\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AspNetCore.HealthChecks.SqlServer" Version="8.0.2" />
     <PackageReference Include="MailKit" Version="4.14.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.12" />

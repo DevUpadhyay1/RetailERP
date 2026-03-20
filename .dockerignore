@@ -1,0 +1,19 @@
+.git
+.github
+.vs
+.idea
+bin
+obj
+**/bin
+**/obj
+_build_verify
+Docs - Copy
+Logs
+*.user
+*.suo
+*.db
+*.db-shm
+*.db-wal
+*.pfx
+*.snk
+~$*

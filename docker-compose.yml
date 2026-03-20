@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: retailerp-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD:-Your_strong_Password_123}
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${SA_PASSWORD:-Your_strong_Password_123}", "-Q", "SELECT 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: retailerp-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: retailerp:local
+    container_name: retailerp-app
+    depends_on:
+      - sqlserver
+      - redis
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Server=sqlserver;Database=RetailERPDb;User Id=sa;Password=${SA_PASSWORD:-Your_strong_Password_123};TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=true
+      ConnectionStrings__Redis: redis:6379
+      Jwt__SecretKey: ${JWT_SECRET:-CHANGE_ME_TO_A_STRONG_SECRET_FOR_PROD}
+    ports:
+      - "8080:8080"
+    volumes:
+      - app_uploads:/app/wwwroot/uploads
+      - app_logs:/app/Logs
+
+volumes:
+  sql_data:
+  redis_data:
+  app_uploads:
+  app_logs:

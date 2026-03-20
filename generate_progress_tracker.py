@@ -89,7 +89,7 @@ SPRINTS = [
     ("Sprint 13", "AI Forecasting + Reorder", "Demand forecasting service, auto-reorder suggestions, anomaly detection", "✅ COMPLETED"),
     ("Sprint 14", "Customer & Supplier Portals", "Self-service portals, purchase history, online returns, PO management", "✅ COMPLETED"),
     ("Sprint 15", "Franchise + Multi-Language", "Franchise management, royalty calc, Hindi/Gujarati/Marathi i18n", "✅ COMPLETED"),
-    ("Sprint 16", "Testing + CI/CD + DevOps", "xUnit tests, GitHub Actions pipeline, Docker, deployment automation", "🔲 NOT STARTED"),
+    ("Sprint 16", "Testing + CI/CD + DevOps", "xUnit tests, GitHub Actions pipeline, Docker, deployment automation", "✅ COMPLETED"),
 ]
 
 add_table(["Sprint", "Theme", "Key Deliverables", "Status"], SPRINTS)
@@ -886,6 +886,42 @@ SPRINT15 = [
 ]
 
 add_table(["Feature", "What Was Done", "Benefit"], SPRINT15)
+
+# Sprint 16
+doc.add_page_break()
+doc.add_heading("Sprint 16 - Testing + CI/CD + DevOps (Completed)", level=1)
+doc.add_paragraph(
+    "Sprint 16 adds engineering maturity and deployment readiness: automated tests, CI workflows, "
+    "Docker containerization, and deployment automation templates for production rollouts."
+)
+
+SPRINT16 = [
+    ("xUnit Test Project",
+     "Created RetailERP.Tests project and added it to RetailERP.sln. Added meaningful unit/service tests "
+     "for JWT token generation/claims and item onboarding CSV import behaviors (including duplicate-SKU validation).",
+     "Establishes automated regression protection for critical core logic."),
+    ("CI Pipeline (GitHub Actions)",
+     "Added .github/workflows/ci.yml with restore, build, test, code-coverage collection, "
+     "and test artifact upload. Added docker image build validation stage after tests.",
+     "Every push/PR now gets consistent automated quality checks."),
+    ("Deployment Workflow (GitHub Actions)",
+     "Added .github/workflows/deploy.yml as a manual production deployment pipeline. "
+     "Workflow builds and pushes image to GHCR, then deploys over SSH using environment secrets.",
+     "Standardized, repeatable production release mechanism."),
+    ("Docker Containerization",
+     "Added Dockerfile (multi-stage .NET 8 build/runtime), .dockerignore, docker-compose.yml for local full-stack "
+     "(app + SQL Server + Redis), and docker-compose.prod.yml for production image deployment.",
+     "Portable runtime and environment parity across local/staging/production."),
+    ("Deployment Automation Script",
+     "Added scripts/deploy_production.ps1 to pull configured app image and run compose deployment safely. "
+     "Includes env-file guard checks and image cleanup step.",
+     "Fast operational deployment with fewer manual errors."),
+    ("Production Env Template",
+     "Added deploy/.env.production.template with required runtime variables: DB, JWT, SMTP, Razorpay, Twilio, WhatsApp.",
+     "Clear external setup contract for deployment handoff."),
+]
+
+add_table(["Feature", "What Was Done", "Benefit"], SPRINT16)
 
 # ═══════════════════════════════════════════════════════════════
 # SPRINT 1 — TESTING GUIDE
@@ -1864,7 +1900,7 @@ doc.add_heading("Cumulative Feature Summary", level=1)
 total_features = (len(PRE_SPRINT) + len(SPRINT1) + len(SPRINT2) + len(SPRINT3)
                   + len(SPRINT4) + len(SPRINT5) + len(SPRINT6) + len(SPRINT7)
                   + len(SPRINT8) + len(SPRINT9) + len(SPRINT10) + len(SPRINT11)
-                  + len(SPRINT12) + len(SPRINT13) + len(SPRINT14))
+                  + len(SPRINT12) + len(SPRINT13) + len(SPRINT14) + len(SPRINT15) + len(SPRINT16))
 doc.add_paragraph(f"Total features implemented as of {datetime.date.today().strftime('%B %d, %Y')}: {total_features}+")
 doc.add_paragraph()
 

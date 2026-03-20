@@ -5,6 +5,8 @@ VisualStudioVersion = 17.10.35013.160
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RetailERP", "RetailERP.csproj", "{24EFB5C8-8AF5-4A1E-912C-203DA7AFF3F9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RetailERP.Tests", "RetailERP.Tests\RetailERP.Tests.csproj", "{5992DEE1-6345-4433-9049-1177FD852F80}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{24EFB5C8-8AF5-4A1E-912C-203DA7AFF3F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{24EFB5C8-8AF5-4A1E-912C-203DA7AFF3F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{24EFB5C8-8AF5-4A1E-912C-203DA7AFF3F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5992DEE1-6345-4433-9049-1177FD852F80}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5992DEE1-6345-4433-9049-1177FD852F80}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5992DEE1-6345-4433-9049-1177FD852F80}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5992DEE1-6345-4433-9049-1177FD852F80}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
