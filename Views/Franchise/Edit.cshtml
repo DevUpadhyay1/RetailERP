@@ -1,0 +1,76 @@
+@model RetailERP.Controllers.FranchiseController.EditFranchiseAgreementVm
+@{
+    ViewData["Title"] = $"Edit — {Model.AgreementCode}";
+}
+
+<h2 class="mb-3">Edit Agreement: @Model.AgreementCode</h2>
+<p class="text-muted">@Model.FranchisorName → @Model.FranchiseeName</p>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form asp-action="Edit" method="post">
+            <input type="hidden" asp-for="FranchiseAgreementId" />
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="AgreementCode" class="form-label">Agreement Code</label>
+                    <input asp-for="AgreementCode" class="form-control" />
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="Status" class="form-label">Status</label>
+                    <select asp-for="Status" class="form-select">
+                        <option value="1">Active</option>
+                        <option value="2">Expired</option>
+                        <option value="3">Terminated</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="Territory" class="form-label">Territory</label>
+                    <input asp-for="Territory" class="form-control" />
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="RoyaltyPercent" class="form-label">Royalty %</label>
+                    <input asp-for="RoyaltyPercent" class="form-control" type="number" step="0.01" min="0" max="100" />
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="MonthlyFlatFee" class="form-label">Monthly Flat Fee (₹)</label>
+                    <input asp-for="MonthlyFlatFee" class="form-control" type="number" step="0.01" min="0" />
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="MinMonthlyRoyalty" class="form-label">Min Monthly (₹)</label>
+                    <input asp-for="MinMonthlyRoyalty" class="form-control" type="number" step="0.01" min="0" />
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="StartDate" class="form-label">Start Date</label>
+                    <input asp-for="StartDate" class="form-control" type="date" />
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="EndDate" class="form-label">End Date</label>
+                    <input asp-for="EndDate" class="form-control" type="date" />
+                </div>
+
+                <div class="col-md-9">
+                    <label asp-for="Notes" class="form-label">Notes</label>
+                    <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save Changes</button>
+                <a asp-action="Details" asp-route-id="@Model.FranchiseAgreementId" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

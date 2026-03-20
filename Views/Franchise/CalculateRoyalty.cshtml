@@ -1,0 +1,75 @@
+@{
+    ViewData["Title"] = "Calculate Royalty";
+    var agreement = ViewData["Agreement"] as RetailERP.Data.Entities.FranchiseAgreement;
+    var year = (int)(ViewData["Year"] ?? DateTime.UtcNow.Year);
+    var month = (int)(ViewData["Month"] ?? DateTime.UtcNow.Month);
+    var calc = ViewData["Calculation"] as RetailERP.Services.RoyaltyCalculation;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-0">Calculate Royalty</h2>
+        <div class="text-muted small">@agreement?.AgreementCode — @agreement?.FranchiseeCompany?.Name</div>
+    </div>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Details" asp-route-id="@agreement?.FranchiseAgreementId">Back to Agreement</a>
+</div>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <form method="post" class="row g-2 align-items-end">
+            <input type="hidden" name="agreementId" value="@agreement?.FranchiseAgreementId" />
+            <div class="col-md-2">
+                <label class="form-label">Year</label>
+                <input type="number" name="year" value="@year" class="form-control" min="2020" max="2099" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Month</label>
+                <input type="number" name="month" value="@month" class="form-control" min="1" max="12" />
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-calculator me-1"></i>Calculate</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (calc is not null)
+{
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <div class="card shadow-sm text-center">
+                <div class="card-body">
+                    <div class="text-muted small">Gross Sales (@year/@month.ToString("D2"))</div>
+                    <div class="fs-3 fw-bold text-primary">₹@calc.GrossSales.ToString("N2")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm text-center">
+                <div class="card-body">
+                    <div class="text-muted small">Royalty (@calc.RoyaltyPercent% + Flat ₹@calc.FlatFeeAmount.ToString("N0"))</div>
+                    <div class="fs-3 fw-bold text-warning">₹@calc.RoyaltyAmount.ToString("N2")</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm text-center border-success">
+                <div class="card-body">
+                    <div class="text-muted small">Total Due</div>
+                    <div class="fs-3 fw-bold text-success">₹@calc.TotalDue.ToString("N2")</div>
+                    @if (calc.TotalDue == calc.MinMonthlyRoyalty && calc.MinMonthlyRoyalty > 0)
+                    {
+                        <div class="small text-info">Min monthly royalty applied</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form asp-action="GeneratePayment" method="post" class="d-inline">
+        <input type="hidden" name="agreementId" value="@agreement?.FranchiseAgreementId" />
+        <input type="hidden" name="year" value="@year" />
+        <input type="hidden" name="month" value="@month" />
+        <button type="submit" class="btn btn-success"><i class="bi bi-plus-lg me-1"></i>Generate Payment Record</button>
+    </form>
+}

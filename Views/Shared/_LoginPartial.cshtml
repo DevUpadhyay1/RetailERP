@@ -1,11 +1,10 @@
-﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using RetailERP.Data.Identity
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 
 @{
-    // Self-registration is only allowed when the system has zero users (bootstrap).
     var registrationOpen = !UserManager.Users.AsNoTracking().Any();
     static string InferNiceName(string? displayName, string? userName, string? email, string? fallback)
     {
@@ -20,6 +19,14 @@
         preferred = preferred.Replace('.', ' ').Replace('_', ' ').Trim();
         return string.IsNullOrWhiteSpace(preferred) ? "User" : preferred;
     }
+
+    static string GetInitials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return (parts[0][..1] + parts[^1][..1]).ToUpper();
+        return name.Length >= 2 ? name[..2].ToUpper() : name.ToUpper();
+    }
 }
 
 <ul class="navbar-nav">
@@ -27,21 +34,42 @@
     {
         var currentUser = await UserManager.GetUserAsync(User);
         var displayName = InferNiceName(currentUser?.DisplayName, currentUser?.UserName, currentUser?.Email, User.Identity?.Name);
+        var initials = GetInitials(displayName);
+        var roleLabel =
+            User.IsInRole("SuperAdmin") ? "Super Admin" :
+            User.IsInRole("Admin") ? "Admin" :
+            User.IsInRole("Manager") ? "Manager" :
+            User.IsInRole("Inventory") ? "Inventory" :
+            User.IsInRole("Cashier") ? "Cashier" :
+            User.IsInRole("Finance") ? "Finance" :
+            User.IsInRole("HR") ? "HR" : "User";
         <li class="nav-item">
             <div class="dropdown">
-                <a class="nav-link dropdown-toggle text-dark d-flex align-items-center gap-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-person-circle"></i>
-                    <span>@displayName</span>
+                <a class="user-dropdown-trigger dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration:none;">
+                    <div class="user-avatar">@initials</div>
+                    <div class="d-none d-md-block">
+                        <div class="user-dropdown-name">@displayName</div>
+                        <div class="user-dropdown-role">@roleLabel</div>
+                    </div>
                 </a>
-                <ul class="dropdown-menu dropdown-menu-end">
+                <ul class="dropdown-menu dropdown-menu-end" style="min-width:220px;">
+                    <li class="px-3 py-2 d-md-none">
+                        <div class="fw-semibold small">@displayName</div>
+                        <div class="text-muted" style="font-size:.72rem;">@roleLabel</div>
+                    </li>
+                    <li class="d-md-none"><hr class="dropdown-divider" /></li>
                     <li>
-                        <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">Profile</a>
+                        <a class="dropdown-item d-flex align-items-center gap-2" asp-area="Identity" asp-page="/Account/Manage/Index">
+                            <i class="bi bi-person"></i> Profile
+                        </a>
                     </li>
                     <li><hr class="dropdown-divider" /></li>
                     <li>
-                        <form class="px-3" asp-area="Identity" asp-page="/Account/Logout"
+                        <form class="px-2" asp-area="Identity" asp-page="/Account/Logout"
                               asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })" method="post">
-                            <button type="submit" class="btn btn-outline-secondary w-100">Logout</button>
+                            <button type="submit" class="dropdown-item d-flex align-items-center gap-2 text-danger">
+                                <i class="bi bi-box-arrow-right"></i> Sign out
+                            </button>
                         </form>
                     </li>
                 </ul>
@@ -53,11 +81,11 @@
         if (registrationOpen)
         {
             <li class="nav-item">
-                <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Register</a>
+                <a class="nav-link" asp-area="Identity" asp-page="/Account/Register">Register</a>
             </li>
         }
         <li class="nav-item">
-            <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a>
+            <a class="btn btn-primary btn-sm px-3" asp-area="Identity" asp-page="/Account/Login">Sign in</a>
         </li>
     }
 </ul>

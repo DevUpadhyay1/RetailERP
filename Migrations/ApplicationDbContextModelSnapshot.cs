@@ -347,6 +347,9 @@ namespace RetailERP.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
+                    b.Property<Guid?>("ParentCompanyId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("Phone")
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)");
@@ -370,6 +373,8 @@ namespace RetailERP.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique();
+
+                    b.HasIndex("ParentCompanyId");
 
                     b.ToTable("Companies");
                 });
@@ -950,6 +955,86 @@ namespace RetailERP.Migrations
                     b.ToTable("EodReports", t =>
                         {
                             t.HasCheckConstraint("CK_EodReports_Status", "[Status] IN (1,2)");
+                        });
+                });
+
+            modelBuilder.Entity("RetailERP.Data.Entities.FranchiseAgreement", b =>
+                {
+                    b.Property<Guid>("FranchiseAgreementId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AgreementCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("FranchiseeCompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FranchisorCompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("MinMonthlyRoyalty")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MonthlyFlatFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("RoyaltyPercent")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Territory")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("FranchiseAgreementId");
+
+                    b.HasIndex("AgreementCode")
+                        .IsUnique();
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("FranchiseeCompanyId");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.HasIndex("FranchisorCompanyId", "FranchiseeCompanyId")
+                        .IsUnique();
+
+                    b.ToTable("FranchiseAgreements", t =>
+                        {
+                            t.HasCheckConstraint("CK_FranchiseAgreements_Status", "[Status] IN (1,2,3)");
                         });
                 });
 
@@ -2386,6 +2471,77 @@ namespace RetailERP.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("RetailERP.Data.Entities.RoyaltyPayment", b =>
+                {
+                    b.Property<Guid>("RoyaltyPaymentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("AmountPaid")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("FlatFeeAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("FranchiseAgreementId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("GrossSales")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("PaidAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte>("PeriodMonth")
+                        .HasColumnType("tinyint");
+
+                    b.Property<int>("PeriodYear")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("RoyaltyAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("TotalDue")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("RoyaltyPaymentId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.HasIndex("FranchiseAgreementId", "PeriodYear", "PeriodMonth")
+                        .IsUnique();
+
+                    b.ToTable("RoyaltyPayments", t =>
+                        {
+                            t.HasCheckConstraint("CK_RoyaltyPayments_Status", "[Status] IN (1,2,3,4)");
+                        });
+                });
+
             modelBuilder.Entity("RetailERP.Data.Entities.Stock", b =>
                 {
                     b.Property<Guid>("StockId")
@@ -3246,6 +3402,16 @@ namespace RetailERP.Migrations
                     b.Navigation("ParentCategory");
                 });
 
+            modelBuilder.Entity("RetailERP.Data.Entities.Company", b =>
+                {
+                    b.HasOne("RetailERP.Data.Entities.Company", "ParentCompany")
+                        .WithMany("ChildCompanies")
+                        .HasForeignKey("ParentCompanyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ParentCompany");
+                });
+
             modelBuilder.Entity("RetailERP.Data.Entities.Coupon", b =>
                 {
                     b.HasOne("RetailERP.Data.Entities.Company", null)
@@ -3406,6 +3572,35 @@ namespace RetailERP.Migrations
                     b.Navigation("ClosedByUser");
 
                     b.Navigation("Store");
+                });
+
+            modelBuilder.Entity("RetailERP.Data.Entities.FranchiseAgreement", b =>
+                {
+                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetailERP.Data.Entities.Company", "FranchiseeCompany")
+                        .WithMany()
+                        .HasForeignKey("FranchiseeCompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetailERP.Data.Entities.Company", "FranchisorCompany")
+                        .WithMany()
+                        .HasForeignKey("FranchisorCompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("FranchiseeCompany");
+
+                    b.Navigation("FranchisorCompany");
                 });
 
             modelBuilder.Entity("RetailERP.Data.Entities.Invoice", b =>
@@ -3993,6 +4188,27 @@ namespace RetailERP.Migrations
                     b.Navigation("Purchase");
                 });
 
+            modelBuilder.Entity("RetailERP.Data.Entities.RoyaltyPayment", b =>
+                {
+                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RetailERP.Data.Entities.FranchiseAgreement", "Agreement")
+                        .WithMany("RoyaltyPayments")
+                        .HasForeignKey("FranchiseAgreementId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Agreement");
+                });
+
             modelBuilder.Entity("RetailERP.Data.Entities.Stock", b =>
                 {
                     b.HasOne("RetailERP.Data.Entities.Company", null)
@@ -4270,9 +4486,19 @@ namespace RetailERP.Migrations
                     b.Navigation("Children");
                 });
 
+            modelBuilder.Entity("RetailERP.Data.Entities.Company", b =>
+                {
+                    b.Navigation("ChildCompanies");
+                });
+
             modelBuilder.Entity("RetailERP.Data.Entities.Coupon", b =>
                 {
                     b.Navigation("Usages");
+                });
+
+            modelBuilder.Entity("RetailERP.Data.Entities.FranchiseAgreement", b =>
+                {
+                    b.Navigation("RoyaltyPayments");
                 });
 
             modelBuilder.Entity("RetailERP.Data.Entities.Invoice", b =>

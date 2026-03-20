@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Identity
 @using RetailERP.Data.Identity
 @inject UserManager<ApplicationUser> UserManager
 @{
@@ -28,15 +28,20 @@
 
     var currentUser = await UserManager.GetUserAsync(User);
     var displayName = InferNiceName(currentUser?.DisplayName, currentUser?.UserName, currentUser?.Email, User.Identity?.Name);
+
+    var hour = DateTime.Now.Hour;
+    var greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 }
 
-<!-- Page Header -->
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
     <div>
-        <h2 class="mb-0 fw-bold">Welcome back, @displayName</h2>
-        <div class="text-muted small">@DateTime.Now.ToString("dddd, dd MMMM yyyy") &middot; Role: <span class="badge bg-primary">@roleLabel</span></div>
+        <h2 class="mb-1 fw-bold" style="font-size:1.5rem;">@greeting, @displayName</h2>
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small">@DateTime.Now.ToString("dddd, dd MMMM yyyy")</span>
+            <span class="badge bg-primary" style="font-size:.68rem;">@roleLabel</span>
+        </div>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
         @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Cashier") || User.IsInRole("Finance"))
         {
             <a class="btn btn-primary" asp-controller="Invoices" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>New Sale</a>
@@ -60,7 +65,6 @@
     </div>
 </div>
 
-<!-- Dashboard Toolbar -->
 <div class="dashboard-toolbar">
     <button id="btn-lock-toggle" class="btn btn-sm btn-outline-dark" title="Lock / Unlock dashboard editing">
         <i class="bi bi-unlock me-1"></i><span>Lock</span>
@@ -71,30 +75,31 @@
     <span class="text-muted small ms-2 edit-mode-hint"><i class="bi bi-arrows-move me-1"></i>Drag headers to rearrange &middot; Resize from corners</span>
 </div>
 
-<!-- Gridstack Dashboard Grid -->
 <div class="grid-stack" id="dashboard-grid"></div>
 
-<!-- Widget Picker Sidebar -->
-<div id="widget-picker-overlay" class="widget-picker-overlay"></div>
+<div id="widget-picker-overlay" class="widget-picker-overlay"
+     onclick="document.getElementById('widget-picker-overlay').classList.remove('show');document.getElementById('widget-picker').classList.remove('show');"></div>
 <div id="widget-picker" class="widget-picker">
     <div class="widget-picker-header">
         <span><i class="bi bi-columns-gap me-2"></i>Add Widget</span>
-        <button id="picker-close" class="btn btn-sm btn-light"><i class="bi bi-x-lg"></i></button>
+        <button id="picker-close" type="button"
+                onclick="document.getElementById('widget-picker-overlay').classList.remove('show');document.getElementById('widget-picker').classList.remove('show');">
+            <i class="bi bi-x-lg"></i>
+        </button>
     </div>
     <div id="picker-body" class="widget-picker-body"></div>
 </div>
 
-<!-- Antiforgery token for AJAX -->
 @Html.AntiForgeryToken()
 
 @section Styles {
     <link href="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack.min.css" rel="stylesheet" />
-    <link href="~/css/dashboard.css" rel="stylesheet" />
+    <link href="~/css/dashboard.css" rel="stylesheet" asp-append-version="true" />
 }
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack-all.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@5/dist/apexcharts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
-    <script src="~/js/dashboard.js"></script>
+    <script src="~/js/dashboard.js" asp-append-version="true"></script>
 }

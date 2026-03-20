@@ -3,11 +3,14 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#1e3a5f" />
+    <meta name="theme-color" content="#0f172a" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <title>@ViewData["Title"] - RetailERP</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -33,27 +36,38 @@
             return string.IsNullOrWhiteSpace(preferred) ? "User" : preferred;
         }
 
+        static string GetInitials(string name)
+        {
+            var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2)
+                return (parts[0][..1] + parts[^1][..1]).ToUpper();
+            return name.Length >= 2 ? name[..2].ToUpper() : name.ToUpper();
+        }
+
         string? currentDisplayName = null;
+        string? userInitials = null;
         if (User?.Identity?.IsAuthenticated == true)
         {
             var currentUser = await UserManager.GetUserAsync(User);
             currentDisplayName = InferNiceName(currentUser?.DisplayName, currentUser?.UserName, currentUser?.Email, User.Identity?.Name);
+            userInitials = GetInitials(currentDisplayName);
         }
     }
 
     @if (User?.Identity?.IsAuthenticated == true)
     {
         <div class="app-shell d-flex" id="appShell">
-            <aside class="app-sidebar bg-dark text-white border-end">
-                <div class="px-3 py-3 border-bottom border-secondary">
-                    <a class="text-white text-decoration-none fw-semibold d-flex align-items-center gap-2" asp-controller="Home" asp-action="Dashboard">
-                        <i class="bi bi-box-seam"></i>
-                        <span>RetailERP</span>
+            <aside class="app-sidebar" id="appSidebar">
+                <div class="sidebar-brand-area">
+                    <a class="text-white text-decoration-none d-flex align-items-center gap-2" asp-controller="Home" asp-action="Dashboard">
+                        <div class="sidebar-brand-logo">
+                            <i class="bi bi-box-seam"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold" style="font-size:.95rem;line-height:1.2;">RetailERP</div>
+                            <div style="font-size:.68rem;color:rgba(255,255,255,.4);letter-spacing:.03em;">Enterprise Platform</div>
+                        </div>
                     </a>
-                    <div class="small text-white-50 d-flex align-items-center gap-2">
-                        <i class="bi bi-person-circle"></i>
-                        <span>@currentDisplayName</span>
-                    </div>
                 </div>
 
                 @{
@@ -73,7 +87,6 @@
                 }
 
                 @{
-                    /* Helper: returns true when current controller matches any in the array */
                     bool IsInGroup(params string[] controllers) =>
                         controllers.Any(c => string.Equals(currentController, c, StringComparison.OrdinalIgnoreCase));
 
@@ -85,15 +98,13 @@
                 }
 
                 <nav class="px-2 py-2">
-                    @* ── Home (always visible, standalone) ── *@
                     <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Home", "Dashboard")" asp-controller="Home" asp-action="Dashboard">
                         <i class="bi bi-speedometer2 sidebar-icon"></i>
-                        <span>Home</span>
+                        <span>Dashboard</span>
                     </a>
 
                     @if (User.IsInRole("SuperAdmin"))
                     {
-                        @* ── SuperAdmin: Tenants ── *@
                         <div class="sidebar-group">
                             <button class="sidebar-group-toggle @GroupToggleClass("Companies")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-tenants" aria-expanded="@(IsInGroup("Companies") ? "true" : "false")">
                                 <i class="bi bi-buildings sidebar-icon"></i>
@@ -105,7 +116,6 @@
                             </div>
                         </div>
 
-                        @* ── SuperAdmin: Platform Users ── *@
                         <div class="sidebar-group">
                             <button class="sidebar-group-toggle @GroupToggleClass("AdminUsers")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-sa-users" aria-expanded="@(IsInGroup("AdminUsers") ? "true" : "false")">
                                 <i class="bi bi-people-fill sidebar-icon"></i>
@@ -117,7 +127,6 @@
                             </div>
                         </div>
 
-                        @* ── SuperAdmin: Platform Insights ── *@
                         <div class="sidebar-group">
                             <button class="sidebar-group-toggle @GroupToggleClass("Audit")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-sa-insights" aria-expanded="@(IsInGroup("Audit") ? "true" : "false")">
                                 <i class="bi bi-shield-check sidebar-icon"></i>
@@ -131,11 +140,8 @@
                     }
                     else
                     {
-                    @* ── Normal tenant users ── *@
-
                     @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Inventory"))
                     {
-                        @* ── Inventory ── *@
                         <div class="sidebar-group">
                             <button class="sidebar-group-toggle @GroupToggleClass("Stocks","StockTransactions","StockTransfers","Purchases","Items","ItemOnboarding","Warehouses","Stores","Units","Categories","Suppliers","PortalAdmin")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-inventory" aria-expanded="@(IsInGroup("Stocks","StockTransactions","StockTransfers","Purchases","Items","ItemOnboarding","Warehouses","Stores","Units","Categories","Suppliers","PortalAdmin") ? "true" : "false")">
                                 <i class="bi bi-box-seam-fill sidebar-icon"></i>
@@ -159,7 +165,6 @@
                         </div>
                     }
 
-                    @* ── Sales / CRM ── *@
                     <div class="sidebar-group">
                         <button class="sidebar-group-toggle @GroupToggleClass("Pos","Invoices","Customers","Loyalty","Coupons","Promotions")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-sales" aria-expanded="@(IsInGroup("Pos","Invoices","Customers","Loyalty","Coupons","Promotions") ? "true" : "false")">
                             <i class="bi bi-cart3 sidebar-icon"></i>
@@ -180,7 +185,6 @@
 
                     @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("HR"))
                     {
-                        @* ── People ── *@
                         <div class="sidebar-group">
                             <button class="sidebar-group-toggle @GroupToggleClass("Employees")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-people" aria-expanded="@(IsInGroup("Employees") ? "true" : "false")">
                                 <i class="bi bi-person-badge sidebar-icon"></i>
@@ -195,7 +199,6 @@
 
                     @if (User.IsInRole("Admin") || User.IsInRole("Manager"))
                     {
-                        @* ── Insights ── *@
                         <div class="sidebar-group">
                             <button class="sidebar-group-toggle @GroupToggleClass("Reports","Audit","Eod","Forecast") @(IsInGroup("Items") && string.Equals(currentAction, "LowStock", StringComparison.OrdinalIgnoreCase) ? "" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-insights" aria-expanded="@(IsInGroup("Reports","Audit","Eod","Forecast") || (IsInGroup("Items") && string.Equals(currentAction, "LowStock", StringComparison.OrdinalIgnoreCase)) ? "true" : "false")">
                                 <i class="bi bi-graph-up sidebar-icon"></i>
@@ -213,10 +216,8 @@
                             </div>
                         </div>
 
-                        @* ── Barcode Labels ── *@
                         <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("BarcodeLabels", "Index")" asp-controller="BarcodeLabels" asp-action="Index"><i class="bi bi-upc-scan sidebar-icon"></i><span>Barcode Labels</span></a>
 
-                        @* ── Notifications ── *@
                         <div class="sidebar-group">
                             <button class="sidebar-group-toggle @GroupToggleClass("Notifications")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-notif" aria-expanded="@(IsInGroup("Notifications") ? "true" : "false")">
                                 <i class="bi bi-bell sidebar-icon"></i>
@@ -231,7 +232,6 @@
                             </div>
                         </div>
 
-                        @* ── GST & E-Invoice ── *@
                         <div class="sidebar-group">
                             <button class="sidebar-group-toggle @GroupToggleClass("GstReports","EInvoices")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-gst" aria-expanded="@(IsInGroup("GstReports","EInvoices") ? "true" : "false")">
                                 <i class="bi bi-file-earmark-ruled sidebar-icon"></i>
@@ -248,9 +248,23 @@
                         </div>
                     }
 
+                    @if (User.IsInRole("Admin") || User.IsInRole("SuperAdmin"))
+                    {
+                        <div class="sidebar-group">
+                            <button class="sidebar-group-toggle @GroupToggleClass("Franchise")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-franchise" aria-expanded="@(IsInGroup("Franchise") ? "true" : "false")">
+                                <i class="bi bi-diagram-3-fill sidebar-icon"></i>
+                                <span>Franchise</span>
+                                <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
+                            </button>
+                            <div class="collapse @GroupOpen("Franchise")" id="nav-franchise">
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Franchise", "Index")" asp-controller="Franchise" asp-action="Index"><i class="bi bi-file-earmark-text sidebar-icon"></i><span>Agreements</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Franchise", "RoyaltyDashboard")" asp-controller="Franchise" asp-action="RoyaltyDashboard"><i class="bi bi-graph-up-arrow sidebar-icon"></i><span>Royalty Dashboard</span></a>
+                            </div>
+                        </div>
+                    }
+
                     @if (User.IsInRole("Admin"))
                     {
-                        @* ── Admin ── *@
                         <div class="sidebar-group">
                             <button class="sidebar-group-toggle @GroupToggleClass("BillTemplates","AdminUsers","Sync","BackgroundJobs")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-admin" aria-expanded="@(IsInGroup("BillTemplates","AdminUsers","Sync","BackgroundJobs") ? "true" : "false")">
                                 <i class="bi bi-gear-fill sidebar-icon"></i>
@@ -265,33 +279,55 @@
                             </div>
                         </div>
                     }
-                    } @* end else (non-SuperAdmin) *@
+                    }
                 </nav>
 
-                <div class="mt-auto px-3 py-3 border-top border-secondary">
-                    <a class="text-white-50 text-decoration-none" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                <div class="mt-auto px-3 py-3" style="border-top:1px solid rgba(255,255,255,.08);">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="user-avatar" style="width:28px;height:28px;font-size:.65rem;">@userInitials</div>
+                        <div style="min-width:0;">
+                            <div class="text-white small fw-medium text-truncate" style="font-size:.8rem;">@currentDisplayName</div>
+                        </div>
+                    </div>
                 </div>
             </aside>
 
             <div class="app-main flex-grow-1 d-flex flex-column">
                 <header class="app-topbar">
                     <div class="container-fluid h-100 py-0 d-flex align-items-center gap-3">
-                        <button type="button" id="sidebarToggle" aria-label="Toggle sidebar"
-                                style="flex-shrink:0;border:1px solid #d1d5db;border-radius:.375rem;background:transparent;padding:6px 11px;cursor:pointer;color:#4b5563;line-height:1;">
+                        <button type="button" id="sidebarToggle" aria-label="Toggle sidebar">
                             <i class="bi bi-list fs-5"></i>
                         </button>
 
-                        <form class="flex-grow-1" asp-controller="Search" asp-action="Index" method="get" style="max-width:560px;">
+                        <form class="flex-grow-1" asp-controller="Search" asp-action="Index" method="get" style="max-width:520px;">
                             <div class="input-group">
                                 <span class="input-group-text">
                                     <i class="bi bi-search"></i>
                                 </span>
                                 <input class="form-control" name="q"
-                                       placeholder="Search invoices, purchases, items, customers…" />
+                                       placeholder="Search invoices, items, customers..." />
                             </div>
                         </form>
 
-                        <div class="ms-auto">
+                        <div class="ms-auto d-flex align-items-center gap-2">
+                            @{
+                                var currentCulture = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+                                var langLabel = currentCulture switch { "hi" => "हिन्दी", "gu" => "ગુજરાતી", "mr" => "मराठी", _ => "EN" };
+                            }
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Language">
+                                    <i class="bi bi-translate me-1"></i>@langLabel
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><form asp-controller="Language" asp-action="Set" method="post"><input type="hidden" name="culture" value="en" /><input type="hidden" name="returnUrl" value="@Context.Request.Path" /><button type="submit" class="dropdown-item @(currentCulture == "en" ? "active" : "")">English</button></form></li>
+                                    <li><form asp-controller="Language" asp-action="Set" method="post"><input type="hidden" name="culture" value="hi" /><input type="hidden" name="returnUrl" value="@Context.Request.Path" /><button type="submit" class="dropdown-item @(currentCulture == "hi" ? "active" : "")">हिन्दी (Hindi)</button></form></li>
+                                    <li><form asp-controller="Language" asp-action="Set" method="post"><input type="hidden" name="culture" value="gu" /><input type="hidden" name="returnUrl" value="@Context.Request.Path" /><button type="submit" class="dropdown-item @(currentCulture == "gu" ? "active" : "")">ગુજરાતી (Gujarati)</button></form></li>
+                                    <li><form asp-controller="Language" asp-action="Set" method="post"><input type="hidden" name="culture" value="mr" /><input type="hidden" name="returnUrl" value="@Context.Request.Path" /><button type="submit" class="dropdown-item @(currentCulture == "mr" ? "active" : "")">मराठी (Marathi)</button></form></li>
+                                </ul>
+                            </div>
+                            <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+                                <i class="bi bi-moon-stars" id="themeIcon"></i>
+                            </button>
                             <partial name="_LoginPartial" />
                         </div>
                     </div>
@@ -315,8 +351,11 @@
         <header>
             <nav class="navbar navbar-expand-lg bg-white border-bottom">
                 <div class="container-xxl">
-                    <a class="navbar-brand fw-semibold" asp-controller="Home" asp-action="Index">
-                        <i class="bi bi-box-seam me-1"></i>RetailERP
+                    <a class="navbar-brand fw-bold d-flex align-items-center gap-2" asp-controller="Home" asp-action="Index">
+                        <div class="sidebar-brand-logo" style="width:32px;height:32px;font-size:.9rem;">
+                            <i class="bi bi-box-seam"></i>
+                        </div>
+                        RetailERP
                     </a>
                     <div class="d-flex align-items-center gap-2">
                         <partial name="_LoginPartial" />

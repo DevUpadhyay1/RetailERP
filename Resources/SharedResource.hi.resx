@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter</value></resheader>
+
+  <!-- नेविगेशन -->
+  <data name="Nav_Dashboard" xml:space="preserve"><value>डैशबोर्ड</value></data>
+  <data name="Nav_Inventory" xml:space="preserve"><value>इन्वेंटरी</value></data>
+  <data name="Nav_Sales" xml:space="preserve"><value>बिक्री / सीआरएम</value></data>
+  <data name="Nav_People" xml:space="preserve"><value>कर्मचारी</value></data>
+  <data name="Nav_Insights" xml:space="preserve"><value>रिपोर्ट</value></data>
+  <data name="Nav_Notifications" xml:space="preserve"><value>सूचनाएँ</value></data>
+  <data name="Nav_Admin" xml:space="preserve"><value>प्रशासन</value></data>
+  <data name="Nav_Franchise" xml:space="preserve"><value>फ्रैंचाइज़ी</value></data>
+  <data name="Nav_GST" xml:space="preserve"><value>जीएसटी और ई-इनवॉइस</value></data>
+
+  <!-- सामान्य -->
+  <data name="Search" xml:space="preserve"><value>खोजें</value></data>
+  <data name="Filter" xml:space="preserve"><value>फ़िल्टर</value></data>
+  <data name="Apply" xml:space="preserve"><value>लागू करें</value></data>
+  <data name="Save" xml:space="preserve"><value>सहेजें</value></data>
+  <data name="Cancel" xml:space="preserve"><value>रद्द करें</value></data>
+  <data name="Create" xml:space="preserve"><value>नया बनाएँ</value></data>
+  <data name="Edit" xml:space="preserve"><value>संपादित करें</value></data>
+  <data name="Delete" xml:space="preserve"><value>हटाएँ</value></data>
+  <data name="Details" xml:space="preserve"><value>विवरण</value></data>
+  <data name="Back" xml:space="preserve"><value>वापस</value></data>
+  <data name="Actions" xml:space="preserve"><value>कार्रवाई</value></data>
+  <data name="Status" xml:space="preserve"><value>स्थिति</value></data>
+  <data name="Active" xml:space="preserve"><value>सक्रिय</value></data>
+  <data name="Inactive" xml:space="preserve"><value>निष्क्रिय</value></data>
+  <data name="Yes" xml:space="preserve"><value>हाँ</value></data>
+  <data name="No" xml:space="preserve"><value>नहीं</value></data>
+  <data name="Total" xml:space="preserve"><value>कुल</value></data>
+  <data name="Loading" xml:space="preserve"><value>लोड हो रहा है...</value></data>
+  <data name="NoRecords" xml:space="preserve"><value>कोई रिकॉर्ड नहीं मिला।</value></data>
+  <data name="Showing" xml:space="preserve"><value>दिखा रहा है</value></data>
+  <data name="Of" xml:space="preserve"><value>का</value></data>
+  <data name="Page" xml:space="preserve"><value>पृष्ठ</value></data>
+  <data name="Prev" xml:space="preserve"><value>पिछला</value></data>
+  <data name="Next" xml:space="preserve"><value>अगला</value></data>
+
+  <!-- आइटम -->
+  <data name="Items" xml:space="preserve"><value>वस्तुएँ</value></data>
+  <data name="ItemName" xml:space="preserve"><value>वस्तु का नाम</value></data>
+  <data name="SKU" xml:space="preserve"><value>एसकेयू</value></data>
+  <data name="Price" xml:space="preserve"><value>मूल्य</value></data>
+  <data name="Quantity" xml:space="preserve"><value>मात्रा</value></data>
+  <data name="Category" xml:space="preserve"><value>श्रेणी</value></data>
+  <data name="Unit" xml:space="preserve"><value>इकाई</value></data>
+
+  <!-- पीओएस -->
+  <data name="NewBill" xml:space="preserve"><value>नया बिल</value></data>
+  <data name="BillNo" xml:space="preserve"><value>बिल नंबर</value></data>
+  <data name="Customer" xml:space="preserve"><value>ग्राहक</value></data>
+  <data name="GrandTotal" xml:space="preserve"><value>कुल योग</value></data>
+  <data name="Payment" xml:space="preserve"><value>भुगतान</value></data>
+  <data name="Cash" xml:space="preserve"><value>नकद</value></data>
+  <data name="Card" xml:space="preserve"><value>कार्ड</value></data>
+  <data name="UPI" xml:space="preserve"><value>यूपीआई</value></data>
+
+  <!-- फ्रैंचाइज़ी -->
+  <data name="FranchiseAgreements" xml:space="preserve"><value>फ्रैंचाइज़ी समझौते</value></data>
+  <data name="Franchisor" xml:space="preserve"><value>फ्रैंचाइज़र</value></data>
+  <data name="Franchisee" xml:space="preserve"><value>फ्रैंचाइज़ी</value></data>
+  <data name="RoyaltyPercent" xml:space="preserve"><value>रॉयल्टी %</value></data>
+  <data name="Territory" xml:space="preserve"><value>क्षेत्र</value></data>
+  <data name="RoyaltyDashboard" xml:space="preserve"><value>रॉयल्टी डैशबोर्ड</value></data>
+  <data name="TotalDue" xml:space="preserve"><value>कुल देय</value></data>
+  <data name="AmountPaid" xml:space="preserve"><value>भुगतान राशि</value></data>
+
+  <!-- रिपोर्ट -->
+  <data name="SalesReport" xml:space="preserve"><value>बिक्री रिपोर्ट</value></data>
+  <data name="PurchaseReport" xml:space="preserve"><value>खरीद रिपोर्ट</value></data>
+  <data name="StockReport" xml:space="preserve"><value>स्टॉक रिपोर्ट</value></data>
+  <data name="From" xml:space="preserve"><value>से</value></data>
+  <data name="To" xml:space="preserve"><value>तक</value></data>
+
+  <!-- प्रमाणीकरण -->
+  <data name="Login" xml:space="preserve"><value>लॉग इन</value></data>
+  <data name="Logout" xml:space="preserve"><value>साइन आउट</value></data>
+  <data name="Profile" xml:space="preserve"><value>प्रोफ़ाइल</value></data>
+  <data name="Welcome" xml:space="preserve"><value>स्वागत है</value></data>
+</root>

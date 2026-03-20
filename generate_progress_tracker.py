@@ -88,7 +88,7 @@ SPRINTS = [
     ("Sprint 12", "Barcode Printing + 2FA", "Barcode/QR label printing, TOTP two-factor authentication", "✅ COMPLETED"),
     ("Sprint 13", "AI Forecasting + Reorder", "Demand forecasting service, auto-reorder suggestions, anomaly detection", "✅ COMPLETED"),
     ("Sprint 14", "Customer & Supplier Portals", "Self-service portals, purchase history, online returns, PO management", "✅ COMPLETED"),
-    ("Sprint 15", "Franchise + Multi-Language", "Franchise management, royalty calc, Hindi/Gujarati/Marathi i18n", "🔲 NOT STARTED"),
+    ("Sprint 15", "Franchise + Multi-Language", "Franchise management, royalty calc, Hindi/Gujarati/Marathi i18n", "✅ COMPLETED"),
     ("Sprint 16", "Testing + CI/CD + DevOps", "xUnit tests, GitHub Actions pipeline, Docker, deployment automation", "🔲 NOT STARTED"),
 ]
 
@@ -836,6 +836,56 @@ SPRINT14 = [
 ]
 
 add_table(["Feature", "What Was Done", "Benefit"], SPRINT14)
+
+# ── SPRINT 15 ──
+doc.add_page_break()
+doc.add_heading("Sprint 15 — Franchise + Multi-Language (Completed)", level=1)
+doc.add_paragraph(
+    "Sprint 15 adds franchise management capabilities and multi-language (i18n) support. "
+    "A parent–child company hierarchy allows franchisor brands to manage franchisee operators. "
+    "Royalty calculation pulls gross POS sales for each period and applies configurable percent + flat-fee formulas. "
+    "Additionally, four languages are now supported: English, Hindi (हिन्दी), Gujarati (ગુજરાતી), and Marathi (मराठी) "
+    "via ASP.NET Core's IStringLocalizer + .resx resource files with a cookie-based language switcher in the topbar."
+)
+
+SPRINT15 = [
+    ("Franchise Entities",
+     "Created FranchiseAgreement entity (code, franchisor/franchisee FK, royalty%, flat fee, min monthly, territory, "
+     "status, dates) and RoyaltyPayment entity (period year/month, gross sales, royalty amount, flat fee, total due, "
+     "amount paid, status). Added ParentCompanyId self-referential FK to Company for franchise hierarchy.",
+     "Data model supports full franchise lifecycle — agreements, hierarchy, and payment tracking."),
+    ("FranchiseService",
+     "Business logic for agreement CRUD, royalty calculation (pulls gross sales from POS bills via IgnoreQueryFilters), "
+     "payment generation/recording, and dashboard aggregates (total/active agreements, pending/collected royalty).",
+     "Centralized royalty engine with automatic sales-based calculation."),
+    ("FranchiseController + Views",
+     "Full MVC controller with Index (list+filter), Create, Edit, Details (with inline royalty history), "
+     "RoyaltyDashboard (KPI cards + recent payments table), CalculateRoyalty, GeneratePayment, RecordPayment actions. "
+     "Six Razor views with consistent card/table/badge patterns matching existing UI.",
+     "Complete franchise management UI accessible to SuperAdmin and Admin roles."),
+    ("Royalty Calculation Engine",
+     "CalculateRoyaltyAsync pulls franchisee's completed POS bills for a year/month period using IgnoreQueryFilters. "
+     "Applies: TotalDue = max(GrossSales × RoyaltyPercent/100 + MonthlyFlatFee, MinMonthlyRoyalty). "
+     "GenerateRoyaltyPaymentAsync creates/updates RoyaltyPayment records with idempotency check.",
+     "Accurate, automated royalty calculation with floor guarantee and period-level tracking."),
+    ("Multi-Language i18n Setup",
+     "Configured ASP.NET Core localization: AddLocalization + AddViewLocalization + AddDataAnnotationsLocalization. "
+     "Created SharedResource marker class and four .resx files (en, hi, gu, mr) with 50+ translated strings "
+     "covering navigation, common UI, items, POS, franchise, reports, and auth labels.",
+     "Application supports Hindi, Gujarati, and Marathi in addition to English."),
+    ("Language Switcher",
+     "Added LanguageController with cookie-based culture switching. Dropdown in topbar shows current language "
+     "with translate icon. CookieRequestCultureProvider persists selection for 1 year. "
+     "RequestLocalizationMiddleware wired before routing.",
+     "Users can switch language from any page; preference persists across sessions."),
+    ("Sidebar Navigation + DI",
+     "Registered FranchiseService as Scoped in Program.cs. Added 'Franchise' sidebar group with Agreements "
+     "and Royalty Dashboard links for Admin/SuperAdmin roles. Created EF entity configurations with "
+     "unique indexes, check constraints, audit FKs, and relationship mappings.",
+     "Feature is discoverable in sidebar and follows existing DI/navigation patterns."),
+]
+
+add_table(["Feature", "What Was Done", "Benefit"], SPRINT15)
 
 # ═══════════════════════════════════════════════════════════════
 # SPRINT 1 — TESTING GUIDE

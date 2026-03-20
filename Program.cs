@@ -19,6 +19,8 @@ using Microsoft.AspNetCore.RateLimiting;
 using StackExchange.Redis;
 using RetailERP.Hubs;
 using RetailERP.Services.BackgroundJobs;
+using System.Globalization;
+using Microsoft.AspNetCore.Localization;
 
 // ──────────────────────────────────────────────────────
 // Serilog bootstrap (catches startup exceptions)
@@ -335,6 +337,29 @@ try
         builder.Services.AddDistributedMemoryCache();
     }
 
+    // Sprint 15: Franchise management
+    builder.Services.AddScoped<FranchiseService>();
+
+    // Sprint 15: Multi-language localization (Hindi, Gujarati, Marathi)
+    builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+    builder.Services.AddControllersWithViews()
+        .AddViewLocalization()
+        .AddDataAnnotationsLocalization();
+    builder.Services.Configure<RequestLocalizationOptions>(options =>
+    {
+        var supportedCultures = new[]
+        {
+            new CultureInfo("en"),
+            new CultureInfo("hi"),
+            new CultureInfo("gu"),
+            new CultureInfo("mr")
+        };
+        options.DefaultRequestCulture = new RequestCulture("en");
+        options.SupportedCultures = supportedCultures;
+        options.SupportedUICultures = supportedCultures;
+        options.RequestCultureProviders.Insert(0, new CookieRequestCultureProvider());
+    });
+
     builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
     builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
 
@@ -402,6 +427,9 @@ try
             "frame-ancestors 'none';");
         await next();
     });
+
+    // Sprint 15: Request localization middleware
+    app.UseRequestLocalization();
 
     app.UseRouting();
 

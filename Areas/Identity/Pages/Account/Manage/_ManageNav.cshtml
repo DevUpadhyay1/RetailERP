@@ -3,24 +3,19 @@
     var hasExternalLogins = (await SignInManager.GetExternalAuthenticationSchemesAsync()).Any();
 }
 <nav class="nav flex-column gap-1">
-    <a class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2 @ManageNavPages.IndexNavClass(ViewContext)"
-       style="@(ManageNavPages.IndexNavClass(ViewContext) != null ? "background:#dbeafe;color:#3b82f6;font-weight:600;" : "color:#374151;")" id="profile" asp-page="./Index">
+    <a class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2 manage-nav-link @(ManageNavPages.IndexNavClass(ViewContext) != null ? "active" : "")" id="profile" asp-page="./Index">
         <i class="bi bi-person"></i> Profile
     </a>
-    <a class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2 @ManageNavPages.EmailNavClass(ViewContext)"
-       style="@(ManageNavPages.EmailNavClass(ViewContext) != null ? "background:#dbeafe;color:#3b82f6;font-weight:600;" : "color:#374151;")" id="email" asp-page="./Email">
+    <a class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2 manage-nav-link @(ManageNavPages.EmailNavClass(ViewContext) != null ? "active" : "")" id="email" asp-page="./Email">
         <i class="bi bi-envelope"></i> Email
     </a>
-    <a class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2 @ManageNavPages.ChangePasswordNavClass(ViewContext)"
-       style="@(ManageNavPages.ChangePasswordNavClass(ViewContext) != null ? "background:#dbeafe;color:#3b82f6;font-weight:600;" : "color:#374151;")" id="change-password" asp-page="./ChangePassword">
+    <a class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2 manage-nav-link @(ManageNavPages.ChangePasswordNavClass(ViewContext) != null ? "active" : "")" id="change-password" asp-page="./ChangePassword">
         <i class="bi bi-key"></i> Password
     </a>
-    <a class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2"
-       style="color:#374151;" id="two-factor" asp-page="./TwoFactorAuthentication">
+    <a class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2 manage-nav-link" id="two-factor" asp-page="./TwoFactorAuthentication">
         <i class="bi bi-phone"></i> Two-Factor Auth (2FA)
     </a>
-    <a class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2 @ManageNavPages.PersonalDataNavClass(ViewContext)"
-       style="@(ManageNavPages.PersonalDataNavClass(ViewContext) != null ? "background:#dbeafe;color:#3b82f6;font-weight:600;" : "color:#374151;")" id="personal-data" asp-page="./PersonalData">
+    <a class="nav-link rounded px-3 py-2 d-flex align-items-center gap-2 manage-nav-link @(ManageNavPages.PersonalDataNavClass(ViewContext) != null ? "active" : "")" id="personal-data" asp-page="./PersonalData">
         <i class="bi bi-shield-lock"></i> Personal Data
     </a>
 </nav>

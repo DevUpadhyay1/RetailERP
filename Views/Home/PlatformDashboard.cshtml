@@ -21,16 +21,16 @@
 
 @section Styles {
     <style>
-        .kpi-card { border: none; border-radius: .75rem; transition: transform .15s; }
-        .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.1); }
-        .kpi-number { font-size: 1.8rem; font-weight: 700; line-height: 1.1; }
-        .kpi-label { font-size: .85rem; color: #6c757d; }
-        .kpi-sub { font-size: .75rem; color: #adb5bd; }
+        .kpi-card { border: none; border-radius: .75rem; transition: transform .15s; background: var(--erp-bg-card); }
+        .kpi-card:hover { transform: translateY(-2px); box-shadow: var(--erp-shadow); }
+        .kpi-number { font-size: 1.8rem; font-weight: 700; line-height: 1.1; color: var(--erp-text); }
+        .kpi-label { font-size: .85rem; color: var(--erp-text-secondary); }
+        .kpi-sub { font-size: .75rem; color: var(--erp-text-muted); }
         .kpi-icon { font-size: 2rem; opacity: .15; position: absolute; right: 1rem; top: 1rem; }
-        .section-title { font-weight: 600; font-size: 1.1rem; margin-bottom: .75rem; }
-        .company-row:hover { background: #f8f9fa; }
-        .chart-card { border: none; border-radius: .75rem; }
-        .filter-bar { background: #f8f9fa; border-radius: .5rem; }
+        .section-title { font-weight: 600; font-size: 1.1rem; margin-bottom: .75rem; color: var(--erp-text); }
+        .company-row:hover { background: var(--erp-primary-light); }
+        .chart-card { border: none; border-radius: .75rem; background: var(--erp-bg-card); }
+        .filter-bar { background: var(--erp-bg-page); border-radius: .5rem; border: 1px solid var(--erp-border); }
     </style>
 }
 

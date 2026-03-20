@@ -92,6 +92,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<PortalReturnRequest> PortalReturnRequests => Set<PortalReturnRequest>();
     public DbSet<SupplierPoResponse> SupplierPoResponses => Set<SupplierPoResponse>();
 
+    // Sprint 15 – Franchise Management
+    public DbSet<FranchiseAgreement> FranchiseAgreements => Set<FranchiseAgreement>();
+    public DbSet<RoyaltyPayment> RoyaltyPayments => Set<RoyaltyPayment>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -829,6 +833,56 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         builder.Entity<UserDashboardLayout>()
             .Property(x => x.LastModifiedUtc)
             .HasDefaultValueSql("GETUTCDATE()");
+
+        // ═══════════════════════════════════════════════════════════
+        // Sprint 15 – Franchise Management
+        // ═══════════════════════════════════════════════════════════
+        builder.Entity<Company>()
+            .HasOne(x => x.ParentCompany)
+            .WithMany(x => x.ChildCompanies)
+            .HasForeignKey(x => x.ParentCompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<FranchiseAgreement>()
+            .HasIndex(x => x.AgreementCode)
+            .IsUnique();
+
+        builder.Entity<FranchiseAgreement>()
+            .HasIndex(x => new { x.FranchisorCompanyId, x.FranchiseeCompanyId })
+            .IsUnique();
+
+        builder.Entity<FranchiseAgreement>()
+            .ToTable(t => t.HasCheckConstraint("CK_FranchiseAgreements_Status", "[Status] IN (1,2,3)"));
+
+        builder.Entity<FranchiseAgreement>()
+            .HasOne(x => x.FranchisorCompany)
+            .WithMany()
+            .HasForeignKey(x => x.FranchisorCompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<FranchiseAgreement>()
+            .HasOne(x => x.FranchiseeCompany)
+            .WithMany()
+            .HasForeignKey(x => x.FranchiseeCompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<RoyaltyPayment>()
+            .HasIndex(x => new { x.FranchiseAgreementId, x.PeriodYear, x.PeriodMonth })
+            .IsUnique();
+
+        builder.Entity<RoyaltyPayment>()
+            .ToTable(t => t.HasCheckConstraint("CK_RoyaltyPayments_Status", "[Status] IN (1,2,3,4)"));
+
+        builder.Entity<RoyaltyPayment>()
+            .HasOne(x => x.Agreement)
+            .WithMany(x => x.RoyaltyPayments)
+            .HasForeignKey(x => x.FranchiseAgreementId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        ConfigureAuditUserFks<FranchiseAgreement>(builder);
+        ConfigureAuditDefaults<FranchiseAgreement>(builder);
+        ConfigureAuditUserFks<RoyaltyPayment>(builder);
+        ConfigureAuditDefaults<RoyaltyPayment>(builder);
 
         // ═══════════════════════════════════════════════════════════
         // Sprint 4 – Multi-tenant global query filters

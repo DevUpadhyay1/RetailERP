@@ -1,0 +1,83 @@
+@model RetailERP.Controllers.FranchiseController.CreateFranchiseAgreementVm
+@{
+    ViewData["Title"] = "New Franchise Agreement";
+    var companies = ViewBag.Companies as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new();
+}
+
+<h2 class="mb-3">New Franchise Agreement</h2>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="AgreementCode" class="form-label">Agreement Code</label>
+                    <input asp-for="AgreementCode" class="form-control" placeholder="e.g. FA-2026-001" />
+                    <span asp-validation-for="AgreementCode" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="FranchisorCompanyId" class="form-label">Franchisor (Brand Owner)</label>
+                    <select asp-for="FranchisorCompanyId" class="form-select" asp-items="companies">
+                        <option value="">— Select —</option>
+                    </select>
+                    <span asp-validation-for="FranchisorCompanyId" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-4">
+                    <label asp-for="FranchiseeCompanyId" class="form-label">Franchisee (Operator)</label>
+                    <select asp-for="FranchiseeCompanyId" class="form-select" asp-items="companies">
+                        <option value="">— Select —</option>
+                    </select>
+                    <span asp-validation-for="FranchiseeCompanyId" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="RoyaltyPercent" class="form-label">Royalty %</label>
+                    <input asp-for="RoyaltyPercent" class="form-control" type="number" step="0.01" min="0" max="100" />
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="MonthlyFlatFee" class="form-label">Monthly Flat Fee (₹)</label>
+                    <input asp-for="MonthlyFlatFee" class="form-control" type="number" step="0.01" min="0" />
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="MinMonthlyRoyalty" class="form-label">Min Monthly Royalty (₹)</label>
+                    <input asp-for="MinMonthlyRoyalty" class="form-control" type="number" step="0.01" min="0" />
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="Territory" class="form-label">Territory</label>
+                    <input asp-for="Territory" class="form-control" placeholder="e.g. Ahmedabad West" />
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="StartDate" class="form-label">Start Date</label>
+                    <input asp-for="StartDate" class="form-control" type="date" />
+                </div>
+
+                <div class="col-md-3">
+                    <label asp-for="EndDate" class="form-label">End Date</label>
+                    <input asp-for="EndDate" class="form-control" type="date" />
+                </div>
+
+                <div class="col-md-6">
+                    <label asp-for="Notes" class="form-label">Notes</label>
+                    <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Create Agreement</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

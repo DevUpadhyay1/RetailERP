@@ -118,16 +118,58 @@ namespace RetailERP.Controllers
 
                 if (exists)
                 {
-                    ModelState.AddModelError("", "Stock row already exists for this Item and Warehouse. Please edit existing stock instead.");
+                    ModelState.AddModelError("", "Stock row already exists for this Item and Warehouse. Use Adjust on existing row.");
                 }
                 else
                 {
+                    var openingQty = stock.Quantity;
                     stock.StockId = Guid.NewGuid();
-                    _context.Add(stock);
+                    stock.Quantity = 0;
 
                     try
                     {
+                        using var tx = await _context.Database.BeginTransactionAsync();
+
+                        _context.Stocks.Add(stock);
                         await _context.SaveChangesAsync();
+
+                        if (openingQty != 0)
+                        {
+                            var storeId = await _context.Warehouses
+                                .AsNoTracking()
+                                .Where(w => w.WarehouseId == stock.WarehouseId)
+                                .Select(w => (Guid?)w.StoreId)
+                                .FirstOrDefaultAsync();
+
+                            var companyId = await _context.Items
+                                .AsNoTracking()
+                                .Where(i => i.ItemId == stock.ItemId)
+                                .Select(i => i.CompanyId)
+                                .FirstOrDefaultAsync();
+
+                            _context.StockTransactions.Add(new StockTransaction
+                            {
+                                StockTransactionId = Guid.NewGuid(),
+                                OccurredAtUtc = DateTime.UtcNow,
+                                Type = "ADJUSTMENT",
+                                ItemId = stock.ItemId,
+                                WarehouseId = stock.WarehouseId,
+                                StoreId = storeId,
+                                Qty = openingQty,
+                                RefType = "StockCreate",
+                                RefId = stock.StockId.ToString(),
+                                Reason = "Opening stock during stock-row creation",
+                                CompanyId = companyId
+                            });
+
+                            stock.Quantity = openingQty;
+                            await _context.SaveChangesAsync();
+                        }
+
+                        await tx.CommitAsync();
+                        TempData["Ok"] = openingQty == 0
+                            ? "Stock row created with zero quantity."
+                            : "Stock row created and opening stock posted to ledger.";
                         return RedirectToAction(nameof(Index));
                     }
                     catch (DbUpdateException)
@@ -147,55 +189,21 @@ namespace RetailERP.Controllers
         {
             if (id == null) return NotFound();
 
-            var stock = await _context.Stocks.FindAsync(id);
-            if (stock == null) return NotFound();
+            var exists = await _context.Stocks.AsNoTracking().AnyAsync(x => x.StockId == id.Value);
+            if (!exists) return NotFound();
 
-            ViewData["ItemId"] = new SelectList(_context.Items.OrderBy(x => x.SKU), "ItemId", "SKU", stock.ItemId);
-            ViewData["WarehouseId"] = new SelectList(_context.Warehouses.OrderBy(x => x.Name), "WarehouseId", "Name", stock.WarehouseId);
-            return View(stock);
+            TempData["Err"] = "Direct stock edit is disabled. Use Adjust to keep ledger audit intact.";
+            return RedirectToAction(nameof(Adjust), new { id = id.Value, returnUrl = Url.Action(nameof(Index)) });
         }
 
         // POST: Stocks/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("StockId,ItemId,WarehouseId,Quantity")] Stock stock)
+        public IActionResult Edit(Guid id, [Bind("StockId,ItemId,WarehouseId,Quantity")] Stock stock)
         {
             if (id != stock.StockId) return NotFound();
-
-            if (ModelState.IsValid)
-            {
-                var conflict = await _context.Stocks.AnyAsync(x =>
-                    x.StockId != stock.StockId &&
-                    x.ItemId == stock.ItemId &&
-                    x.WarehouseId == stock.WarehouseId);
-
-                if (conflict)
-                {
-                    ModelState.AddModelError("", "Another stock row already exists for this Item and Warehouse.");
-                }
-                else
-                {
-                    try
-                    {
-                        _context.Update(stock);
-                        await _context.SaveChangesAsync();
-                        return RedirectToAction(nameof(Index));
-                    }
-                    catch (DbUpdateConcurrencyException)
-                    {
-                        if (!StockExists(stock.StockId)) return NotFound();
-                        throw;
-                    }
-                    catch (DbUpdateException)
-                    {
-                        ModelState.AddModelError("", "Unable to save changes. Try again.");
-                    }
-                }
-            }
-
-            ViewData["ItemId"] = new SelectList(_context.Items.OrderBy(x => x.SKU), "ItemId", "SKU", stock.ItemId);
-            ViewData["WarehouseId"] = new SelectList(_context.Warehouses.OrderBy(x => x.Name), "WarehouseId", "Name", stock.WarehouseId);
-            return View(stock);
+            TempData["Err"] = "Direct stock edit is disabled. Use Adjust to keep ledger audit intact.";
+            return RedirectToAction(nameof(Adjust), new { id = stock.StockId, returnUrl = Url.Action(nameof(Index)) });
         }
 
         // GET: Stocks/Delete/5

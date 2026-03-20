@@ -1,0 +1,92 @@
+@model RetailERP.Services.FranchiseDashboard
+@{
+    ViewData["Title"] = "Royalty Dashboard";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h2 class="mb-0">Royalty Dashboard</h2>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Index"><i class="bi bi-arrow-left me-1"></i>Back to Agreements</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm text-center border-primary">
+            <div class="card-body py-3">
+                <div class="fs-3 fw-bold text-primary">@Model.TotalAgreements</div>
+                <small class="text-muted">Total Agreements</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm text-center border-success">
+            <div class="card-body py-3">
+                <div class="fs-3 fw-bold text-success">@Model.ActiveAgreements</div>
+                <small class="text-muted">Active</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm text-center border-warning">
+            <div class="card-body py-3">
+                <div class="fs-4 fw-bold text-warning">₹@Model.TotalPendingRoyalty.ToString("N0")</div>
+                <small class="text-muted">Pending Royalty</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm text-center border-info">
+            <div class="card-body py-3">
+                <div class="fs-4 fw-bold text-info">₹@Model.TotalCollectedRoyalty.ToString("N0")</div>
+                <small class="text-muted">Collected</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header fw-semibold">Recent Royalty Payments</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Franchisee</th>
+                        <th>Period</th>
+                        <th class="text-end">Gross Sales</th>
+                        <th class="text-end">Total Due</th>
+                        <th class="text-end">Paid</th>
+                        <th class="text-center">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.RecentPayments.Any())
+                    {
+                        <tr><td colspan="6" class="text-center text-muted py-4">No payments recorded yet.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var p in Model.RecentPayments)
+                        {
+                            <tr class="@(p.Status == 3 ? "table-danger" : p.Status == 1 ? "table-warning" : "")">
+                                <td>@p.Agreement?.FranchiseeCompany?.Name</td>
+                                <td class="fw-semibold">@p.PeriodYear/@p.PeriodMonth.ToString("D2")</td>
+                                <td class="text-end">₹@p.GrossSales.ToString("N2")</td>
+                                <td class="text-end fw-semibold">₹@p.TotalDue.ToString("N2")</td>
+                                <td class="text-end">₹@p.AmountPaid.ToString("N2")</td>
+                                <td class="text-center">
+                                    @switch (p.Status)
+                                    {
+                                        case 1: <span class="badge bg-warning text-dark">Pending</span> break;
+                                        case 2: <span class="badge bg-success">Paid</span> break;
+                                        case 3: <span class="badge bg-danger">Overdue</span> break;
+                                        case 4: <span class="badge bg-secondary">Waived</span> break;
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

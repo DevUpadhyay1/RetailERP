@@ -64,6 +64,11 @@ public class Company
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Sprint 15 – Parent company for franchise hierarchy (null = independent / franchisor).</summary>
+    public Guid? ParentCompanyId { get; set; }
+    public Company? ParentCompany { get; set; }
+    public ICollection<Company> ChildCompanies { get; set; } = new List<Company>();
+
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 }
