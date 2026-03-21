@@ -24,13 +24,15 @@ public sealed class StockTransactionsController : Controller
         Guid? warehouseId = null,
         Guid? itemId = null,
         string? q = null,
-        string sort = "time",
-        string dir = "desc",
+        string? sort = null,
+        string? dir = null,
         int page = 1,
         int pageSize = 20)
     {
         type = (type ?? "").Trim();
         q = (q ?? "").Trim();
+        sort ??= "time";
+        dir ??= "desc";
         if (page < 1) page = 1;
         if (pageSize is < 10 or > 200) pageSize = 20;
 

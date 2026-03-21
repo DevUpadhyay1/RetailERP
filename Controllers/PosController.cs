@@ -109,7 +109,7 @@ public class PosController : Controller
     public async Task<IActionResult> Bill(Guid id)
     {
         var bill = await _db.PosBills
-            .Include(b => b.Lines).ThenInclude(l => l.Item).ThenInclude(i => i.Unit)
+            .Include(b => b.Lines).ThenInclude(l => l.Item!).ThenInclude(i => i.Unit)
             .Include(b => b.Payments)
             .Include(b => b.Store)
             .Include(b => b.Warehouse)
@@ -622,7 +622,7 @@ public class PosController : Controller
     {
         var bill = await _db.PosBills
             .AsNoTracking()
-            .Include(b => b.Lines).ThenInclude(l => l.Item).ThenInclude(i => i.Unit)
+            .Include(b => b.Lines).ThenInclude(l => l.Item!).ThenInclude(i => i.Unit)
             .Include(b => b.Payments)
             .Include(b => b.LoyaltyCard)
             .Include(b => b.Coupon)

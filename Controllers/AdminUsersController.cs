@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -32,10 +32,12 @@ public class AdminUsersController : Controller
     private bool IsSuperAdmin() => User.IsInRole("SuperAdmin");
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? q = null, string? role = null, bool? active = null, string sort = "email", string dir = "asc", int page = 1, int pageSize = 5)
+    public async Task<IActionResult> Index(string? q = null, string? role = null, bool? active = null, string? sort = null, string? dir = null, int page = 1, int pageSize = 5)
     {
         q = (q ?? "").Trim();
         role = (role ?? "").Trim();
+        sort ??= "email";
+        dir ??= "asc";
         if (page < 1) page = 1;
         if (pageSize is < 5 or > 200) pageSize = 5;
 

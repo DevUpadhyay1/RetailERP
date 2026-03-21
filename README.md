@@ -61,6 +61,11 @@ GitHub Actions workflow: `.github/workflows/ci.yml` (build + test on push/PR).
 3. **Logs:** file logs under `Logs/retailerp-*.log` (rolling daily); console in Development.
 4. **Smoke checks:** `GET /health` after deploy.
 
+## Roadmap / improvement phases
+
+See [Docs/IMPROVEMENT_PHASES.md](Docs/IMPROVEMENT_PHASES.md) for what’s done next (tests, security, performance).  
+Security before production: [Docs/SECURITY_CHECKLIST.md](Docs/SECURITY_CHECKLIST.md).
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
