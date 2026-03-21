@@ -1,12 +1,23 @@
+# Manual Docker build + optional SSH deploy.
+# Does NOT run on push — use ci.yml for that. Run from: Actions → Deploy Production → Run workflow.
+#
+# Note: Never use `secrets.*` in job-level `if:` — GitHub does not support it and the run can show
+# "No jobs were run". Use a workflow_dispatch input (below) instead.
+
 name: Deploy Production
 
 on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Docker image tag to deploy (default: latest)"
+        description: "Docker image tag (default: latest)"
         required: false
         default: "latest"
+      deploy_to_server:
+        description: "After build, SSH deploy to production (needs PROD_* + GHCR_PAT secrets)"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -50,7 +61,9 @@ jobs:
   deploy-over-ssh:
     runs-on: ubuntu-latest
     needs: build-and-push-image
-    if: ${{ secrets.PROD_HOST != '' && secrets.PROD_USER != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_APP_DIR != '' && secrets.GHCR_PAT != '' }}
+    # Boolean workflow_dispatch input — safe in job if (unlike secrets.*)
+    # Boolean inputs are strings 'true' / 'false' in github.event.inputs
+    if: ${{ github.event.inputs.deploy_to_server == 'true' }}
 
     steps:
       - name: Deploy on server
