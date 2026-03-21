@@ -106,11 +106,7 @@ public sealed class DashboardService
 
             "low-stock-count" => new
             {
-                value = await _db.Items.AsNoTracking()
-                    .Where(i => i.IsActive && i.ReorderLevel > 0)
-                    .Where(i => (_db.Stocks.Where(s => s.ItemId == i.ItemId)
-                        .Sum(s => (decimal?)s.Quantity) ?? 0) <= i.ReorderLevel)
-                    .CountAsync(),
+                value = await LowStockReporting.CountAsync(_db),
                 label = "Low Stock Items"
             },
 
@@ -203,18 +199,12 @@ public sealed class DashboardService
 
             "low-stock-list" => new
             {
-                rows = await _db.Items.AsNoTracking()
-                    .Where(i => i.IsActive && i.ReorderLevel > 0)
-                    .Select(i => new {
-                        i.SKU, i.Name, i.ReorderLevel,
-                        TotalQty = _db.Stocks.Where(s => s.ItemId == i.ItemId).Sum(s => (decimal?)s.Quantity) ?? 0
-                    })
-                    .Where(x => x.TotalQty <= x.ReorderLevel)
-                    .OrderBy(x => x.TotalQty).Take(10)
+                rows = await LowStockReporting.Query(_db)
+                    .OrderBy(x => x.OnHand).Take(10)
                     .Select(x => new {
                         sku = x.SKU, name = x.Name,
                         warehouse = "All",
-                        qty = x.TotalQty, reorder = x.ReorderLevel
+                        qty = x.OnHand, reorder = x.ReorderLevel
                     }).ToListAsync()
             },
 

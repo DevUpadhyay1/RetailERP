@@ -83,6 +83,15 @@ This tracks the **“path to production quality”** plan: what is done, what is
 - **Phase 4:** Confirmed DB indexes already exist — no migration needed for barcode/SKU.
 - **Tracking:** This file (`IMPROVEMENT_PHASES.md`) so you always know **what’s next**.
 
+## Production-readiness batch (code + ops)
+
+- **`ProductionStartupValidation`:** In `Production`, requires non-empty DB connection + strong JWT (blocks dev sample keys).
+- **Cookies:** Auth + antiforgery use `Secure` in Production; HSTS configured for non-Development.
+- **Reverse proxy:** `ForwardedHeaders` (X-Forwarded-For / Proto) when not in Development.
+- **Health:** Redis health check registered when Redis cache is actually enabled.
+- **API abuse:** `[EnableRateLimiting("Login")]` on JWT `login` and `refresh`.
+- **Ship:** `appsettings.Production.json` template, `.dockerignore`, `Docs/PRODUCTION_DEPLOYMENT.md`.
+
 ---
 
 ## Suggested order for *your* next learning sessions

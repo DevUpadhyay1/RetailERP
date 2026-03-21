@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
 using RetailERP.Models.Api;
+using RetailERP.Services;
 
 namespace RetailERP.Controllers.Api;
 
@@ -101,26 +102,42 @@ public class ItemsController : ApiBaseController
     public async Task<IActionResult> LowStock([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         pageSize = Math.Clamp(pageSize, 1, 100);
-        var q = _db.Items.AsNoTracking().Include(i => i.Unit).Include(i => i.Category)
-                   .Where(i => i.IsActive && i.ReorderLevel > 0);
+        var lowQ = LowStockReporting.Query(_db);
+        var total = await lowQ.CountAsync();
+        var slice = await lowQ.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        if (slice.Count == 0)
+        {
+            return Ok(new PagedResponse<object>
+            {
+                Data = new List<object>(),
+                Page = page, PageSize = pageSize, TotalCount = total
+            });
+        }
 
-        // Items where total stock across all warehouses is below reorder level
-        var lowStockItems = from item in q
-                            let totalQty = _db.Stocks.Where(s => s.ItemId == item.ItemId).Sum(s => (decimal?)s.Quantity) ?? 0
-                            where totalQty <= item.ReorderLevel
-                            select new { item, totalQty };
+        var ids = slice.Select(x => x.ItemId).ToList();
+        var items = await _db.Items.AsNoTracking()
+            .Include(i => i.Unit).Include(i => i.Category)
+            .Where(i => ids.Contains(i.ItemId))
+            .ToDictionaryAsync(i => i.ItemId);
+        var onHandById = slice.ToDictionary(x => x.ItemId, x => x.OnHand);
 
-        var total = await lowStockItems.CountAsync();
-        var items = await lowStockItems.OrderBy(x => x.item.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var data = slice
+            .Where(x => items.ContainsKey(x.ItemId))
+            .Select(x =>
+            {
+                var item = items[x.ItemId];
+                return (object)new
+                {
+                    Item = MapToDto(item),
+                    CurrentStock = onHandById[x.ItemId],
+                    item.ReorderLevel
+                };
+            })
+            .ToList();
 
         return Ok(new PagedResponse<object>
         {
-            Data = items.Select(x => new
-            {
-                Item = MapToDto(x.item),
-                CurrentStock = x.totalQty,
-                x.item.ReorderLevel
-            }).Cast<object>().ToList(),
+            Data = data,
             Page = page, PageSize = pageSize, TotalCount = total
         });
     }

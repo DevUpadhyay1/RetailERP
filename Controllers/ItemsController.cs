@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
 using RetailERP.Models;
+using RetailERP.Services;
 
 namespace RetailERP.Controllers
 {
@@ -292,27 +293,17 @@ namespace RetailERP.Controllers
         [HttpGet]
         public async Task<IActionResult> LowStock()
         {
-            var rows = await _context.Stocks
-                .AsNoTracking()
-                .GroupBy(s => s.ItemId)
-                .Select(g => new
-                {
-                    ItemId = g.Key,
-                    Qty = g.Sum(x => x.Quantity)
-                })
-                .Join(_context.Items.AsNoTracking(),
-                    s => s.ItemId,
-                    i => i.ItemId,
-                    (s, i) => new LowStockRow
-                    {
-                        ItemId = i.ItemId,
-                        SKU = i.SKU,
-                        Name = i.Name,
-                        OnHand = s.Qty,
-                        ReorderLevel = i.ReorderLevel
-                    })
-                .Where(x => x.ReorderLevel > 0 && x.OnHand <= x.ReorderLevel)
+            // Same rule as Background Jobs / StockAlertWorker / dashboard (includes items with no Stock rows = 0 on-hand)
+            var rows = await LowStockReporting.Query(_context)
                 .OrderBy(x => x.OnHand)
+                .Select(x => new LowStockRow
+                {
+                    ItemId = x.ItemId,
+                    SKU = x.SKU,
+                    Name = x.Name,
+                    OnHand = x.OnHand,
+                    ReorderLevel = x.ReorderLevel
+                })
                 .ToListAsync();
 
             return View(rows);

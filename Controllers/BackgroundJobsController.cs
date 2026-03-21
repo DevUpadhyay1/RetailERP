@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
+using RetailERP.Services;
 
 namespace RetailERP.Controllers;
 
@@ -27,11 +28,7 @@ public class BackgroundJobsController : Controller
 
         var todayEod = await _db.EodReports.CountAsync(r => r.ReportDate == DateTime.Today);
 
-        var lowStockCount = await _db.Items
-            .Where(i => i.IsActive && i.ReorderLevel > 0)
-            .CountAsync(i => _db.Stocks
-                .Where(s => s.ItemId == i.ItemId)
-                .Sum(s => (decimal?)s.Quantity) < i.ReorderLevel);
+        var lowStockCount = await LowStockReporting.CountAsync(_db);
 
         ViewBag.SyncPending = syncPending;
         ViewBag.SyncSynced = syncSynced;

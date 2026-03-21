@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.SignalR;
 using RetailERP.Data;
 using RetailERP.Hubs;
+using RetailERP.Services;
 
 namespace RetailERP.Services.BackgroundJobs;
 
@@ -57,22 +58,8 @@ public sealed class StockAlertWorker : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        // Find items where total stock across all warehouses is below ReorderLevel
-        var lowStockItems = await db.Items
-            .Where(i => i.IsActive && i.ReorderLevel > 0)
-            .Select(i => new
-            {
-                i.ItemId,
-                i.Name,
-                i.SKU,
-                i.ReorderLevel,
-                i.CompanyId,
-                TotalStock = db.Stocks
-                    .Where(s => s.ItemId == i.ItemId)
-                    .Sum(s => (decimal?)s.Quantity) ?? 0
-            })
-            .Where(x => x.TotalStock < x.ReorderLevel)
-            .ToListAsync(ct);
+        // Same rule as Items/LowStock, dashboard widgets, and Background Jobs monitor (includes 0 on-hand with no Stock rows)
+        var lowStockItems = await LowStockReporting.Query(db).ToListAsync(ct);
 
         if (lowStockItems.Count == 0) return;
 
@@ -90,7 +77,7 @@ public sealed class StockAlertWorker : BackgroundService
                 x.Name,
                 x.SKU,
                 x.ReorderLevel,
-                CurrentStock = x.TotalStock
+                CurrentStock = x.OnHand
             }).ToList();
 
             // Push real-time alert to all connected dashboard clients in this company
@@ -122,7 +109,7 @@ public sealed class StockAlertWorker : BackgroundService
             if (adminEmails.Count == 0) continue;
 
             var rows = string.Join("", group.Select(x =>
-                $"<tr><td>{x.SKU}</td><td>{x.Name}</td><td style='color:red;font-weight:bold'>{x.TotalStock:N0}</td><td>{x.ReorderLevel}</td></tr>"));
+                $"<tr><td>{x.SKU}</td><td>{x.Name}</td><td style='color:red;font-weight:bold'>{x.OnHand:N0}</td><td>{x.ReorderLevel}</td></tr>"));
 
             var html = $@"
                 <h3>Low Stock Alert — {group.Count()} Items Below Reorder Level</h3>
