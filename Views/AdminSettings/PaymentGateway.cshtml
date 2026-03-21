@@ -1,0 +1,134 @@
+@model RetailERP.Controllers.AdminSettingsController.PaymentGatewaySettingsVm
+@using RetailERP.Data.Entities
+@{
+    ViewData["Title"] = "Payment Gateway Settings";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">Payment Gateway Settings</h2>
+        <div class="text-muted">Configure online payment credentials for your company</div>
+    </div>
+</div>
+
+@if (TempData["Ok"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+
+<div class="card">
+    <div class="card-body">
+        <div class="mb-3">
+            <span class="text-muted small">Company</span>
+            <div class="fw-semibold">@Model.CompanyName</div>
+        </div>
+
+        <form asp-action="PaymentGateway" method="post" id="gatewayForm">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="GatewayProvider" class="form-label"></label>
+                    <select asp-for="GatewayProvider" class="form-select" id="gatewayProvider">
+                        <option value="@((byte)PaymentGatewayProvider.None)">None (Disable Online Gateway)</option>
+                        <option value="@((byte)PaymentGatewayProvider.Razorpay)">Razorpay</option>
+                        <option value="@((byte)PaymentGatewayProvider.Stripe)" disabled>Stripe (Coming Soon)</option>
+                    </select>
+                    <span asp-validation-for="GatewayProvider" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div id="razorpayFields" class="mt-4">
+                <h6 class="text-muted fw-semibold mb-3"><i class="bi bi-credit-card-2-front me-1"></i>Razorpay Credentials</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="GatewayKeyId" class="form-label"></label>
+                        <input asp-for="GatewayKeyId" class="form-control" placeholder="rzp_live_xxxxxxxxxx or rzp_test_xxxxxxxxxx" autocomplete="off" />
+                        <span asp-validation-for="GatewayKeyId" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="GatewayKeySecret" class="form-label"></label>
+                        <input asp-for="GatewayKeySecret" class="form-control" type="password" placeholder="Enter new secret to update" autocomplete="new-password" />
+                        <span asp-validation-for="GatewayKeySecret" class="text-danger"></span>
+                        @if (Model.HasSavedSecret)
+                        {
+                            <div class="form-text">Existing secret is saved (********). Leave blank to keep unchanged.</div>
+                        }
+                    </div>
+                </div>
+
+                <div class="mt-3 d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="testRazorpayBtn">
+                        <i class="bi bi-plug me-1"></i>Test Connection
+                    </button>
+                    <span id="testResult" class="small"></span>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-1"></i>Save Settings
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const providerEl = document.getElementById('gatewayProvider');
+            const razorpayFields = document.getElementById('razorpayFields');
+            const testBtn = document.getElementById('testRazorpayBtn');
+            const testResult = document.getElementById('testResult');
+            const keyIdEl = document.getElementById('GatewayKeyId');
+            const keySecretEl = document.getElementById('GatewayKeySecret');
+            const tokenEl = document.querySelector('#gatewayForm input[name="__RequestVerificationToken"]');
+
+            function toggleGatewayFields() {
+                const provider = Number(providerEl.value);
+                const showRazorpay = provider === @((byte)PaymentGatewayProvider.Razorpay);
+                razorpayFields.style.display = showRazorpay ? '' : 'none';
+                testResult.textContent = '';
+            }
+
+            async function testConnection() {
+                testResult.className = 'small text-muted';
+                testResult.textContent = 'Testing...';
+
+                const formData = new URLSearchParams();
+                formData.append('GatewayKeyId', keyIdEl.value || '');
+                formData.append('GatewayKeySecret', keySecretEl.value || '');
+                formData.append('__RequestVerificationToken', tokenEl ? tokenEl.value : '');
+
+                try {
+                    const resp = await fetch('@Url.Action("TestRazorpayConnection", "AdminSettings")', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                        },
+                        body: formData.toString()
+                    });
+
+                    const data = await resp.json();
+                    if (data.success) {
+                        testResult.className = 'small text-success';
+                        testResult.textContent = data.message || 'Connection successful.';
+                    } else {
+                        testResult.className = 'small text-danger';
+                        testResult.textContent = data.message || 'Connection failed.';
+                    }
+                } catch {
+                    testResult.className = 'small text-danger';
+                    testResult.textContent = 'Unable to test connection right now.';
+                }
+            }
+
+            providerEl.addEventListener('change', toggleGatewayFields);
+            testBtn.addEventListener('click', testConnection);
+            toggleGatewayFields();
+        })();
+    </script>
+}

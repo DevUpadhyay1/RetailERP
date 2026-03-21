@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -189,6 +190,37 @@ public class RazorpayService
     {
         var creds = await GetCredentialsAsync();
         return creds.KeyId;
+    }
+
+    /// <summary>
+    /// Validate Razorpay credentials without saving.
+    /// 404 means auth passed for a non-existent test resource; 401/403 means invalid credentials.
+    /// </summary>
+    public async Task<(bool Success, string Message)> TestCredentialsAsync(string keyId, string keySecret)
+    {
+        if (string.IsNullOrWhiteSpace(keyId) || string.IsNullOrWhiteSpace(keySecret))
+            return (false, "Key ID and Key Secret are required.");
+
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/payments/pay_test_connection");
+            var encoded = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{keyId}:{keySecret}"));
+            req.Headers.Authorization = new AuthenticationHeaderValue("Basic", encoded);
+
+            var response = await _http.SendAsync(req);
+            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                return (false, "Invalid Razorpay credentials.");
+
+            if (response.StatusCode == HttpStatusCode.NotFound || response.IsSuccessStatusCode)
+                return (true, "Connection successful. Credentials look valid.");
+
+            return (false, $"Razorpay returned {(int)response.StatusCode} {response.ReasonPhrase}.");
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Razorpay credential test failed.");
+            return (false, "Unable to connect to Razorpay right now. Please try again.");
+        }
     }
 }
 

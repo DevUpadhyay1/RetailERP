@@ -274,14 +274,15 @@
                     @if (User.IsInRole("Admin"))
                     {
                         <div class="sidebar-group">
-                            <button class="sidebar-group-toggle @GroupToggleClass("BillTemplates","AdminUsers","Sync","BackgroundJobs")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-admin" aria-expanded="@(IsInGroup("BillTemplates","AdminUsers","Sync","BackgroundJobs") ? "true" : "false")">
+                            <button class="sidebar-group-toggle @GroupToggleClass("BillTemplates","AdminUsers","Sync","BackgroundJobs","AdminSettings")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-admin" aria-expanded="@(IsInGroup("BillTemplates","AdminUsers","Sync","BackgroundJobs","AdminSettings") ? "true" : "false")">
                                 <i class="bi bi-gear-fill sidebar-icon"></i>
                                 <span>Admin</span>
                                 <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
                             </button>
-                            <div class="collapse @GroupOpen("BillTemplates","AdminUsers","Sync","BackgroundJobs")" id="nav-admin">
+                            <div class="collapse @GroupOpen("BillTemplates","AdminUsers","Sync","BackgroundJobs","AdminSettings")" id="nav-admin">
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("BillTemplates", "Index")@ActiveIf("BillTemplates", "Designer")" asp-controller="BillTemplates" asp-action="Index"><i class="bi bi-palette sidebar-icon"></i><span>Bill Templates</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("AdminUsers", "Index")" asp-controller="AdminUsers" asp-action="Index"><i class="bi bi-person-gear sidebar-icon"></i><span>Users</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("AdminSettings", "PaymentGateway")" asp-controller="AdminSettings" asp-action="PaymentGateway"><i class="bi bi-credit-card sidebar-icon"></i><span>Payment Gateway</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Sync", "Index")" asp-controller="Sync" asp-action="Index"><i class="bi bi-arrow-repeat sidebar-icon"></i><span>Sync Queue</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("BackgroundJobs", "Index")" asp-controller="BackgroundJobs" asp-action="Index"><i class="bi bi-gear-wide-connected sidebar-icon"></i><span>Background Jobs</span></a>
                             </div>
