@@ -133,4 +133,128 @@ public class PosBillingServiceTests
         Assert.NotNull(txn);
         Assert.Equal(-5, txn!.Qty);
     }
+
+    [Fact]
+    public async Task LookupItemAsync_ShouldFindItem_ByBarcode()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+
+        db.Items.Add(new Item
+        {
+            ItemId = itemId,
+            SKU = "SKU-99",
+            Name = "Barcode Product",
+            Barcode = "8901234567890",
+            UnitPrice = 25,
+            CompanyId = companyId
+        });
+        db.Stocks.Add(new Stock
+        {
+            ItemId = itemId,
+            WarehouseId = warehouseId,
+            Quantity = 10,
+            CompanyId = companyId,
+            CreatedAtUtc = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var audit = new AuditService(db, new HttpContextAccessor());
+        var loyalty = new LoyaltyService(db, audit);
+        var coupons = new CouponService(db);
+        var hub = new Mock<IHubContext<RetailHub>>();
+        var clients = new Mock<IHubClients>();
+        var groupClient = new Mock<IClientProxy>();
+        clients.Setup(x => x.Group(It.IsAny<string>())).Returns(groupClient.Object);
+        hub.Setup(x => x.Clients).Returns(clients.Object);
+
+        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+
+        var result = await sut.LookupItemAsync("8901234567890", warehouseId);
+
+        Assert.NotNull(result);
+        Assert.Equal(itemId, result!.ItemId);
+        Assert.Equal(10, result.StockAvailable);
+    }
+
+    [Fact]
+    public async Task LookupItemAsync_ShouldFindItem_BySku_WhenBarcodeNull()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+        var companyId = Guid.NewGuid();
+
+        db.Items.Add(new Item
+        {
+            ItemId = itemId,
+            SKU = "MANUAL-SKU",
+            Name = "No Barcode Item",
+            Barcode = null,
+            UnitPrice = 15,
+            CompanyId = companyId
+        });
+        db.Stocks.Add(new Stock
+        {
+            ItemId = itemId,
+            WarehouseId = warehouseId,
+            Quantity = 3,
+            CompanyId = companyId,
+            CreatedAtUtc = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var audit = new AuditService(db, new HttpContextAccessor());
+        var loyalty = new LoyaltyService(db, audit);
+        var coupons = new CouponService(db);
+        var hub = new Mock<IHubContext<RetailHub>>();
+        var clients = new Mock<IHubClients>();
+        var groupClient = new Mock<IClientProxy>();
+        clients.Setup(x => x.Group(It.IsAny<string>())).Returns(groupClient.Object);
+        hub.Setup(x => x.Clients).Returns(clients.Object);
+
+        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+
+        var result = await sut.LookupItemAsync("MANUAL-SKU", warehouseId);
+
+        Assert.NotNull(result);
+        Assert.Equal(itemId, result!.ItemId);
+    }
+
+    [Fact]
+    public async Task LookupItemAsync_ShouldReturnNull_WhenCodeUnknown()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var audit = new AuditService(db, new HttpContextAccessor());
+        var loyalty = new LoyaltyService(db, audit);
+        var coupons = new CouponService(db);
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+
+        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+
+        var result = await sut.LookupItemAsync("DOES-NOT-EXIST", Guid.NewGuid());
+
+        Assert.Null(result);
+    }
 }
