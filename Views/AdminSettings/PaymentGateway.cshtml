@@ -31,7 +31,7 @@
                 <div class="col-md-4">
                     <label asp-for="GatewayProvider" class="form-label"></label>
                     <select asp-for="GatewayProvider" class="form-select" id="gatewayProvider">
-                        <option value="@((byte)PaymentGatewayProvider.None)">None (Disable Online Gateway)</option>
+                        <option value="@((byte)PaymentGatewayProvider.None)">Use Global Default</option>
                         <option value="@((byte)PaymentGatewayProvider.Razorpay)">Razorpay</option>
                         <option value="@((byte)PaymentGatewayProvider.Stripe)" disabled>Stripe (Coming Soon)</option>
                     </select>
