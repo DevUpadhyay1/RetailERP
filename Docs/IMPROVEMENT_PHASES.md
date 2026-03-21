@@ -20,10 +20,15 @@ This tracks the **“path to production quality”** plan: what is done, what is
 |------|--------|
 | Identity + lockout + JWT for API | Already in app |
 | Security checklist doc | `SECURITY_CHECKLIST.md` |
-| API authorization audit (every endpoint) | Todo |
-| CORS / production headers review | Todo |
+| Production JWT / connection validation (fail fast) | Done — `ProductionStartupValidation` |
+| API `login` / `refresh` rate limited (`Login` policy) | Done |
+| Secure auth + antiforgery cookies in Production | Done |
+| Forwarded headers behind reverse proxy | Done (non-Dev) |
+| HSTS (non-Dev) | Done |
+| API authorization audit (every endpoint) | Ongoing — inherit `ApiBaseController` |
+| CORS for SPA | Todo if you add a separate front-end origin |
 
-**Next steps:** Walk through `SECURITY_CHECKLIST.md` before any public deployment.
+**Next steps:** Walk through `SECURITY_CHECKLIST.md` and [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md) before go-live.
 
 ---
 
@@ -32,9 +37,10 @@ This tracks the **“path to production quality”** plan: what is done, what is
 | Item | Status |
 |------|--------|
 | `/health` endpoint | Done |
+| SQL + **Redis** health probes (when Redis cache enabled) | Done |
 | Serilog file + console logging | Done |
 | Runbook | `RUNBOOK.md` |
-| Redis in health check (optional) | Todo |
+| Kubernetes-style readiness JSON | Todo (optional) |
 
 ---
 

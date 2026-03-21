@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
@@ -40,6 +41,7 @@ public class AuthController : ControllerBase
     /// <summary>Login with email/password, returns JWT access + refresh tokens.</summary>
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("Login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         if (!ModelState.IsValid)
@@ -83,6 +85,7 @@ public class AuthController : ControllerBase
     /// <summary>Exchange expired access token + valid refresh token for a new token pair.</summary>
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting("Login")]
     public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
     {
         if (!ModelState.IsValid)

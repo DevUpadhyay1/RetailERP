@@ -6,6 +6,7 @@ Use this before **production** or **public demo with real data**. Not all items 
 
 - [ ] `ConnectionStrings:DefaultConnection` is not committed with production passwords (use User Secrets / env / Key Vault).
 - [ ] `Jwt:SecretKey` is a **long random** value in production (not the sample from `appsettings.json`).
+- [ ] With `ASPNETCORE_ENVIRONMENT=Production`, the app **validates** DB + JWT at startup (`ProductionStartupValidation`) — weak dev secrets **fail fast**.
 - [ ] `Razorpay`, `Twilio`, `WhatsApp`, SMTP passwords are in secrets, not in git.
 
 ## Authentication & authorization

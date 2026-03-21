@@ -1,19 +1,27 @@
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+
+# Git / IDE
 .git
-.github
-.vs
-.idea
-bin
-obj
-**/bin
-**/obj
-_build_verify
-Docs - Copy
-Logs
+.gitignore
+.vs/
+.idea/
+
+# Tests (not needed inside published app image context)
+RetailERP.Tests/
+
+# Local logs and secrets
+Logs/
 *.user
 *.suo
-*.db
-*.db-shm
-*.db-wal
-*.pfx
-*.snk
-~$*
+
+# Docs (optional — keeps image build context small)
+**/Docs/
+*.md
+!README.md
+
+# CI / misc
+.github/
+_build_verify/

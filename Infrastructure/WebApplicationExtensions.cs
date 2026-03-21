@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.HttpOverrides;
 using RetailERP.Data.Seed;
 using RetailERP.Hubs;
 using Serilog;
@@ -12,6 +13,10 @@ public static class WebApplicationExtensions
 {
     public static async Task UseRetailErpPipelineAsync(this WebApplication app)
     {
+        // Must run first when behind reverse proxy (TLS termination at nginx / load balancer).
+        if (!app.Environment.IsDevelopment())
+            app.UseForwardedHeaders();
+
         if (app.Environment.IsDevelopment())
         {
             app.UseMigrationsEndPoint();

@@ -2,8 +2,11 @@ using System.Globalization;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Localization;
@@ -16,6 +19,7 @@ using RetailERP.Data.Auditing;
 using RetailERP.Data.Identity;
 using RetailERP.Data.Seed;
 using RetailERP.Hubs;
+using RetailERP.Infrastructure.Production;
 using RetailERP.Services;
 using RetailERP.Services.BackgroundJobs;
 using Serilog;
@@ -30,6 +34,8 @@ public static class WebApplicationBuilderExtensions
 {
     public static void AddRetailErp(this WebApplicationBuilder builder)
     {
+        ProductionStartupValidation.ThrowIfInvalidForProduction(builder.Environment, builder.Configuration);
+
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
@@ -87,6 +93,13 @@ public static class WebApplicationBuilderExtensions
                     await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
                 }
             };
+
+            if (builder.Environment.IsProduction())
+            {
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Lax;
+            }
         });
 
         var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -156,7 +169,12 @@ public static class WebApplicationBuilderExtensions
                     }));
         });
 
-        builder.Services.AddAntiforgery(options => { options.HeaderName = "X-XSRF-TOKEN"; });
+        builder.Services.AddAntiforgery(options =>
+        {
+            options.HeaderName = "X-XSRF-TOKEN";
+            if (builder.Environment.IsProduction())
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        });
 
         // Single registration: MVC + view localization (avoid duplicate AddControllersWithViews)
         builder.Services.AddControllersWithViews()
@@ -207,8 +225,39 @@ public static class WebApplicationBuilderExtensions
                 .Build();
         });
 
-        builder.Services.AddHealthChecks()
+        // Redis (optional) — must be resolved before health checks so we can probe the same connection.
+        var redisConn = builder.Configuration.GetConnectionString("Redis");
+        var redisCacheEnabled = false;
+        if (!string.IsNullOrEmpty(redisConn))
+        {
+            try
+            {
+                var redisProbe = ConnectionMultiplexer.Connect(redisConn + ",abortConnect=false,connectTimeout=3000");
+                redisProbe.Dispose();
+                builder.Services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = redisConn;
+                    options.InstanceName = "RetailERP:";
+                });
+                redisCacheEnabled = true;
+                Log.Information("Sprint 4: Redis cache connected at {RedisConn}", redisConn);
+            }
+            catch
+            {
+                Log.Warning("Sprint 4: Redis unavailable at {RedisConn} — falling back to in-memory cache", redisConn);
+                builder.Services.AddDistributedMemoryCache();
+            }
+        }
+        else
+        {
+            Log.Information("Sprint 4: No Redis connection string — using in-memory distributed cache");
+            builder.Services.AddDistributedMemoryCache();
+        }
+
+        var healthChecks = builder.Services.AddHealthChecks()
             .AddSqlServer(connectionString, name: "sqlserver", tags: new[] { "db", "ready" });
+        if (redisCacheEnabled && !string.IsNullOrEmpty(redisConn))
+            healthChecks.AddRedis(redisConn, name: "redis", tags: new[] { "cache", "ready" });
 
         builder.Services.AddScoped<InvoiceService>();
         builder.Services.AddScoped<PurchaseService>();
@@ -250,32 +299,6 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddScoped<ITenantProvider, TenantProvider>();
         builder.Services.AddScoped<CacheService>();
 
-        var redisConn = builder.Configuration.GetConnectionString("Redis");
-        if (!string.IsNullOrEmpty(redisConn))
-        {
-            try
-            {
-                var redis = ConnectionMultiplexer.Connect(redisConn + ",abortConnect=false,connectTimeout=3000");
-                redis.Dispose();
-                builder.Services.AddStackExchangeRedisCache(options =>
-                {
-                    options.Configuration = redisConn;
-                    options.InstanceName = "RetailERP:";
-                });
-                Log.Information("Sprint 4: Redis cache connected at {RedisConn}", redisConn);
-            }
-            catch
-            {
-                Log.Warning("Sprint 4: Redis unavailable at {RedisConn} — falling back to in-memory cache", redisConn);
-                builder.Services.AddDistributedMemoryCache();
-            }
-        }
-        else
-        {
-            Log.Information("Sprint 4: No Redis connection string — using in-memory distributed cache");
-            builder.Services.AddDistributedMemoryCache();
-        }
-
         builder.Services.AddScoped<FranchiseService>();
 
         builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
@@ -298,5 +321,22 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
 
         builder.Services.AddTransient<DbSeeder>();
+
+        // Behind nginx / cloud load balancer: correct scheme and client IP for HTTPS redirects and logs.
+        if (!builder.Environment.IsDevelopment())
+        {
+            builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.KnownNetworks.Clear();
+                options.KnownProxies.Clear();
+            });
+
+            builder.Services.AddHsts(options =>
+            {
+                options.MaxAge = TimeSpan.FromDays(180);
+                options.IncludeSubDomains = true;
+            });
+        }
     }
 }
