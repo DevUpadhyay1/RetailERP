@@ -18,6 +18,14 @@
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
+    <script>
+        (function() {
+            var theme = localStorage.getItem('retailerp:theme');
+            if (theme === 'dark' || (theme === null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.body.classList.add('dark-mode');
+            }
+        })();
+    </script>
     @using RetailERP.Data.Identity
     @inject Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> UserManager
 

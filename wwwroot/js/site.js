@@ -28,7 +28,9 @@ document.addEventListener('DOMContentLoaded', function () {
 	var savedTheme = localStorage.getItem(themeKey);
 	var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 	var isDark = savedTheme === 'dark' || (savedTheme === null && prefersDark);
-	applyTheme(isDark);
+	if (themeIcon) {
+		themeIcon.className = isDark ? 'bi bi-sun' : 'bi bi-moon-stars';
+	}
 
 	if (themeToggle) {
 		themeToggle.addEventListener('click', function () {

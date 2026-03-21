@@ -90,7 +90,7 @@ public class PaymentGatewayController : Controller
                 orderId = order.Id,
                 amount = order.Amount, // in paise
                 currency = order.Currency,
-                keyId = _razorpay.GetPublicKey(),
+                keyId = await _razorpay.GetPublicKeyAsync(),
                 billNo = bill.BillNo,
                 storeName = bill.Store?.Name ?? "",
                 customerName = bill.Customer?.Name ?? "Walk-in Customer",
@@ -118,7 +118,7 @@ public class PaymentGatewayController : Controller
         try
         {
             // 1. Verify signature
-            var isValid = _razorpay.VerifyPaymentSignature(req.OrderId, req.PaymentId, req.Signature);
+            var isValid = await _razorpay.VerifyPaymentSignatureAsync(req.OrderId, req.PaymentId, req.Signature);
             if (!isValid)
             {
                 _log.LogWarning("Payment signature verification FAILED. OrderId={OrderId}, PaymentId={PaymentId}",

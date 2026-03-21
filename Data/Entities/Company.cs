@@ -56,6 +56,15 @@ public class Company
     [StringLength(300)]
     public string? LogoPath { get; set; }
 
+    /// <summary>Sprint 16 – Multi-tenant gateway selection.</summary>
+    public PaymentGatewayProvider GatewayProvider { get; set; } = PaymentGatewayProvider.None;
+
+    [StringLength(100)]
+    public string? GatewayKeyId { get; set; }
+
+    [StringLength(100)]
+    public string? GatewayKeySecret { get; set; }
+
     /// <summary>Max users allowed for this tenant (0 = unlimited).</summary>
     public int MaxUsers { get; set; } = 0;
 

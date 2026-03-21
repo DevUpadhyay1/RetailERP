@@ -16,18 +16,45 @@ public class RazorpayService
     private readonly HttpClient _http;
     private readonly RazorpayOptions _opts;
     private readonly ILogger<RazorpayService> _log;
+    private readonly IServiceProvider _serviceProvider;
     private const string BaseUrl = "https://api.razorpay.com/v1";
 
-    public RazorpayService(HttpClient http, IOptions<RazorpayOptions> opts, ILogger<RazorpayService> log)
+    public RazorpayService(HttpClient http, IOptions<RazorpayOptions> opts, ILogger<RazorpayService> log, IServiceProvider serviceProvider)
     {
         _http = http;
         _opts = opts.Value;
         _log = log;
+        _serviceProvider = serviceProvider;
 
-        // Basic Auth: key_id:key_secret
-        var credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_opts.KeyId}:{_opts.KeySecret}"));
-        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+    }
+
+    private async Task<(string KeyId, string KeySecret)> GetCredentialsAsync()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var tenant = scope.ServiceProvider.GetService<ITenantProvider>();
+        if (tenant != null)
+        {
+            var tenantId = tenant.CompanyId;
+            if (tenantId.HasValue)
+            {
+                var db = scope.ServiceProvider.GetRequiredService<RetailERP.Data.ApplicationDbContext>();
+                var company = await db.Companies.FindAsync(tenantId.Value);
+                if (company != null && company.GatewayProvider == RetailERP.Data.Entities.PaymentGatewayProvider.Razorpay
+                    && !string.IsNullOrWhiteSpace(company.GatewayKeyId) && !string.IsNullOrWhiteSpace(company.GatewayKeySecret))
+                {
+                    return (company.GatewayKeyId, company.GatewayKeySecret);
+                }
+            }
+        }
+        return (_opts.KeyId, _opts.KeySecret);
+    }
+
+    private async Task SetAuthHeaderAsync()
+    {
+        var creds = await GetCredentialsAsync();
+        var encoded = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{creds.KeyId}:{creds.KeySecret}"));
+        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", encoded);
     }
 
     // ────────────────────────────────────────────────────────
@@ -58,6 +85,7 @@ public class RazorpayService
 
         _log.LogInformation("Razorpay: Creating order for ₹{Amount} ({Paise} paise)", amountInRupees, amountInPaise);
 
+        await SetAuthHeaderAsync();
         var response = await _http.PostAsync($"{BaseUrl}/orders", content);
         var responseBody = await response.Content.ReadAsStringAsync();
 
@@ -81,10 +109,11 @@ public class RazorpayService
     /// This MUST be called server-side to confirm payment is genuine.
     /// Signature = HMAC-SHA256(order_id + "|" + payment_id, key_secret)
     /// </summary>
-    public bool VerifyPaymentSignature(string orderId, string paymentId, string signature)
+    public async Task<bool> VerifyPaymentSignatureAsync(string orderId, string paymentId, string signature)
     {
+        var creds = await GetCredentialsAsync();
         var payload = $"{orderId}|{paymentId}";
-        using var hmac = new System.Security.Cryptography.HMACSHA256(Encoding.UTF8.GetBytes(_opts.KeySecret));
+        using var hmac = new System.Security.Cryptography.HMACSHA256(Encoding.UTF8.GetBytes(creds.KeySecret));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
         var expectedSignature = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
 
@@ -107,6 +136,7 @@ public class RazorpayService
     /// </summary>
     public async Task<RazorpayPaymentDetails?> FetchPaymentAsync(string paymentId)
     {
+        await SetAuthHeaderAsync();
         var response = await _http.GetAsync($"{BaseUrl}/payments/{paymentId}");
         var body = await response.Content.ReadAsStringAsync();
 
@@ -139,6 +169,7 @@ public class RazorpayService
 
         _log.LogInformation("Razorpay: Initiating refund for ₹{Amount} on PaymentId={PaymentId}", amountInRupees, paymentId);
 
+        await SetAuthHeaderAsync();
         var response = await _http.PostAsync($"{BaseUrl}/payments/{paymentId}/refund", content);
         var responseBody = await response.Content.ReadAsStringAsync();
 
@@ -154,7 +185,11 @@ public class RazorpayService
     }
 
     /// <summary>Returns the Razorpay Key ID (public key safe to send to browser).</summary>
-    public string GetPublicKey() => _opts.KeyId;
+    public async Task<string> GetPublicKeyAsync()
+    {
+        var creds = await GetCredentialsAsync();
+        return creds.KeyId;
+    }
 }
 
 // ────────────────────────────────────────────────────────
