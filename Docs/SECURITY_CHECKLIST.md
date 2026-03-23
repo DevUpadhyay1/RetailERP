@@ -6,33 +6,42 @@ Use this before **production** or **public demo with real data**. Not all items 
 
 - [ ] `ConnectionStrings:DefaultConnection` is not committed with production passwords (use User Secrets / env / Key Vault).
 - [ ] `Jwt:SecretKey` is a **long random** value in production (not the sample from `appsettings.json`).
-- [ ] With `ASPNETCORE_ENVIRONMENT=Production`, the app **validates** DB + JWT at startup (`ProductionStartupValidation`) — weak dev secrets **fail fast**.
+- [x] With `ASPNETCORE_ENVIRONMENT=Production`, the app **validates** DB + JWT at startup (`ProductionStartupValidation`) — weak dev secrets **fail fast**.
 - [ ] `Razorpay`, `Twilio`, `WhatsApp`, SMTP passwords are in secrets, not in git.
 
 ## Authentication & authorization
 
 - [ ] Cookie auth: login, lockout, and inactive user sign-out behave as expected (`Program.cs`).
-- [ ] New MVC actions have correct `[Authorize(Roles = "...")]` (or inherit policy).
-- [ ] New API controllers use `[Authorize]` and JWT where intended; anonymous only where deliberate (`[AllowAnonymous]`).
+- [x] New MVC actions have correct `[Authorize(Roles = "...")]` (or inherit policy) based on current controller audit.
+- [x] New API controllers use `[Authorize]` and JWT where intended; anonymous only where deliberate (`[AllowAnonymous]`) based on current controller audit.
+- [x] API controllers now have explicit role-based authorization at controller level (`Controllers/Api/*`).
 
 ## Web & API hardening
 
-- [ ] HTTPS enabled in production; HSTS on (`Program.cs` pipeline for non-Development).
-- [ ] Rate limiting policies still appropriate for login/POS/API (`WebApplicationBuilderExtensions`).
+- [x] HTTPS enabled in production; HSTS on (`Program.cs`/pipeline non-Development branch).
+- [x] Rate limiting policies exist and are applied for login/POS/API paths (`WebApplicationBuilderExtensions`, auth and API controllers).
 - [ ] CORS: if you add a SPA, restrict `WithOrigins(...)` — do not use `AllowAnyOrigin` with credentials.
+- [x] API rate limiting is enforced by default via `ApiBaseController`.
+- [x] Anonymous portal endpoints are rate-limited (`CustomerPortalController`, `SupplierPortalController`).
+- [x] Anonymous sync queue endpoint is rate-limited and validates key request fields (`SyncController.QueueChange`).
+- [x] CORS policy (`ApiCors`) added with explicit production behavior (`Cors:AllowedOrigins`).
+- [x] Global MVC anti-forgery validation enabled (`AutoValidateAntiforgeryTokenAttribute`), with API controllers explicitly opting out.
 
 ## Data & multi-tenant
 
 - [ ] Confirm global query filters / `CompanyId` cannot be bypassed by crafted requests (review critical services).
 - [ ] Admin/SuperAdmin routes cannot be called by lower roles (verify once).
+- [x] High-risk controllers now enforce company scoping checks on sensitive actions (payment, e-invoice, portal admin).
+- [x] Automated negative tests added for cross-company forbidden access in high-risk controllers (`RetailERP.Tests/SecurityAuthorizationRegressionTests.cs`).
+- [x] Additional malformed/replay-style negative tests added (sync invalid payload/action + duplicate refund attempt rejection).
 
 ## Dependency & supply chain
 
-- [ ] Run `dotnet list package --vulnerable` periodically; update packages when feasible.
+- [x] `dotnet list package --vulnerable` run in current audit batch (no vulnerable packages reported on configured sources).
 
 ## Logging & privacy
 
-- [ ] Logs do not write full payment card numbers, passwords, or JWTs.
+- [x] Logs reviewed and hardened to avoid sensitive response-body/token-like exposure on payment/SMS/WhatsApp paths.
 - [ ] Log retention and access controlled on the server.
 
 ## Deployment

@@ -12,6 +12,11 @@
         <small class="text-muted">@(Model.TemplateType == 1 ? "POS Receipt" : "Invoice") &bull; @Model.PaperSize</small>
     </div>
     <div class="d-flex gap-2 flex-wrap">
+        <select id="presetSelect" class="form-select form-select-sm" style="width:auto;">
+            <option value="modern">Modern Preset</option>
+            <option value="classic">Classic Stylish Preset</option>
+        </select>
+        <button id="btnApplyPreset" class="btn btn-outline-primary btn-sm"><i class="bi bi-stars me-1"></i>Apply Preset</button>
         <button id="btnSave" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Save</button>
         <a asp-action="PreviewReceipt" asp-route-id="@Model.BillTemplateId" class="btn btn-outline-info btn-sm" target="_blank"><i class="bi bi-file-pdf me-1"></i>Preview PDF</a>
         <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
@@ -154,6 +159,36 @@ const DEFS={
     items_table:{l:'Items',s:true},totals:{l:'Totals',s:true},payments:{l:'Payments',s:true},
     tax_summary:{l:'Tax',s:true},footer:{l:'Footer',s:true},
     text_block:{l:'Text',s:false},separator:{l:'Line',s:false},spacer:{l:'Space',s:false}
+};
+
+const PRESETS={
+    modern:[
+        {type:'logo',props:{maxHeight:50,align:'center'}},
+        {type:'store_header',props:{showGst:true,headerText:''}},
+        {type:'bill_info',props:{showCustomerPhone:true,showCustomerEmail:false,showCashier:true}},
+        {type:'items_table',props:{showHsn:false}},
+        {type:'totals',props:{showDiscount:true}},
+        {type:'payments',props:{}},
+        {type:'tax_summary',props:{}},
+        {type:'footer',props:{text:'Thank you for shopping!',showItemCount:true}}
+    ],
+    classic:[
+        {type:'logo',props:{maxHeight:52,align:'center'}},
+        {type:'store_header',props:{showGst:true,headerText:'RETAIL INVOICE'}},
+        {type:'bill_info',props:{showCustomerPhone:true,showCustomerEmail:false,showCashier:true}},
+        {type:'separator',props:{style:'solid',thickness:1,color:'#555555'}},
+        {type:'items_table',props:{showHsn:true}},
+        {type:'separator',props:{style:'solid',thickness:1,color:'#555555'}},
+        {type:'totals',props:{showDiscount:true}},
+        {type:'payments',props:{}},
+        {type:'text_block',props:{text:'Net Amount: {{grand_total}}',fontSize:12,fontFamily:'serif',align:'right',bold:true,italic:false,color:'#111111'}},
+        {type:'text_block',props:{text:'In Words: {{grand_total_words}}',fontSize:10,fontFamily:'serif',align:'left',bold:false,italic:false,color:'#333333'}},
+        {type:'separator',props:{style:'dashed',thickness:1,color:'#999999'}},
+        {type:'text_block',props:{text:'Terms & Conditions:\n1. Goods once sold will not be taken back.\n2. Keep this invoice for exchange/warranty as per policy.',fontSize:9,fontFamily:'sans-serif',align:'left',bold:false,italic:false,color:'#333333'}},
+        {type:'spacer',props:{height:8}},
+        {type:'text_block',props:{text:'Receiver Signature                                Authorised Signatory',fontSize:9,fontFamily:'sans-serif',align:'left',bold:false,italic:false,color:'#444444'}},
+        {type:'footer',props:{text:'Thank you for your business!',showItemCount:true}}
+    ]
 };
 
 let comps=[], sel=null, uid=0;
@@ -359,7 +394,9 @@ function renderProps(){
             h+=`<div>`+pColor('color','',comp.props.color)+`</div>`;
             h+=`</div>`;
             h+=`<div class="mt-1"><small class="text-muted">Placeholders (click to insert):</small><div class="mt-1">`
-              +badge('{{company_name}}')+badge('{{bill_no}}')+badge('{{date}}')+badge('{{grand_total}}')+badge('{{customer_name}}')
+              +badge('{{company_name}}')+badge('{{bill_no}}')+badge('{{bill_date}}')+badge('{{bill_time}}')+badge('{{grand_total}}')
+              +badge('{{grand_total_words}}')+badge('{{sub_total}}')+badge('{{tax_total}}')+badge('{{discount}}')
+              +badge('{{customer_name}}')+badge('{{customer_phone}}')+badge('{{customer_email}}')
               +`</div></div>`;
             break;
         case 'separator':
@@ -444,6 +481,18 @@ document.getElementById('btnSave').addEventListener('click',async function(){
         if(data.success){btn.innerHTML='<i class="bi bi-check-lg me-1"></i>Saved!';btn.classList.replace('btn-primary','btn-success');setTimeout(()=>{btn.classList.replace('btn-success','btn-primary');btn.innerHTML='<i class="bi bi-save me-1"></i>Save';btn.disabled=false},1500)}
         else{toast('Save failed — '+JSON.stringify(data),'danger');btn.innerHTML='<i class="bi bi-save me-1"></i>Save';btn.disabled=false}
     }catch(e){toast('Network error','danger');btn.innerHTML='<i class="bi bi-save me-1"></i>Save';btn.disabled=false}
+});
+
+document.getElementById('btnApplyPreset')?.addEventListener('click', function(){
+    const key = document.getElementById('presetSelect')?.value || 'modern';
+    const preset = PRESETS[key];
+    if(!preset || !Array.isArray(preset) || preset.length===0) return;
+    if(!confirm('Replace current layout with selected preset? Unsaved changes will be lost.')) return;
+    comps = preset.map(c => ({ uid: gid(), type: c.type, props: JSON.parse(JSON.stringify(c.props || {})) }));
+    sel = null;
+    render();
+    renderProps();
+    toast('Preset applied. Click Save to persist.', 'info');
 });
 
 // ═══ LOGO UPLOAD ═══

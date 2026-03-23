@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace RetailERP.Controllers.Api;
 
@@ -11,7 +12,9 @@ namespace RetailERP.Controllers.Api;
 [Area("api")]
 [ApiController]
 [Route("api/v1/[controller]")]
+[IgnoreAntiforgeryToken]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme + ",Identity.Application")]
+[EnableRateLimiting("Api")]
 [Produces("application/json")]
 public abstract class ApiBaseController : ControllerBase
 {

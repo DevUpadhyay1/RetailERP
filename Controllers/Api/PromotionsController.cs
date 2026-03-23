@@ -5,6 +5,7 @@ using RetailERP.Models.Api;
 
 namespace RetailERP.Controllers.Api;
 
+[Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager")]
 public class PromotionsController : ApiBaseController
 {
     private readonly ApplicationDbContext _db;

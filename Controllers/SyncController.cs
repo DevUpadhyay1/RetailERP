@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
@@ -102,10 +103,24 @@ public class SyncController : Controller
     // ── API: Queue an offline change (called by POS terminal) ──
     [HttpPost, IgnoreAntiforgeryToken]
     [AllowAnonymous] // POS terminals authenticate via device ID
+    [EnableRateLimiting("Api")]
     public async Task<IActionResult> QueueChange([FromBody] QueueChangeReq req)
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(req.DeviceId) || req.DeviceId.Length > 100)
+                return Json(new { success = false, message = "Invalid device id." });
+            if (string.IsNullOrWhiteSpace(req.EntityType) || req.EntityType.Length > 80)
+                return Json(new { success = false, message = "Invalid entity type." });
+            if (string.IsNullOrWhiteSpace(req.EntityId) || req.EntityId.Length > 100)
+                return Json(new { success = false, message = "Invalid entity id." });
+            if (string.IsNullOrWhiteSpace(req.Action) || req.Action.Length > 20)
+                return Json(new { success = false, message = "Invalid action." });
+
+            var action = req.Action.Trim().ToLowerInvariant();
+            if (action is not ("create" or "update" or "delete"))
+                return Json(new { success = false, message = "Unsupported action." });
+
             var id = await _sync.QueueChangeAsync(req.DeviceId, req.EntityType, req.EntityId, req.Action, req.Payload);
             return Json(new { success = true, syncLogId = id });
         }

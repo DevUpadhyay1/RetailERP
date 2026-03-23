@@ -55,15 +55,20 @@ public class BillTemplatesController : Controller
     {
         var template = new BillTemplate
         {
-            LayoutJson = GetDefaultLayoutJson()
+            TemplateName = "Default Receipt",
+            LayoutJson = GetPresetLayoutJson("modern", 1)
         };
+        ViewBag.Preset = "modern";
         return View(template);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(BillTemplate template)
+    public async Task<IActionResult> Create(BillTemplate template, string preset = "modern")
     {
         if (!ModelState.IsValid) return View(template);
+
+        if (string.IsNullOrWhiteSpace(template.LayoutJson) || template.LayoutJson == "[]")
+            template.LayoutJson = GetPresetLayoutJson(preset, template.TemplateType);
 
         template.BillTemplateId = Guid.NewGuid();
         template.CompanyId = GetCompanyId();
@@ -305,18 +310,51 @@ public class BillTemplatesController : Controller
         if (others.Count > 0) await _db.SaveChangesAsync();
     }
 
-    private static string GetDefaultLayoutJson()
+    private static string GetPresetLayoutJson(string preset, byte templateType)
+    {
+        var key = (preset ?? "modern").Trim().ToLowerInvariant();
+        if (key == "classic")
+            return GetClassicLayoutJson(templateType);
+        return GetModernLayoutJson(templateType);
+    }
+
+    private static string GetModernLayoutJson(byte templateType)
     {
         var components = new object[]
         {
             new { type = "logo",         props = new { maxHeight = 50, align = "center" } },
             new { type = "store_header", props = new { showGst = true, headerText = "" } },
-            new { type = "bill_info",    props = new { } },
+            new { type = "bill_info",    props = new { showCustomerPhone = true, showCustomerEmail = false, showCashier = true } },
             new { type = "items_table",  props = new { showHsn = false } },
             new { type = "totals",       props = new { showDiscount = true } },
             new { type = "payments",     props = new { } },
             new { type = "tax_summary",  props = new { } },
             new { type = "footer",       props = new { text = "Thank you for shopping!", showItemCount = true } }
+        };
+        return System.Text.Json.JsonSerializer.Serialize(components);
+    }
+
+    private static string GetClassicLayoutJson(byte templateType)
+    {
+        // Classic style similar to traditional retail invoices:
+        // centered branding, compact bill header, item grid, summary and signature/terms blocks.
+        var components = new object[]
+        {
+            new { type = "logo",         props = new { maxHeight = 52, align = "center" } },
+            new { type = "store_header", props = new { showGst = true, headerText = templateType == 1 ? "RETAIL INVOICE" : "TAX INVOICE" } },
+            new { type = "bill_info",    props = new { showCustomerPhone = true, showCustomerEmail = false, showCashier = true } },
+            new { type = "separator",    props = new { style = "solid", thickness = 1, color = "#555555" } },
+            new { type = "items_table",  props = new { showHsn = true } },
+            new { type = "separator",    props = new { style = "solid", thickness = 1, color = "#555555" } },
+            new { type = "totals",       props = new { showDiscount = true } },
+            new { type = "payments",     props = new { } },
+            new { type = "text_block",   props = new { text = "Net Amount: {{grand_total}}", fontSize = 12, fontFamily = "serif", align = "right", bold = true, italic = false, color = "#111111" } },
+            new { type = "text_block",   props = new { text = "In Words: {{grand_total_words}}", fontSize = 10, fontFamily = "serif", align = "left", bold = false, italic = false, color = "#333333" } },
+            new { type = "separator",    props = new { style = "dashed", thickness = 1, color = "#999999" } },
+            new { type = "text_block",   props = new { text = "Terms & Conditions:\n1. Goods once sold will not be taken back.\n2. Keep this invoice for exchange/warranty as per policy.", fontSize = 9, fontFamily = "sans-serif", align = "left", bold = false, italic = false, color = "#333333" } },
+            new { type = "spacer",       props = new { height = 8 } },
+            new { type = "text_block",   props = new { text = "Receiver Signature                                Authorised Signatory", fontSize = 9, fontFamily = "sans-serif", align = "left", bold = false, italic = false, color = "#444444" } },
+            new { type = "footer",       props = new { text = "Thank you for your business!", showItemCount = true } }
         };
         return System.Text.Json.JsonSerializer.Serialize(components);
     }

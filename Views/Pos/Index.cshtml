@@ -3,6 +3,8 @@
     ViewData["Title"] = "POS Bills";
     var q = (ViewData["q"] as string) ?? "";
     var statusFilter = ViewData["status"] as byte?;
+    var dateFromStr = (ViewData["dateFrom"] as string) ?? "";
+    var dateToStr = (ViewData["dateTo"] as string) ?? "";
     var sort = (ViewData["sort"] as string) ?? "date";
     var dir = (ViewData["dir"] as string) ?? "desc";
     var pageNumber = (ViewData["page"] as int?) ?? 1;
@@ -12,10 +14,25 @@
     var to = (ViewData["to"] as int?) ?? 0;
     var totalPages = (ViewData["totalPages"] as int?) ?? 1;
 
+    var today = DateTime.Today;
+    var thisMonthStart = new DateTime(today.Year, today.Month, 1);
+    var thisMonthEnd = thisMonthStart.AddMonths(1).AddDays(-1);
+    var lastMonthStart = thisMonthStart.AddMonths(-1);
+    var lastMonthEnd = thisMonthStart.AddDays(-1);
+
     string ToggleDir(string s)
     {
         if (!string.Equals(sort, s, StringComparison.OrdinalIgnoreCase)) return "asc";
         return string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+    }
+
+    string Q(string? sortOverride = null, string? dirOverride = null, int? pageOverride = null)
+    {
+        var s = sortOverride ?? sort;
+        var d = dirOverride ?? dir;
+        var p = pageOverride ?? pageNumber;
+        var st = statusFilter.HasValue ? statusFilter.Value.ToString() : "";
+        return $"?q={Uri.EscapeDataString(q)}&status={st}&dateFrom={Uri.EscapeDataString(dateFromStr)}&dateTo={Uri.EscapeDataString(dateToStr)}&sort={Uri.EscapeDataString(s)}&dir={Uri.EscapeDataString(d)}&page={p}&pageSize={pageSize}";
     }
 
     string StatusBadge(byte s) => s switch
@@ -27,33 +44,76 @@
     };
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
         <h2 class="mb-0"><i class="bi bi-cart3 me-2"></i>POS Bills</h2>
         <div class="text-muted small">Showing @from–@to of @total</div>
     </div>
-    <a class="btn btn-primary" asp-action="NewBill"><i class="bi bi-plus-lg me-1"></i>New Bill</a>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-primary" asp-action="NewBill"><i class="bi bi-sliders me-1"></i>Choose store…</a>
+        <a class="btn btn-primary" asp-action="StartQuick"><i class="bi bi-play-fill me-1"></i>New bill</a>
+    </div>
 </div>
 
 @if (TempData["Ok"] is string ok) { <div class="alert alert-success py-2">@ok</div> }
 @if (TempData["Err"] is string err) { <div class="alert alert-danger py-2">@err</div> }
 
 <form method="get" class="card shadow-sm border-0 mb-3">
-    <div class="card-body py-2">
-        <div class="row g-2 align-items-center">
-            <div class="col-md-5">
-                <input class="form-control" name="q" value="@q" placeholder="Search bill# or customer…" />
+    <div class="card-body py-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-lg-3 col-md-6">
+                <label class="form-label small text-muted mb-0">Search</label>
+                <input class="form-control" name="q" value="@q" placeholder="Bill # or customer…" />
             </div>
-            <div class="col-md-3">
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label small text-muted mb-0">Status</label>
                 <select class="form-select" name="status">
-                    <option value="">All statuses</option>
-                    <option value="1" selected="@(statusFilter == 1)">Open</option>
-                    <option value="2" selected="@(statusFilter == 2)">Completed</option>
-                    <option value="3" selected="@(statusFilter == 3)">Cancelled</option>
+                    @if (statusFilter is null)
+                    {
+                        <option value="" selected="selected">All statuses</option>
+                    }
+                    else
+                    {
+                        <option value="">All statuses</option>
+                    }
+                    @if (statusFilter == 1)
+                    {
+                        <option value="1" selected="selected">Open</option>
+                    }
+                    else
+                    {
+                        <option value="1">Open</option>
+                    }
+                    @if (statusFilter == 2)
+                    {
+                        <option value="2" selected="selected">Completed</option>
+                    }
+                    else
+                    {
+                        <option value="2">Completed</option>
+                    }
+                    @if (statusFilter == 3)
+                    {
+                        <option value="3" selected="selected">Cancelled</option>
+                    }
+                    else
+                    {
+                        <option value="3">Cancelled</option>
+                    }
                 </select>
             </div>
-            <div class="col-md-2">
-                <button class="btn btn-outline-primary w-100" type="submit"><i class="bi bi-funnel me-1"></i>Filter</button>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label small text-muted mb-0">From date</label>
+                <input class="form-control" type="date" name="dateFrom" value="@dateFromStr" />
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label small text-muted mb-0">To date</label>
+                <input class="form-control" type="date" name="dateTo" value="@dateToStr" />
+            </div>
+            <div class="col-lg-3 col-md-12 d-flex flex-wrap gap-2 align-items-end">
+                <button class="btn btn-outline-primary" type="submit"><i class="bi bi-funnel me-1"></i>Apply</button>
+                <a class="btn btn-outline-secondary btn-sm" href="?q=@Uri.EscapeDataString(q)&status=@(statusFilter?.ToString() ?? "")&dateFrom=@thisMonthStart.ToString("yyyy-MM-dd")&dateTo=@thisMonthEnd.ToString("yyyy-MM-dd")&sort=@sort&dir=@dir&page=1&pageSize=@pageSize">This month</a>
+                <a class="btn btn-outline-secondary btn-sm" href="?q=@Uri.EscapeDataString(q)&status=@(statusFilter?.ToString() ?? "")&dateFrom=@lastMonthStart.ToString("yyyy-MM-dd")&dateTo=@lastMonthEnd.ToString("yyyy-MM-dd")&sort=@sort&dir=@dir&page=1&pageSize=@pageSize">Last month</a>
             </div>
         </div>
     </div>
@@ -63,12 +123,12 @@
     <table class="table table-hover align-middle mb-0">
         <thead class="table-light">
             <tr>
-                <th><a href="?q=@q&status=@statusFilter&sort=no&dir=@ToggleDir("no")&page=1&pageSize=@pageSize" class="text-decoration-none">Bill #</a></th>
-                <th><a href="?q=@q&status=@statusFilter&sort=date&dir=@ToggleDir("date")&page=1&pageSize=@pageSize" class="text-decoration-none">Date</a></th>
+                <th><a href="@Q(sortOverride: "no", dirOverride: ToggleDir("no"), pageOverride: 1)" class="text-decoration-none">Bill #</a></th>
+                <th><a href="@Q(sortOverride: "date", dirOverride: ToggleDir("date"), pageOverride: 1)" class="text-decoration-none">Date</a></th>
                 <th>Store</th>
                 <th>Customer</th>
-                <th class="text-end"><a href="?q=@q&status=@statusFilter&sort=total&dir=@ToggleDir("total")&page=1&pageSize=@pageSize" class="text-decoration-none">Total</a></th>
-                <th><a href="?q=@q&status=@statusFilter&sort=status&dir=@ToggleDir("status")&page=1&pageSize=@pageSize" class="text-decoration-none">Status</a></th>
+                <th class="text-end"><a href="@Q(sortOverride: "total", dirOverride: ToggleDir("total"), pageOverride: 1)" class="text-decoration-none">Total</a></th>
+                <th><a href="@Q(sortOverride: "status", dirOverride: ToggleDir("status"), pageOverride: 1)" class="text-decoration-none">Status</a></th>
                 <th>Cashier</th>
                 <th></th>
             </tr>
@@ -101,7 +161,7 @@
             }
             @if (!Model.Any())
             {
-                <tr><td colspan="8" class="text-center text-muted py-4">No POS bills yet. <a asp-action="NewBill">Start a new bill</a></td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-4">No POS bills match your filters. <a asp-action="StartQuick">Start a new bill</a> or <a asp-action="NewBill">choose store &amp; warehouse</a>.</td></tr>
             }
         </tbody>
     </table>
@@ -114,7 +174,7 @@
             @for (int i = 1; i <= totalPages; i++)
             {
                 <li class="page-item @(i == pageNumber ? "active" : "")">
-                    <a class="page-link" href="?q=@q&status=@statusFilter&sort=@sort&dir=@dir&page=@i&pageSize=@pageSize">@i</a>
+                    <a class="page-link" href="@Q(pageOverride: i)">@i</a>
                 </li>
             }
         </ul>

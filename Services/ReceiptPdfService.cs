@@ -74,7 +74,7 @@ public class ReceiptPdfService
                                 RenderStoreHeader(col, bill, company, comp.Props, headerFontSize, subFontSize);
                                 break;
                             case "bill_info":
-                                RenderBillInfo(col, bill, subFontSize);
+                                RenderBillInfo(col, bill, subFontSize, comp.Props);
                                 break;
                             case "items_table":
                                 RenderItemsTable(col, bill, baseFontSize, comp.Props, isThermal);
@@ -156,15 +156,23 @@ public class ReceiptPdfService
     }
 
     // ── Bill Info ──
-    private static void RenderBillInfo(ColumnDescriptor col, PosBill bill, int subFontSize)
+    private static void RenderBillInfo(ColumnDescriptor col, PosBill bill, int subFontSize, Dictionary<string, JsonElement>? props)
     {
+        var showCustomerPhone = GetBool(props, "showCustomerPhone", true);
+        var showCustomerEmail = GetBool(props, "showCustomerEmail", false);
+        var showCashier = GetBool(props, "showCashier", true);
+
         col.Item().Row(row =>
         {
             row.RelativeItem().Text($"Bill #: {bill.BillNo}").Bold().FontSize(subFontSize);
             row.RelativeItem().AlignRight().Text(bill.BillDate.ToString("dd/MM/yyyy")).FontSize(subFontSize);
         });
         col.Item().Text($"Customer: {(bill.Customer?.Name ?? "Walk-in")}").FontSize(subFontSize);
-        if (bill.CashierUser is not null)
+        if (showCustomerPhone && !string.IsNullOrWhiteSpace(bill.Customer?.Phone))
+            col.Item().Text($"Phone: {bill.Customer.Phone}").FontSize(subFontSize);
+        if (showCustomerEmail && !string.IsNullOrWhiteSpace(bill.Customer?.Email))
+            col.Item().Text($"Email: {bill.Customer.Email}").FontSize(subFontSize);
+        if (showCashier && bill.CashierUser is not null)
             col.Item().Text($"Cashier: {bill.CashierUser.DisplayName ?? bill.CashierUser.Email}").FontSize(subFontSize);
         col.Item().PaddingVertical(2).LineHorizontal(0.5f);
     }
@@ -292,7 +300,7 @@ public class ReceiptPdfService
     // ── Text Block (with dynamic token replacement) ──
     private static void RenderTextBlock(ColumnDescriptor col, PosBill bill, Company company, Dictionary<string, JsonElement>? props)
     {
-        var rawText = GetStr(props, "text", "");
+        var rawText = GetStrMultiline(props, "text", "");
         if (string.IsNullOrEmpty(rawText)) return;
 
         // Resolve dynamic tokens
@@ -304,7 +312,12 @@ public class ReceiptPdfService
             .Replace("{{sub_total}}", $"₹{bill.SubTotal:N2}")
             .Replace("{{tax_total}}", $"₹{bill.TaxTotal:N2}")
             .Replace("{{discount}}", $"₹{bill.DiscountTotal:N2}")
-            .Replace("{{customer_name}}", bill.Customer?.Name ?? "Walk-in");
+            .Replace("{{customer_name}}", bill.Customer?.Name ?? "Walk-in")
+            .Replace("{{customer_phone}}", bill.Customer?.Phone ?? "")
+            .Replace("{{customer_email}}", bill.Customer?.Email ?? "")
+            .Replace("{{bill_date}}", bill.BillDate.ToString("dd/MM/yyyy"))
+            .Replace("{{bill_time}}", (bill.CompletedAtUtc ?? bill.BillDate).ToLocalTime().ToString("HH:mm:ss"))
+            .Replace("{{grand_total_words}}", ToIndianCurrencyWords(bill.GrandTotal));
 
         var fontSize = GetInt(props, "fontSize", 12);
         var bold = GetBool(props, "bold", false);
@@ -347,6 +360,74 @@ public class ReceiptPdfService
     {
         if (string.IsNullOrEmpty(s)) return s;
         return System.Text.RegularExpressions.Regex.Replace(s, @"[\x00-\x09\x0B\x0C\x0E-\x1F]", "").Replace("\r", "").Replace("\n", " ");
+    }
+
+    private static string GetStrMultiline(Dictionary<string, JsonElement>? props, string key, string def)
+    {
+        if (props is null || !props.TryGetValue(key, out var el)) return def;
+        var val = el.ValueKind == JsonValueKind.String ? el.GetString() ?? def : el.ToString();
+        if (string.IsNullOrEmpty(val)) return val;
+        // Keep line breaks for long legal/terms text while still removing control chars.
+        val = val.Replace("\r\n", "\n").Replace("\r", "\n");
+        return System.Text.RegularExpressions.Regex.Replace(val, @"[\x00-\x09\x0B\x0C\x0E-\x1F]", "");
+    }
+
+    private static string ToIndianCurrencyWords(decimal amount)
+    {
+        var whole = (long)Math.Floor(Math.Abs(amount));
+        var paise = (int)Math.Round((Math.Abs(amount) - whole) * 100m, MidpointRounding.AwayFromZero);
+        if (paise == 100) { whole++; paise = 0; }
+
+        var words = whole == 0 ? "Zero" : NumberToWordsIndian(whole);
+        if (paise > 0)
+            return $"{words} Rupees and {NumberToWordsIndian(paise)} Paise Only";
+        return $"{words} Rupees Only";
+    }
+
+    private static string NumberToWordsIndian(long number)
+    {
+        if (number == 0) return "Zero";
+
+        string[] ones = { "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+            "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen" };
+        string[] tens = { "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety" };
+
+        string ConvertBelow1000(int n)
+        {
+            var parts = new List<string>();
+            if (n >= 100)
+            {
+                parts.Add(ones[n / 100]);
+                parts.Add("Hundred");
+                n %= 100;
+            }
+            if (n >= 20)
+            {
+                parts.Add(tens[n / 10]);
+                if (n % 10 > 0) parts.Add(ones[n % 10]);
+            }
+            else if (n > 0)
+            {
+                parts.Add(ones[n]);
+            }
+            return string.Join(" ", parts.Where(p => !string.IsNullOrWhiteSpace(p)));
+        }
+
+        var result = new List<string>();
+        long crore = number / 10000000;
+        number %= 10000000;
+        long lakh = number / 100000;
+        number %= 100000;
+        long thousand = number / 1000;
+        number %= 1000;
+        long rest = number;
+
+        if (crore > 0) result.Add($"{ConvertBelow1000((int)crore)} Crore");
+        if (lakh > 0) result.Add($"{ConvertBelow1000((int)lakh)} Lakh");
+        if (thousand > 0) result.Add($"{ConvertBelow1000((int)thousand)} Thousand");
+        if (rest > 0) result.Add(ConvertBelow1000((int)rest));
+
+        return string.Join(" ", result.Where(x => !string.IsNullOrWhiteSpace(x))).Trim();
     }
 
     private static int GetInt(Dictionary<string, JsonElement>? props, string key, int def)

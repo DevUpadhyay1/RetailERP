@@ -9,6 +9,7 @@ using RetailERP.Data.Entities;
 using RetailERP.Data.Identity;
 using RetailERP.Services;
 using System.Security.Claims;
+using System.Net.Mail;
 
 namespace RetailERP.Controllers;
 
@@ -36,7 +37,7 @@ public class PosController : Controller
     // POS Bill list (history)
     // ────────────────────────────────────────────────────────
     [HttpGet]
-    public async Task<IActionResult> Index(string? q, byte? status, string sort = "date", string dir = "desc", int page = 1, int pageSize = 20)
+    public async Task<IActionResult> Index(string? q, byte? status, DateTime? dateFrom, DateTime? dateTo, string sort = "date", string dir = "desc", int page = 1, int pageSize = 20)
     {
         q = (q ?? "").Trim();
         if (page < 1) page = 1;
@@ -44,6 +45,8 @@ public class PosController : Controller
 
         ViewData["q"] = q;
         ViewData["status"] = status;
+        ViewData["dateFrom"] = dateFrom.HasValue ? dateFrom.Value.ToString("yyyy-MM-dd") : "";
+        ViewData["dateTo"] = dateTo.HasValue ? dateTo.Value.ToString("yyyy-MM-dd") : "";
         ViewData["sort"] = sort;
         ViewData["dir"] = dir;
         ViewData["page"] = page;
@@ -61,6 +64,18 @@ public class PosController : Controller
 
         if (status.HasValue)
             query = query.Where(b => b.Status == status.Value);
+
+        if (dateFrom.HasValue)
+        {
+            var d0 = dateFrom.Value.Date;
+            query = query.Where(b => b.BillDate >= d0);
+        }
+
+        if (dateTo.HasValue)
+        {
+            var d1 = dateTo.Value.Date.AddDays(1);
+            query = query.Where(b => b.BillDate < d1);
+        }
 
         var asc = !string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
         query = sort?.ToLowerInvariant() switch
@@ -87,16 +102,82 @@ public class PosController : Controller
     // ────────────────────────────────────────────────────────
     // New bill → start POS session
     // ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// One-click start when the user has saved default store + warehouse; otherwise redirects to <see cref="NewBill"/>.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> StartQuick()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user?.DefaultPosStoreId is null || user.DefaultPosWarehouseId is null)
+        {
+            TempData["Info"] = "Pick store and warehouse once, then tick “Save as my default for POS” to skip this step next time.";
+            return RedirectToAction(nameof(NewBill));
+        }
+
+        if (!await IsValidPosStoreAndWarehouseAsync(user.DefaultPosStoreId.Value, user.DefaultPosWarehouseId.Value))
+        {
+            TempData["Err"] = "Your saved default store or warehouse is no longer available. Please choose again.";
+            user.DefaultPosStoreId = null;
+            user.DefaultPosWarehouseId = null;
+            await _userManager.UpdateAsync(user);
+            return RedirectToAction(nameof(NewBill));
+        }
+
+        var userId = Guid.Parse(_userManager.GetUserId(User)!);
+        var billId = await _pos.CreateBillAsync(user.DefaultPosStoreId.Value, user.DefaultPosWarehouseId.Value, null, userId);
+        return RedirectToAction(nameof(Bill), new { id = billId });
+    }
+
     [HttpGet]
     public async Task<IActionResult> NewBill()
     {
-        await LoadLookupsAsync();
+        var user = await _userManager.GetUserAsync(User);
+        Guid? selStore = null;
+        Guid? selWarehouse = null;
+        var hasValidDefaults = false;
+
+        if (user?.DefaultPosStoreId is { } ds && user.DefaultPosWarehouseId is { } dw
+            && await IsValidPosStoreAndWarehouseAsync(ds, dw))
+        {
+            hasValidDefaults = true;
+            selStore = ds;
+            selWarehouse = dw;
+        }
+
+        ViewBag.HasValidDefaults = hasValidDefaults;
+        ViewBag.SelectedStoreId = selStore;
+        ViewBag.SelectedWarehouseId = selWarehouse;
+
+        await LoadLookupsAsync(selStore, selWarehouse);
         return View();
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> NewBill(Guid storeId, Guid warehouseId, Guid? customerId)
+    public async Task<IActionResult> NewBill(Guid storeId, Guid warehouseId, Guid? customerId, bool saveAsDefault = false)
     {
+        if (!await IsValidPosStoreAndWarehouseAsync(storeId, warehouseId))
+        {
+            TempData["Err"] = "That store and warehouse combination is not valid. Warehouses must belong to the selected store (or be company-wide).";
+            ViewBag.HasValidDefaults = false;
+            ViewBag.SelectedStoreId = storeId;
+            ViewBag.SelectedWarehouseId = warehouseId;
+            await LoadLookupsAsync(storeId, warehouseId);
+            return View();
+        }
+
+        if (saveAsDefault)
+        {
+            var appUser = await _userManager.GetUserAsync(User);
+            if (appUser is not null)
+            {
+                appUser.DefaultPosStoreId = storeId;
+                appUser.DefaultPosWarehouseId = warehouseId;
+                await _userManager.UpdateAsync(appUser);
+            }
+        }
+
         var userId = Guid.Parse(_userManager.GetUserId(User)!);
         var billId = await _pos.CreateBillAsync(storeId, warehouseId, customerId, userId);
         return RedirectToAction(nameof(Bill), new { id = billId });
@@ -132,6 +213,88 @@ public class PosController : Controller
         ViewBag.CashierName = bill.CashierUser?.UserName ?? User.Identity?.Name ?? "Cashier";
 
         return View(bill);
+    }
+
+    /// <summary>Update POS bill customer by selecting/creating from inline details (AJAX).</summary>
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetCustomer([FromBody] SetCustomerReq req)
+    {
+        try
+        {
+            var bill = await _db.PosBills.FirstOrDefaultAsync(b => b.PosBillId == req.BillId);
+            if (bill is null) return Json(new { success = false, message = "Bill not found." });
+            if (bill.Status != 1) return Json(new { success = false, message = "Only open bills can be edited." });
+
+            if (req.CustomerId.HasValue)
+            {
+                var exists = await _db.Customers.AsNoTracking().AnyAsync(c => c.CustomerId == req.CustomerId.Value);
+                if (!exists) return Json(new { success = false, message = "Customer not found." });
+                bill.CustomerId = req.CustomerId.Value;
+                await _db.SaveChangesAsync();
+                var summaryLinked = await GetBillSummaryAsync(req.BillId);
+                return Json(new { success = true, bill = summaryLinked });
+            }
+
+            var name = (req.Name ?? "").Trim();
+            var phoneRaw = (req.Phone ?? "").Trim();
+            var digits = new string(phoneRaw.Where(char.IsDigit).ToArray());
+            var phone = digits.Length == 10 ? digits : "";
+            var email = (req.Email ?? "").Trim();
+
+            // Empty values = walk-in customer
+            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(phone) && string.IsNullOrWhiteSpace(email))
+            {
+                bill.CustomerId = null;
+                await _db.SaveChangesAsync();
+                var summaryWalkIn = await GetBillSummaryAsync(req.BillId);
+                return Json(new { success = true, bill = summaryWalkIn });
+            }
+
+            if (!string.IsNullOrWhiteSpace(phone) && (phone[0] < '6' || phone[0] > '9'))
+                return Json(new { success = false, message = "Phone must be a valid 10-digit Indian mobile." });
+            if (!string.IsNullOrWhiteSpace(email) && !IsValidEmail(email))
+                return Json(new { success = false, message = "Email format is invalid." });
+
+            Customer? customer = null;
+            if (!string.IsNullOrWhiteSpace(phone))
+                customer = await _db.Customers.FirstOrDefaultAsync(c => c.Phone == phone);
+
+            if (customer is null && !string.IsNullOrWhiteSpace(name))
+                customer = await _db.Customers.FirstOrDefaultAsync(c => c.Name == name);
+
+            if (customer is null)
+            {
+                customer = new Customer
+                {
+                    CustomerId = Guid.NewGuid(),
+                    Name = string.IsNullOrWhiteSpace(name) ? $"Customer {phone}" : name,
+                    Phone = string.IsNullOrWhiteSpace(phone) ? null : phone,
+                    Email = string.IsNullOrWhiteSpace(email) ? null : email
+                };
+                _db.Customers.Add(customer);
+                await _db.SaveChangesAsync();
+            }
+            else
+            {
+                if (!string.IsNullOrWhiteSpace(name) && !string.Equals(customer.Name, name, StringComparison.Ordinal))
+                    customer.Name = name;
+                if (!string.IsNullOrWhiteSpace(phone) && string.IsNullOrWhiteSpace(customer.Phone))
+                    customer.Phone = phone;
+                if (!string.IsNullOrWhiteSpace(email))
+                    customer.Email = email;
+                await _db.SaveChangesAsync();
+            }
+
+            bill.CustomerId = customer.CustomerId;
+            await _db.SaveChangesAsync();
+
+            var summary = await GetBillSummaryAsync(req.BillId);
+            return Json(new { success = true, bill = summary });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { success = false, message = ex.Message });
+        }
     }
 
     // ── AJAX endpoints for POS screen ──
@@ -603,19 +766,63 @@ public class PosController : Controller
 
     // ── Helpers ──
 
-    private async Task LoadLookupsAsync()
+    private async Task LoadLookupsAsync(Guid? selectedStoreId = null, Guid? selectedWarehouseId = null)
     {
-        ViewBag.Stores = new SelectList(
-            await _db.Stores.AsNoTracking().Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync(),
-            "StoreId", "Name");
+        var stores = await _db.Stores.AsNoTracking().Where(s => s.IsActive).OrderBy(s => s.Name).ToListAsync();
+        var warehouses = await _db.Warehouses.AsNoTracking().OrderBy(w => w.Name).ToListAsync();
 
-        ViewBag.Warehouses = new SelectList(
-            await _db.Warehouses.AsNoTracking().OrderBy(w => w.Name).ToListAsync(),
-            "WarehouseId", "Name");
+        ViewBag.Stores = new SelectList(stores, "StoreId", "Name", selectedStoreId);
+        ViewBag.WarehouseRows = warehouses;
+        ViewBag.SelectedWarehouseId = selectedWarehouseId;
 
         ViewBag.Customers = new SelectList(
             await _db.Customers.AsNoTracking().OrderBy(c => c.Name).ToListAsync(),
             "CustomerId", "Name");
+    }
+
+    /// <summary>
+    /// Store must be active; warehouse must match store when <see cref="Warehouse.StoreId"/> is set; optional tenant company match.
+    /// </summary>
+    private async Task<bool> IsValidPosStoreAndWarehouseAsync(Guid storeId, Guid warehouseId)
+    {
+        var hasTenant = TryGetScopedCompanyId(out var tenantCompanyId);
+
+        var store = await _db.Stores.AsNoTracking().FirstOrDefaultAsync(s => s.StoreId == storeId);
+        if (store is null || !store.IsActive) return false;
+
+        if (hasTenant && store.CompanyId.HasValue && store.CompanyId.Value != tenantCompanyId)
+            return false;
+
+        var wh = await _db.Warehouses.AsNoTracking().FirstOrDefaultAsync(w => w.WarehouseId == warehouseId);
+        if (wh is null) return false;
+
+        if (hasTenant && wh.CompanyId.HasValue && wh.CompanyId.Value != tenantCompanyId)
+            return false;
+
+        if (wh.StoreId.HasValue && wh.StoreId.Value != storeId)
+            return false;
+
+        return true;
+    }
+
+    private bool TryGetScopedCompanyId(out Guid companyId)
+    {
+        companyId = default;
+        var s = User.FindFirstValue("CompanyId");
+        return !string.IsNullOrEmpty(s) && Guid.TryParse(s, out companyId) && companyId != Guid.Empty;
+    }
+
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            _ = new MailAddress(email);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private async Task<object> GetBillSummaryAsync(Guid billId)
@@ -626,6 +833,7 @@ public class PosController : Controller
             .Include(b => b.Payments)
             .Include(b => b.LoyaltyCard)
             .Include(b => b.Coupon)
+            .Include(b => b.Customer)
             .FirstAsync(b => b.PosBillId == billId);
 
         return new
@@ -644,6 +852,10 @@ public class PosController : Controller
             bill.AddChargePercent,
             bill.AddChargeAmount,
             bill.RoundOff,
+            bill.CustomerId,
+            CustomerName = bill.Customer?.Name,
+            CustomerPhone = bill.Customer?.Phone,
+            CustomerEmail = bill.Customer?.Email,
 
             // Loyalty
             bill.LoyaltyCardId,
@@ -750,6 +962,15 @@ public class PosController : Controller
     {
         public Guid BillId { get; set; }
         public string CouponCode { get; set; } = "";
+    }
+
+    public class SetCustomerReq
+    {
+        public Guid BillId { get; set; }
+        public Guid? CustomerId { get; set; }
+        public string? Name { get; set; }
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
     }
 
     // Sprint 7 DTOs

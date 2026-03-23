@@ -180,7 +180,7 @@
                             <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
                         </button>
                         <div class="collapse @GroupOpen("Pos","Invoices","Customers","Loyalty","Coupons","Promotions")" id="nav-sales">
-                            <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Pos", "NewBill")@ActiveIf("Pos", "Bill")" asp-controller="Pos" asp-action="NewBill"><i class="bi bi-cart3 sidebar-icon"></i><span>POS Billing</span></a>
+                            <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Pos", "StartQuick")@ActiveIf("Pos", "NewBill")@ActiveIf("Pos", "Bill")" asp-controller="Pos" asp-action="StartQuick"><i class="bi bi-cart3 sidebar-icon"></i><span>POS Billing</span></a>
                             <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Pos", "Index")" asp-controller="Pos" asp-action="Index"><i class="bi bi-receipt-cutoff sidebar-icon"></i><span>POS Bills</span></a>
                             <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Pos", "Returns")" asp-controller="Pos" asp-action="Returns"><i class="bi bi-arrow-return-left sidebar-icon"></i><span>Returns</span></a>
                             <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Invoices", "Index")" asp-controller="Invoices" asp-action="Index"><i class="bi bi-receipt sidebar-icon"></i><span>Invoices</span></a>

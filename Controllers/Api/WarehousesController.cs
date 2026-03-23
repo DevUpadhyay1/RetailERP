@@ -6,6 +6,7 @@ using RetailERP.Models.Api;
 
 namespace RetailERP.Controllers.Api;
 
+[Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager,Inventory")]
 public class WarehousesController : ApiBaseController
 {
     private readonly ApplicationDbContext _db;

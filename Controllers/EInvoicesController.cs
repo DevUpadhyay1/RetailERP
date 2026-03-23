@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
 using RetailERP.Services;
+using System.Security.Claims;
 
 namespace RetailERP.Controllers;
 
@@ -18,14 +19,24 @@ public class EInvoicesController : Controller
         _einv = einv;
     }
 
+    private Guid? GetCompanyId()
+    {
+        var raw = User.FindFirstValue("CompanyId");
+        return Guid.TryParse(raw, out var id) ? id : null;
+    }
+
     // ═══════════════════════════════════════════════════════════
     // Index — list all E-Invoices
     // ═══════════════════════════════════════════════════════════
 
     public async Task<IActionResult> Index(byte? status)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+
         var q = _db.EInvoices
             .AsNoTracking()
+            .Where(e => e.CompanyId == companyId.Value)
             .Include(e => e.PosBill)
             .Include(e => e.Invoice)
             .AsQueryable();
@@ -44,12 +55,15 @@ public class EInvoicesController : Controller
 
     public async Task<IActionResult> Details(Guid id)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+
         var einv = await _db.EInvoices
             .AsNoTracking()
             .Include(e => e.PosBill).ThenInclude(b => b!.Customer)
             .Include(e => e.PosBill).ThenInclude(b => b!.Store)
             .Include(e => e.Invoice).ThenInclude(i => i!.Customer)
-            .FirstOrDefaultAsync(e => e.EInvoiceId == id);
+            .FirstOrDefaultAsync(e => e.EInvoiceId == id && e.CompanyId == companyId.Value);
 
         if (einv is null) return NotFound();
         return View(einv);
@@ -62,22 +76,25 @@ public class EInvoicesController : Controller
     [HttpGet]
     public async Task<IActionResult> Generate()
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+
         // Show completed POS bills and posted invoices that don't yet have an active E-Invoice
-        var existingBillIds = await _db.EInvoices.Where(e => e.Status == 1 && e.PosBillId != null)
+        var existingBillIds = await _db.EInvoices.Where(e => e.CompanyId == companyId.Value && e.Status == 1 && e.PosBillId != null)
             .Select(e => e.PosBillId!.Value).ToListAsync();
-        var existingInvIds = await _db.EInvoices.Where(e => e.Status == 1 && e.InvoiceId != null)
+        var existingInvIds = await _db.EInvoices.Where(e => e.CompanyId == companyId.Value && e.Status == 1 && e.InvoiceId != null)
             .Select(e => e.InvoiceId!.Value).ToListAsync();
 
         var bills = await _db.PosBills.AsNoTracking()
             .Include(b => b.Customer)
-            .Where(b => b.Status == 2 && !existingBillIds.Contains(b.PosBillId))
+            .Where(b => b.CompanyId == companyId.Value && b.Status == 2 && !existingBillIds.Contains(b.PosBillId))
             .OrderByDescending(b => b.BillDate)
             .Take(50)
             .ToListAsync();
 
         var invoices = await _db.Invoices.AsNoTracking()
             .Include(i => i.Customer)
-            .Where(i => i.Status == 2 && !existingInvIds.Contains(i.InvoiceId))
+            .Where(i => i.CompanyId == companyId.Value && i.Status == 2 && !existingInvIds.Contains(i.InvoiceId))
             .OrderByDescending(i => i.InvoiceDate)
             .Take(50)
             .ToListAsync();
@@ -89,6 +106,12 @@ public class EInvoicesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GenerateForBill(Guid posBillId)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+        var allowed = await _db.PosBills.AsNoTracking()
+            .AnyAsync(b => b.PosBillId == posBillId && b.CompanyId == companyId.Value);
+        if (!allowed) return Forbid();
+
         try
         {
             var einv = await _einv.GenerateForPosBillAsync(posBillId);
@@ -106,6 +129,12 @@ public class EInvoicesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GenerateForInvoice(Guid invoiceId)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+        var allowed = await _db.Invoices.AsNoTracking()
+            .AnyAsync(i => i.InvoiceId == invoiceId && i.CompanyId == companyId.Value);
+        if (!allowed) return Forbid();
+
         try
         {
             var einv = await _einv.GenerateForInvoiceAsync(invoiceId);
@@ -127,6 +156,12 @@ public class EInvoicesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Cancel(Guid id, string reason)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+        var allowed = await _db.EInvoices.AsNoTracking()
+            .AnyAsync(e => e.EInvoiceId == id && e.CompanyId == companyId.Value);
+        if (!allowed) return Forbid();
+
         try
         {
             await _einv.CancelAsync(id, reason);
@@ -145,8 +180,12 @@ public class EInvoicesController : Controller
 
     public async Task<IActionResult> EWayBills(byte? status)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+
         var q = _db.EWayBills
             .AsNoTracking()
+            .Where(e => e.CompanyId == companyId.Value)
             .Include(e => e.PosBill)
             .Include(e => e.Invoice)
             .AsQueryable();
@@ -161,11 +200,14 @@ public class EInvoicesController : Controller
 
     public async Task<IActionResult> EWayBillDetails(Guid id)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+
         var ewb = await _db.EWayBills
             .AsNoTracking()
             .Include(e => e.PosBill).ThenInclude(b => b!.Store)
             .Include(e => e.Invoice)
-            .FirstOrDefaultAsync(e => e.EWayBillId == id);
+            .FirstOrDefaultAsync(e => e.EWayBillId == id && e.CompanyId == companyId.Value);
 
         if (ewb is null) return NotFound();
         return View(ewb);
@@ -174,10 +216,13 @@ public class EInvoicesController : Controller
     [HttpGet]
     public async Task<IActionResult> GenerateEWayBill(Guid posBillId)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+
         var bill = await _db.PosBills.AsNoTracking()
             .Include(b => b.Store)
             .Include(b => b.Customer)
-            .FirstOrDefaultAsync(b => b.PosBillId == posBillId);
+            .FirstOrDefaultAsync(b => b.PosBillId == posBillId && b.CompanyId == companyId.Value);
         if (bill is null) return NotFound();
         ViewBag.Bill = bill;
         return View(new EWayBillInput());
@@ -187,6 +232,12 @@ public class EInvoicesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GenerateEWayBill(Guid posBillId, EWayBillInput input)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+        var allowed = await _db.PosBills.AsNoTracking()
+            .AnyAsync(b => b.PosBillId == posBillId && b.CompanyId == companyId.Value);
+        if (!allowed) return Forbid();
+
         try
         {
             var ewb = await _einv.GenerateEWayBillAsync(posBillId, input);
@@ -204,6 +255,12 @@ public class EInvoicesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelEWayBill(Guid id, string reason)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+        var allowed = await _db.EWayBills.AsNoTracking()
+            .AnyAsync(e => e.EWayBillId == id && e.CompanyId == companyId.Value);
+        if (!allowed) return Forbid();
+
         try
         {
             await _einv.CancelEWayBillAsync(id, reason);

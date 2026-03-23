@@ -229,14 +229,13 @@ public sealed class ForecastService
             })
             .ToListAsync();
 
-        var stockQuery = _db.Stocks.AsNoTracking()
-            .Include(s => s.Item)
-            .Include(s => s.Warehouse)
-            .AsQueryable();
+        var stockQuery = _db.Stocks.AsNoTracking().AsQueryable();
         if (warehouseId.HasValue)
             stockQuery = stockQuery.Where(s => s.WarehouseId == warehouseId.Value);
 
-        var stocks = await stockQuery.ToListAsync();
+        var stocks = await stockQuery
+            .Select(s => new { s.ItemId, s.WarehouseId, s.Quantity })
+            .ToListAsync();
 
         var dailySales = new Dictionary<(Guid ItemId, Guid WarehouseId, DateOnly Day), decimal>();
         var keys = new HashSet<(Guid ItemId, Guid WarehouseId)>();

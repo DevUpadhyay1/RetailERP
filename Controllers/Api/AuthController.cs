@@ -15,6 +15,7 @@ namespace RetailERP.Controllers.Api;
 /// <summary>Sprint 5: JWT authentication endpoints.</summary>
 [ApiController]
 [Route("api/v1/[controller]")]
+[IgnoreAntiforgeryToken]
 [Produces("application/json")]
 public class AuthController : ControllerBase
 {

@@ -74,6 +74,7 @@ public static class WebApplicationExtensions
         app.UseRequestLocalization();
 
         app.UseRouting();
+        app.UseCors("ApiCors");
 
         app.UseRateLimiter();
         app.UseAuthentication();

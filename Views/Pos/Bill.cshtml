@@ -43,10 +43,47 @@
 <!-- ═══════════════════  CUSTOMER BAR  ═══════════════════ -->
 <div class="pos-customer-bar">
     <div class="cb-fields">
-        <div class="cb-f"><span class="cb-label">Customer</span><span class="cb-val fw-semibold" id="customerName">@(Model.Customer?.Name ?? "Walk-in Customer")</span></div>
-        <div class="cb-f"><span class="cb-label">Phone</span><span class="cb-val" id="customerPhone">@(Model.Customer?.Phone ?? "—")</span></div>
-        <div class="cb-f"><span class="cb-label">Email</span><span class="cb-val" id="customerEmail">@(Model.Customer?.Email ?? "—")</span></div>
+        <div class="cb-f" style="min-width:260px;">
+            <span class="cb-label">Customer Name</span>
+            @if (isOpen)
+            {
+                <input id="customerNameInput" class="form-control form-control-sm" value="@(Model.Customer?.Name ?? "")" placeholder="Walk-in" />
+            }
+            else
+            {
+                <span class="cb-val fw-semibold" id="customerName">@(Model.Customer?.Name ?? "Walk-in Customer")</span>
+            }
+        </div>
+        <div class="cb-f" style="min-width:190px;">
+            <span class="cb-label">Phone</span>
+            @if (isOpen)
+            {
+                <input id="customerPhoneInput" class="form-control form-control-sm" maxlength="10" value="@(Model.Customer?.Phone ?? "")" placeholder="10-digit mobile" />
+            }
+            else
+            {
+                <span class="cb-val" id="customerPhone">@(Model.Customer?.Phone ?? "—")</span>
+            }
+        </div>
+        <div class="cb-f" style="min-width:240px;">
+            <span class="cb-label">Email</span>
+            @if (isOpen)
+            {
+                <input id="customerEmailInput" class="form-control form-control-sm" value="@(Model.Customer?.Email ?? "")" placeholder="optional@email.com" />
+            }
+            else
+            {
+                <span class="cb-val" id="customerEmail">@(Model.Customer?.Email ?? "—")</span>
+            }
+        </div>
     </div>
+    @if (isOpen)
+    {
+        <div class="cb-actions d-flex gap-2">
+            <button id="btnSaveCustomer" type="button" class="btn btn-sm btn-primary"><i class="bi bi-person-check me-1"></i>Save Customer</button>
+            <button id="btnWalkIn" type="button" class="btn btn-sm btn-outline-secondary"><i class="bi bi-person-dash me-1"></i>Walk-in</button>
+        </div>
+    }
     @if (!isOpen && Model.Status == 2)
     {
         <div class="cb-actions">
@@ -88,6 +125,7 @@
             <button id="btnCancel" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-lg me-1"></i>Cancel Bill</button>
             <button id="btnHold" class="btn btn-sm btn-outline-warning"><i class="bi bi-pause-circle me-1"></i>Hold Bill</button>
             <button id="btnPopHold" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#heldBillsModal"><i class="bi bi-play-circle me-1"></i>Pop Hold</button>
+            <button id="btnExitPos" class="btn btn-sm btn-danger"><i class="bi bi-box-arrow-right me-1"></i>Exit</button>
             <a class="btn btn-sm btn-outline-dark" href="@Url.Action("Index")"><i class="bi bi-list-ul me-1"></i>All Bills</a>
         </div>
         }
@@ -104,7 +142,7 @@
                         <th class="col-num">MRP</th>
                         <th class="col-num">Sale Price</th>
                         <th class="col-gst">GST%</th>
-                        <th class="col-gst">Disc%</th>
+                        <th class="col-gst">Disc</th>
                         <th class="col-amt">Amount</th>
                         @if (isOpen) { <th class="col-act"></th> }
                     </tr>
@@ -126,11 +164,7 @@
                             <td class="col-num">@((l.Item?.MRP ?? l.UnitPrice).ToString("N2"))</td>
                             <td class="col-num">@l.UnitPrice.ToString("N2")</td>
                             <td class="col-gst">@(l.GstPercentSnapshot?.ToString("0.##") ?? "0")%</td>
-                            <td class="col-gst">
-                                @if (isOpen) {
-                                    <input type="number" class="disc-input" value="@l.DiscountPercent" min="0" max="100" step="0.5" data-line-id="@l.PosBillLineId" />
-                                } else { @(l.DiscountPercent > 0 ? l.DiscountPercent.ToString("0.##") + "%" : "—") }
-                            </td>
+                            <td class="col-gst">@(l.DiscountPercent > 0 ? l.DiscountPercent.ToString("0.##") + "%" : "—")</td>
                             <td class="col-amt">₹@l.LineTotal.ToString("N2")</td>
                             @if (isOpen) {
                                 <td class="col-act"><button class="btn-row-del btn-remove-line" data-line-id="@l.PosBillLineId" title="Remove"><i class="bi bi-x-lg"></i></button></td>
@@ -280,23 +314,36 @@
             <a class="qa-btn" href="@Url.Action("Index", "Items")"><i class="bi bi-search"></i> Rate Query</a>
             <a class="qa-btn" href="@Url.Action("Create", "Customers")"><i class="bi bi-person-plus"></i> Add Customer</a>
             <a class="qa-btn" href="@Url.Action("Returns")"><i class="bi bi-arrow-return-left"></i> Sales Return</a>
-            <a class="qa-btn" href="@Url.Action("NewBill")"><i class="bi bi-plus-circle"></i> New Bill</a>            <button class="qa-btn" id="btnApplyPromos"><i class="bi bi-percent"></i> Apply Schemes</button>
+            <a class="qa-btn" href="@Url.Action("NewBill")"><i class="bi bi-plus-circle"></i> New Bill</a>
+            <button class="qa-btn" id="btnApplyPromos"><i class="bi bi-percent"></i> Apply Schemes</button>
             <a class="qa-btn" href="@Url.Action("Index", "Promotions")"><i class="bi bi-tags"></i> View Schemes</a>
         </div>
 
         <!-- Bill-level Discount / Charge -->
         <div class="pos-bill-adj">
-            <div class="d-flex gap-2 align-items-end">
-                <div class="flex-fill">
-                    <label class="form-label mb-0 small fw-medium">Add Disc %</label>
-                    <input id="addDiscPct" type="number" class="form-control form-control-sm" min="0" max="100" step="0.5" value="@Model.AddDiscountPercent" />
+            <div class="adj-grid">
+                <div class="adj-field">
+                    <label class="form-label mb-0 small fw-medium">Bill Discount</label>
+                    <div class="input-group input-group-sm">
+                        <input id="addDiscPct" type="number" class="form-control" min="0" max="100" step="0.5" value="@Model.AddDiscountPercent" />
+                        <span class="input-group-text">%</span>
+                        <button id="btnClearDisc" class="btn btn-outline-secondary" type="button" title="Clear bill discount">
+                            <i class="bi bi-eraser me-1"></i>Clear
+                        </button>
+                    </div>
                 </div>
-                <div class="flex-fill">
-                    <label class="form-label mb-0 small fw-medium">Add Charge %</label>
-                    <input id="addChargePct" type="number" class="form-control form-control-sm" min="0" max="100" step="0.5" value="@Model.AddChargePercent" />
+                <div class="adj-field">
+                    <label class="form-label mb-0 small fw-medium">Bill Charge</label>
+                    <div class="input-group input-group-sm">
+                        <input id="addChargePct" type="number" class="form-control" min="0" max="100" step="0.5" value="@Model.AddChargePercent" />
+                        <span class="input-group-text">%</span>
+                    </div>
                 </div>
-                <button id="btnApplyAdj" class="btn btn-sm btn-outline-primary"><i class="bi bi-check-lg"></i></button>
-            </div>        </div>
+                <div class="adj-actions">
+                    <button id="btnApplyAdj" class="btn btn-sm btn-primary px-3 w-100"><i class="bi bi-check-lg me-1"></i>Apply</button>
+                </div>
+            </div>
+        </div>
         }
 
         @if (!isOpen && Model.Status == 2)
@@ -344,6 +391,34 @@
     const barcodeInput = document.getElementById('barcodeInput');
     const scanFeedback = document.getElementById('scanFeedback');
     const linesBody    = document.getElementById('linesBody');
+    const customerNameInput = document.getElementById('customerNameInput');
+    const customerPhoneInput = document.getElementById('customerPhoneInput');
+    const customerEmailInput = document.getElementById('customerEmailInput');
+    let customerDraftDirty = false;
+
+    [customerNameInput, customerPhoneInput, customerEmailInput].forEach(el => {
+        if (!el) return;
+        el.addEventListener('input', () => { customerDraftDirty = true; });
+    });
+
+    function saveCustomerDraftIfDirty(next) {
+        if (!customerDraftDirty || !customerNameInput || !customerPhoneInput || !customerEmailInput) {
+            next();
+            return;
+        }
+        const name = (customerNameInput.value || '').trim();
+        const phone = (customerPhoneInput.value || '').trim();
+        const email = (customerEmailInput.value || '').trim();
+        postJson('@Url.Action("SetCustomer")', { billId, name, phone, email }, data => {
+            if (!data.success) {
+                scanFeedback.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> ${esc(data.message || 'Please fix customer details first.')}</span>`;
+                return;
+            }
+            customerDraftDirty = false;
+            refreshBill(data, { syncCustomerInputs: true });
+            next();
+        });
+    }
 
     // ── Scan ──
     let scanning = false;
@@ -396,12 +471,6 @@
         postJson('@Url.Action("AddLine")', { billId, itemId, qty: 1 }, data => { scanning = false; refreshBill(data); });
     }
 
-    // Disc% change on line
-    document.addEventListener('change', e => {
-        if (e.target.classList.contains('disc-input'))
-            postJson('@Url.Action("SetLineDiscount")', { billLineId: e.target.dataset.lineId, discountPercent: parseFloat(e.target.value)||0 }, refreshBill);
-    });
-
     // Qty change
     document.addEventListener('change', e => {
         if (e.target.classList.contains('qty-input')) {
@@ -426,20 +495,22 @@
     // ── Payment ──
     document.querySelectorAll('.pbtn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const method = btn.dataset.method;
-            if (method === 'Online') { handleRazorpay(); return; }
-            const amtInput = document.getElementById('payAmount');
-            let amount = parseFloat(amtInput.value) || 0;
-            if (amount <= 0) {
-                const rem = parseFloat(document.getElementById('valRemaining').textContent.replace(/[^\d.\-]/g,'')) || 0;
-                if (rem <= 0) return;
-                amount = rem;
-            }
-            const reference = document.getElementById('payRef').value.trim();
-            postJson('@Url.Action("AddPayment")', { billId, method, amount, reference }, data => {
-                refreshBill(data);
-                amtInput.value = '';
-                document.getElementById('payRef').value = '';
+            saveCustomerDraftIfDirty(() => {
+                const method = btn.dataset.method;
+                if (method === 'Online') { handleRazorpay(); return; }
+                const amtInput = document.getElementById('payAmount');
+                let amount = parseFloat(amtInput.value) || 0;
+                if (amount <= 0) {
+                    const rem = parseFloat(document.getElementById('valRemaining').textContent.replace(/[^\d.\-]/g,'')) || 0;
+                    if (rem <= 0) return;
+                    amount = rem;
+                }
+                const reference = document.getElementById('payRef').value.trim();
+                postJson('@Url.Action("AddPayment")', { billId, method, amount, reference }, data => {
+                    refreshBill(data);
+                    amtInput.value = '';
+                    document.getElementById('payRef').value = '';
+                });
             });
         });
     });
@@ -451,12 +522,14 @@
 
     // ── Complete → Auto Next ──
     document.getElementById('btnComplete').addEventListener('click', () => {
-        if (!confirm('Complete this bill? Stock will be deducted.')) return;
-        postJson('@Url.Action("CompleteBill")', { billId }, data => {
-            if (data.success && data.nextBillUrl) {
-                if (data.receiptUrl) window.open(data.receiptUrl, '_blank');
-                window.location.href = data.nextBillUrl;
-            }
+        saveCustomerDraftIfDirty(() => {
+            if (!confirm('Complete this bill? Stock will be deducted.')) return;
+            postJson('@Url.Action("CompleteBill")', { billId }, data => {
+                if (data.success && data.nextBillUrl) {
+                    if (data.receiptUrl) window.open(data.receiptUrl, '_blank');
+                    window.location.href = data.nextBillUrl;
+                }
+            });
         });
     });
 
@@ -465,6 +538,45 @@
         postJson('@Url.Action("CancelBill")', { billId }, data => {
             if (data.success && data.redirectUrl) window.location.href = data.redirectUrl;
         });
+    });
+
+    // ── Customer inline save ──
+    const btnSaveCustomer = document.getElementById('btnSaveCustomer');
+    const btnWalkIn = document.getElementById('btnWalkIn');
+    btnSaveCustomer?.addEventListener('click', () => {
+        const name = (customerNameInput?.value || '').trim();
+        const phone = (customerPhoneInput?.value || '').trim();
+        const email = (customerEmailInput?.value || '').trim();
+        postJson('@Url.Action("SetCustomer")', { billId, name, phone, email }, data => {
+            if (!data.success) {
+                scanFeedback.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> ${esc(data.message || 'Unable to save customer')}</span>`;
+                return;
+            }
+            customerDraftDirty = false;
+            refreshBill(data, { syncCustomerInputs: true });
+            scanFeedback.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Customer updated.</span>';
+        });
+    });
+    btnWalkIn?.addEventListener('click', () => {
+        postJson('@Url.Action("SetCustomer")', { billId, name: '', phone: '', email: '' }, data => {
+            if (!data.success) return;
+            const n = customerNameInput;
+            const p = customerPhoneInput;
+            const em = customerEmailInput;
+            if (n) n.value = '';
+            if (p) p.value = '';
+            if (em) em.value = '';
+            customerDraftDirty = false;
+            refreshBill(data, { syncCustomerInputs: true });
+            scanFeedback.innerHTML = '<span class="text-muted">Switched to walk-in customer.</span>';
+        });
+    });
+
+    // ── Exit POS ──
+    document.getElementById('btnExitPos')?.addEventListener('click', () => {
+        const hasLines = linesBody.querySelectorAll('tr[data-line-id]').length > 0;
+        if (hasLines && !confirm('This bill has items. Exit POS now? You can Hold bill if needed.')) return;
+        window.location.href = '@Url.Action("Index")';
     });
 
     // ── Loyalty ──
@@ -508,9 +620,11 @@
 
     // ── Sprint 7: Hold / Pop Hold ──
     document.getElementById('btnHold')?.addEventListener('click', () => {
-        if (!confirm('Hold this bill?')) return;
-        postJson('@Url.Action("HoldBill")', { billId }, data => {
-            if (data.success && data.nextBillUrl) window.location.href = data.nextBillUrl;
+        saveCustomerDraftIfDirty(() => {
+            if (!confirm('Hold this bill?')) return;
+            postJson('@Url.Action("HoldBill")', { billId }, data => {
+                if (data.success && data.nextBillUrl) window.location.href = data.nextBillUrl;
+            });
         });
     });
 
@@ -558,11 +672,35 @@
     document.getElementById('btnApplyAdj')?.addEventListener('click', () => {
         const discPct = parseFloat(document.getElementById('addDiscPct').value) || 0;
         const chargePct = parseFloat(document.getElementById('addChargePct').value) || 0;
+        if (discPct < 0 || discPct > 100 || chargePct < 0 || chargePct > 100) {
+            alert('Discount/Charge must be between 0 and 100.');
+            return;
+        }
         let pending = 0;
-        const done = () => { pending--; if (pending <= 0) barcodeInput.focus(); };
+        const done = () => {
+            pending--;
+            if (pending <= 0) {
+                if (discPct === 0 && chargePct === 0) {
+                    scanFeedback.innerHTML = '<span class="text-muted"><i class="bi bi-check-circle"></i> Discount/Charge removed (0%).</span>';
+                } else {
+                    scanFeedback.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Discount/Charge updated.</span>';
+                }
+                barcodeInput.focus();
+            }
+        };
         if (discPct >= 0) { pending++; postJson('@Url.Action("SetAddDiscount")', { billId, percent: discPct }, d => { refreshBill(d); done(); }); }
         if (chargePct >= 0) { pending++; postJson('@Url.Action("SetAddCharge")', { billId, percent: chargePct }, d => { refreshBill(d); done(); }); }
     });
+    document.getElementById('btnClearDisc')?.addEventListener('click', () => {
+        postJson('@Url.Action("SetAddDiscount")', { billId, percent: 0 }, d => {
+            refreshBill(d);
+            if (d.success) {
+                scanFeedback.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Discount removed.</span>';
+            }
+        });
+    });
+    document.getElementById('addDiscPct')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnApplyAdj').click(); } });
+    document.getElementById('addChargePct')?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnApplyAdj').click(); } });
 
     // ── Razorpay ──
     function handleRazorpay() {
@@ -597,9 +735,10 @@
     }
 
     // ── Refresh UI ──
-    function refreshBill(data) {
+    function refreshBill(data, opts) {
         if (!data.success) { scanFeedback.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> ${data.message}</span>`; return; }
         const b = data.bill;
+        const syncCustomerInputs = !!(opts && opts.syncCustomerInputs);
 
         document.getElementById('valSubTotal').textContent   = b.subTotal.toFixed(2);
         document.getElementById('valDiscount').textContent   = b.discountTotal.toFixed(2);
@@ -612,6 +751,16 @@
         document.getElementById('totalItems').textContent    = b.lines.length;
         document.getElementById('totalQty').textContent      = b.lines.reduce((s,l) => s + l.qty, 0).toFixed(0);
         document.getElementById('footerSubTotal').textContent= '₹' + b.subTotal.toFixed(2);
+        if (document.getElementById('customerName')) document.getElementById('customerName').textContent = b.customerName || 'Walk-in Customer';
+        if (document.getElementById('customerPhone')) document.getElementById('customerPhone').textContent = b.customerPhone || '—';
+        if (document.getElementById('customerEmail')) document.getElementById('customerEmail').textContent = b.customerEmail || '—';
+        if (syncCustomerInputs) {
+            if (document.getElementById('customerNameInput')) document.getElementById('customerNameInput').value = b.customerName || '';
+            if (document.getElementById('customerPhoneInput')) document.getElementById('customerPhoneInput').value = b.customerPhone || '';
+            if (document.getElementById('customerEmailInput')) document.getElementById('customerEmailInput').value = b.customerEmail || '';
+        }
+        if (document.getElementById('addDiscPct')) document.getElementById('addDiscPct').value = (b.addDiscountPercent || 0).toString();
+        if (document.getElementById('addChargePct')) document.getElementById('addChargePct').value = (b.addChargePercent || 0).toString();
 
         // Add Discount row
         const rad = document.getElementById('rowAddDiscount');
@@ -670,7 +819,7 @@
                     <td class="col-num">${(l.mrp||l.unitPrice).toFixed(2)}</td>
                     <td class="col-num">${l.unitPrice.toFixed(2)}</td>
                     <td class="col-gst">${(l.gstPercentSnapshot||0).toFixed(0)}%</td>
-                    <td class="col-gst"><input type="number" class="disc-input" value="${discVal}" min="0" max="100" step="0.5" data-line-id="${l.posBillLineId}" /></td>
+                    <td class="col-gst">${discVal > 0 ? discVal.toFixed(2) + '%' : '—'}</td>
                     <td class="col-amt">₹${l.lineTotal.toFixed(2)}</td>
                     <td class="col-act"><button class="btn-row-del btn-remove-line" data-line-id="${l.posBillLineId}" title="Remove"><i class="bi bi-x-lg"></i></button></td>
                 </tr>`;
@@ -683,7 +832,7 @@
         b.payments.forEach(p => {
             pl.innerHTML += `<div class="pay-row" data-payment-id="${p.paymentId}">
                 <span class="pay-method">${esc(p.method)}</span>
-                <span class="pay-ref">${esc(p.reference||'')}</span></span>
+                <span class="pay-ref">${esc(p.reference||'')}</span>
                 <span class="pay-amt">₹${p.amount.toFixed(2)}</span>
                 <button class="btn-row-del btn-remove-payment" data-payment-id="${p.paymentId}"><i class="bi bi-x"></i></button>
             </div>`;

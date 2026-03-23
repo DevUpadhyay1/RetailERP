@@ -19,13 +19,23 @@ public class PortalAdminController : Controller
         _portal = portal;
     }
 
+    private Guid? GetCompanyId()
+    {
+        var raw = User.FindFirstValue("CompanyId");
+        return Guid.TryParse(raw, out var id) ? id : null;
+    }
+
     [HttpGet]
     public async Task<IActionResult> Index()
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+
         var vm = new PortalAdminVm
         {
             Customers = await _db.Customers
                 .AsNoTracking()
+                .Where(x => x.CompanyId == companyId.Value)
                 .OrderBy(x => x.Name)
                 .Take(400)
                 .Select(x => new SelectRow
@@ -37,6 +47,7 @@ public class PortalAdminController : Controller
 
             Suppliers = await _db.Suppliers
                 .AsNoTracking()
+                .Where(x => x.CompanyId == companyId.Value)
                 .Where(x => x.IsActive)
                 .OrderBy(x => x.Name)
                 .Take(400)
@@ -49,8 +60,8 @@ public class PortalAdminController : Controller
 
             RecentLinks = await _db.PortalAccessLinks
                 .AsNoTracking()
-                .Include(x => x.Customer)
-                .Include(x => x.Supplier)
+                .Where(x => (x.Customer != null && x.Customer.CompanyId == companyId.Value)
+                         || (x.Supplier != null && x.Supplier.CompanyId == companyId.Value))
                 .OrderByDescending(x => x.CreatedAtUtc)
                 .Take(80)
                 .Select(x => new LinkRow
@@ -69,9 +80,7 @@ public class PortalAdminController : Controller
 
             ReturnRequests = await _db.PortalReturnRequests
                 .AsNoTracking()
-                .Include(x => x.Customer)
-                .Include(x => x.PosBill)
-                .Include(x => x.ReviewedByUser)
+                .Where(x => x.Customer != null && x.Customer.CompanyId == companyId.Value)
                 .OrderByDescending(x => x.RequestedAtUtc)
                 .Take(80)
                 .Select(x => new ReturnRequestRow
@@ -89,8 +98,7 @@ public class PortalAdminController : Controller
 
             SupplierPoResponses = await _db.SupplierPoResponses
                 .AsNoTracking()
-                .Include(x => x.Supplier)
-                .Include(x => x.Purchase)
+                .Where(x => x.Supplier != null && x.Supplier.CompanyId == companyId.Value)
                 .OrderByDescending(x => x.UpdatedAtUtc)
                 .Take(80)
                 .Select(x => new SupplierPoResponseRow
@@ -113,6 +121,11 @@ public class PortalAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GenerateCustomerLink(Guid customerId, int validHours = 72, string? label = null)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+        var allowed = await _db.Customers.AsNoTracking().AnyAsync(x => x.CustomerId == customerId && x.CompanyId == companyId.Value);
+        if (!allowed) return Forbid();
+
         var result = await _portal.GenerateCustomerLinkAsync(customerId, validHours, label);
         if (!result.Success)
         {
@@ -131,6 +144,11 @@ public class PortalAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> GenerateSupplierLink(Guid supplierId, int validHours = 72, string? label = null)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+        var allowed = await _db.Suppliers.AsNoTracking().AnyAsync(x => x.SupplierId == supplierId && x.CompanyId == companyId.Value);
+        if (!allowed) return Forbid();
+
         var result = await _portal.GenerateSupplierLinkAsync(supplierId, validHours, label);
         if (!result.Success)
         {
@@ -149,6 +167,14 @@ public class PortalAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RevokeLink(Guid portalAccessLinkId)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+        var allowed = await _db.PortalAccessLinks.AsNoTracking()
+            .AnyAsync(x => x.PortalAccessLinkId == portalAccessLinkId
+                        && ((x.Customer != null && x.Customer.CompanyId == companyId.Value)
+                         || (x.Supplier != null && x.Supplier.CompanyId == companyId.Value)));
+        if (!allowed) return Forbid();
+
         var ok = await _portal.RevokeLinkAsync(portalAccessLinkId);
         TempData[ok ? "Ok" : "Err"] = ok ? "Portal link revoked." : "Portal link not found.";
         return RedirectToAction(nameof(Index));
@@ -158,6 +184,14 @@ public class PortalAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateReturnRequest(Guid portalReturnRequestId, byte status, string? adminNote = null)
     {
+        var companyId = GetCompanyId();
+        if (!companyId.HasValue) return Forbid();
+        var allowed = await _db.PortalReturnRequests.AsNoTracking()
+            .AnyAsync(x => x.PortalReturnRequestId == portalReturnRequestId
+                        && x.Customer != null
+                        && x.Customer.CompanyId == companyId.Value);
+        if (!allowed) return Forbid();
+
         Guid? reviewerId = null;
         var uid = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (Guid.TryParse(uid, out var parsed)) reviewerId = parsed;

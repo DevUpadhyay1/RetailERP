@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
 using RetailERP.Services;
+using System.Security.Claims;
 
 namespace RetailERP.Controllers;
 
@@ -34,6 +35,12 @@ public class PaymentGatewayController : Controller
         _log = log;
     }
 
+    private Guid? GetCompanyId()
+    {
+        var raw = User.FindFirstValue("CompanyId");
+        return Guid.TryParse(raw, out var id) ? id : null;
+    }
+
     // ────────────────────────────────────────────────────────
     // Step 1: Create Razorpay Order (AJAX — called from POS Bill)
     // ────────────────────────────────────────────────────────
@@ -47,6 +54,10 @@ public class PaymentGatewayController : Controller
     {
         try
         {
+            var companyId = GetCompanyId();
+            if (!companyId.HasValue)
+                return Json(new { success = false, message = "Access denied." });
+
             var bill = await _db.PosBills
                 .Include(b => b.Payments)
                 .Include(b => b.Customer)
@@ -55,6 +66,8 @@ public class PaymentGatewayController : Controller
 
             if (bill is null)
                 return Json(new { success = false, message = "Bill not found." });
+            if (bill.CompanyId != companyId.Value)
+                return Json(new { success = false, message = "Access denied." });
 
             if (bill.Status != 1)
                 return Json(new { success = false, message = "Bill is not open." });
@@ -117,6 +130,10 @@ public class PaymentGatewayController : Controller
     {
         try
         {
+            var companyId = GetCompanyId();
+            if (!companyId.HasValue)
+                return Json(new { success = false, message = "Access denied." });
+
             // 1. Verify signature
             var isValid = await _razorpay.VerifyPaymentSignatureAsync(req.OrderId, req.PaymentId, req.Signature);
             if (!isValid)
@@ -160,6 +177,8 @@ public class PaymentGatewayController : Controller
 
             if (bill is null)
                 return Json(new { success = false, message = "Bill not found." });
+            if (bill.CompanyId != companyId.Value)
+                return Json(new { success = false, message = "Access denied." });
 
             if (bill.Status != 1)
                 return Json(new { success = false, message = "Bill is not open." });
@@ -224,9 +243,17 @@ public class PaymentGatewayController : Controller
     {
         try
         {
-            var payment = await _db.Payments.FirstOrDefaultAsync(p => p.PaymentId == req.PaymentId);
+            var companyId = GetCompanyId();
+            if (!companyId.HasValue)
+                return Json(new { success = false, message = "Access denied." });
+
+            var payment = await _db.Payments
+                .Include(p => p.PosBill)
+                .FirstOrDefaultAsync(p => p.PaymentId == req.PaymentId);
             if (payment is null)
                 return Json(new { success = false, message = "Payment not found." });
+            if (payment.PosBill?.CompanyId != companyId.Value)
+                return Json(new { success = false, message = "Access denied." });
 
             if (!payment.IsGatewayPayment || string.IsNullOrEmpty(payment.RazorpayPaymentId))
                 return Json(new { success = false, message = "This is not a gateway payment." });

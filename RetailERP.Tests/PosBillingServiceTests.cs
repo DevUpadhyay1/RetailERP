@@ -336,4 +336,162 @@ public class PosBillingServiceTests
         Assert.Equal(2, lines[0].Qty);
         Assert.Equal(120, lines[0].LineTotal); // 2 * unitPrice from MRP 60
     }
+
+    [Fact]
+    public async Task ApplyCouponAsync_ShouldThrow_WhenCouponIsInvalid()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-COUPON", Name = "Coupon Item", UnitPrice = 100, CompanyId = companyId });
+        await db.SaveChangesAsync();
+
+        var audit = new AuditService(db, new HttpContextAccessor());
+        var loyalty = new LoyaltyService(db, audit);
+        var coupons = new CouponService(db);
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+        await sut.AddLineAsync(billId, itemId, 1);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => sut.ApplyCouponAsync(billId, "BAD-CODE"));
+        Assert.Contains("Coupon", ex.Message);
+    }
+
+    [Fact]
+    public async Task CompleteBillAsync_ShouldThrow_WhenStockIsInsufficient()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-LOW", Name = "Low Stock Item", UnitPrice = 100, CompanyId = companyId });
+        db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 1, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var audit = new AuditService(db, new HttpContextAccessor());
+        var loyalty = new LoyaltyService(db, audit);
+        var coupons = new CouponService(db);
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+        await sut.AddLineAsync(billId, itemId, 2); // more than available stock
+        await sut.AddPaymentAsync(billId, "Cash", 500, null);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => sut.CompleteBillAsync(billId));
+        Assert.Contains("Insufficient stock", ex.Message);
+    }
+
+    [Fact]
+    public async Task HoldUnholdComplete_ShouldTransitionStatusesCorrectly()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-HOLD", Name = "Hold Item", UnitPrice = 100, CompanyId = companyId });
+        db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 10, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var audit = new AuditService(db, new HttpContextAccessor());
+        var loyalty = new LoyaltyService(db, audit);
+        var coupons = new CouponService(db);
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+        await sut.HoldBillAsync(billId);
+        var held = await db.PosBills.AsNoTracking().FirstAsync(b => b.PosBillId == billId);
+        Assert.Equal((byte)4, held.Status);
+
+        await sut.UnholdBillAsync(billId);
+        await sut.AddLineAsync(billId, itemId, 1);
+        await sut.AddPaymentAsync(billId, "Cash", 100, null);
+        await sut.CompleteBillAsync(billId);
+
+        var completed = await db.PosBills.AsNoTracking().FirstAsync(b => b.PosBillId == billId);
+        Assert.Equal((byte)2, completed.Status);
+        Assert.NotNull(completed.CompletedAtUtc);
+    }
+
+    [Fact]
+    public async Task SetAddDiscountAsync_ShouldClearDiscountAmount_WhenSetToZero()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-DISC", Name = "Disc Item", UnitPrice = 100, CompanyId = companyId });
+        await db.SaveChangesAsync();
+
+        var audit = new AuditService(db, new HttpContextAccessor());
+        var loyalty = new LoyaltyService(db, audit);
+        var coupons = new CouponService(db);
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+        await sut.AddLineAsync(billId, itemId, 2); // subtotal 200
+        await sut.SetAddDiscountAsync(billId, 20);
+
+        var withDiscount = await db.PosBills.AsNoTracking().FirstAsync(b => b.PosBillId == billId);
+        Assert.Equal(20, withDiscount.AddDiscountPercent);
+        Assert.True(withDiscount.AddDiscountAmount > 0);
+
+        await sut.SetAddDiscountAsync(billId, 0);
+        var cleared = await db.PosBills.AsNoTracking().FirstAsync(b => b.PosBillId == billId);
+        Assert.Equal(0, cleared.AddDiscountPercent);
+        Assert.Equal(0, cleared.AddDiscountAmount);
+    }
 }

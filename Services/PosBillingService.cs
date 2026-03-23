@@ -669,12 +669,16 @@ public class PosBillingService
         // Bill-level additional discount
         if (bill.AddDiscountPercent > 0)
             bill.AddDiscountAmount = Math.Round(bill.SubTotal * bill.AddDiscountPercent / 100m, 2);
+        else
+            bill.AddDiscountAmount = 0;
 
         bill.DiscountTotal = lineDiscounts + bill.CouponDiscount + bill.LoyaltyDiscount + bill.AddDiscountAmount;
 
         // Bill-level additional charge
         if (bill.AddChargePercent > 0)
             bill.AddChargeAmount = Math.Round(bill.SubTotal * bill.AddChargePercent / 100m, 2);
+        else
+            bill.AddChargeAmount = 0;
 
         decimal tax = 0;
         foreach (var l in bill.Lines)

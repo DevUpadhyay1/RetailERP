@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
@@ -22,6 +22,9 @@ public class ReportsController : Controller
             .Where(x => x.Status == 2 && x.PostedAt != null)
             .Where(x => x.PostedAt >= fromDate && x.PostedAt < toDateExclusive);
 
+        var totalInvoices = await posted.CountAsync();
+        var totalSales = await posted.SumAsync(x => (decimal?)x.TotalAmount) ?? 0m;
+
         var rows = await posted
             .OrderByDescending(x => x.PostedAt)
             .Take(500)
@@ -38,8 +41,8 @@ public class ReportsController : Controller
         {
             From = fromDate,
             To = toDateExclusive.AddDays(-1),
-            TotalInvoices = rows.Count,
-            TotalSales = rows.Sum(x => x.TotalAmount),
+            TotalInvoices = totalInvoices,
+            TotalSales = totalSales,
             Rows = rows
         };
 

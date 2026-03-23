@@ -5,6 +5,7 @@ using RetailERP.Models.Api;
 
 namespace RetailERP.Controllers.Api;
 
+[Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager,Finance")]
 public class ReportsController : ApiBaseController
 {
     private readonly ApplicationDbContext _db;
@@ -15,7 +16,6 @@ public class ReportsController : ApiBaseController
     /// Defaults to last 30 days if no dates provided.
     /// </summary>
     [HttpGet("sales")]
-    [Microsoft.AspNetCore.Authorization.Authorize(AuthenticationSchemes = "Identity.Application,Bearer")]
     public async Task<IActionResult> Sales([FromQuery] DateTime? from, [FromQuery] DateTime? to,
                                             [FromQuery] Guid? storeId)
     {

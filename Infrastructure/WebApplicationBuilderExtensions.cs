@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -124,6 +125,41 @@ public static class WebApplicationBuilderExtensions
                 };
             });
 
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("ApiCors", policy =>
+            {
+                var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+                var validOrigins = origins?
+                    .Where(o => !string.IsNullOrWhiteSpace(o))
+                    .Select(o => o.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray() ?? Array.Empty<string>();
+
+                if (validOrigins.Length == 0)
+                {
+                    if (builder.Environment.IsDevelopment())
+                    {
+                        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+                        Log.Information("CORS: Development mode with AllowAnyOrigin.");
+                    }
+                    else
+                    {
+                        // Production fallback: deny cross-origin browser calls unless explicitly configured.
+                        policy.SetIsOriginAllowed(_ => false);
+                        Log.Warning("CORS: No Cors:AllowedOrigins configured for Production. Cross-origin browser requests will be blocked.");
+                    }
+                }
+                else
+                {
+                    policy.WithOrigins(validOrigins)
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                    Log.Information("CORS: Allowed origins configured: {Origins}", string.Join(", ", validOrigins));
+                }
+            });
+        });
+
         builder.Services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -177,7 +213,11 @@ public static class WebApplicationBuilderExtensions
         });
 
         // Single registration: MVC + view localization (avoid duplicate AddControllersWithViews)
-        builder.Services.AddControllersWithViews()
+        builder.Services.AddControllersWithViews(options =>
+            {
+                // Enforce CSRF validation for all unsafe MVC actions by default.
+                options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+            })
             .AddViewLocalization()
             .AddDataAnnotationsLocalization();
         builder.Services.AddRazorPages();

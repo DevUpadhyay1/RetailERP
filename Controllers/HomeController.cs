@@ -108,27 +108,33 @@ public class HomeController : Controller
             .Take(pageSize)
             .ToListAsync();
 
-        // Per-company: only user count and store count (NO revenue — confidential)
-        var companyRows = new List<CompanyRowVm>();
-        foreach (var c in pagedCompanies)
+        // Per-company counts using set-based queries (avoids N+1 count queries per row).
+        var pageCompanyIds = pagedCompanies.Select(c => c.CompanyId).ToList();
+        var userCounts = await _db.Users.AsNoTracking()
+            .Where(u => u.CompanyId.HasValue && pageCompanyIds.Contains(u.CompanyId.Value))
+            .GroupBy(u => u.CompanyId!.Value)
+            .Select(g => new { CompanyId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.CompanyId, x => x.Count);
+        var storeCounts = await _db.Stores.IgnoreQueryFilters().AsNoTracking()
+            .Where(s => s.CompanyId.HasValue && pageCompanyIds.Contains(s.CompanyId.Value))
+            .GroupBy(s => s.CompanyId!.Value)
+            .Select(g => new { CompanyId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.CompanyId, x => x.Count);
+
+        var companyRows = pagedCompanies.Select(c => new CompanyRowVm
         {
-            var uCount = await _db.Users.AsNoTracking().CountAsync(u => u.CompanyId == c.CompanyId);
-            var sCount = await _db.Stores.IgnoreQueryFilters().AsNoTracking().CountAsync(s => s.CompanyId == c.CompanyId);
-            companyRows.Add(new CompanyRowVm
-            {
-                CompanyId = c.CompanyId,
-                Code = c.Code,
-                Name = c.Name,
-                BusinessType = c.BusinessType.ToString(),
-                IsActive = c.IsActive,
-                UserCount = uCount,
-                StoreCount = sCount,
-                City = c.City,
-                State = c.State,
-                Phone = c.Phone,
-                CreatedAt = c.CreatedAtUtc
-            });
-        }
+            CompanyId = c.CompanyId,
+            Code = c.Code,
+            Name = c.Name,
+            BusinessType = c.BusinessType.ToString(),
+            IsActive = c.IsActive,
+            UserCount = userCounts.GetValueOrDefault(c.CompanyId),
+            StoreCount = storeCounts.GetValueOrDefault(c.CompanyId),
+            City = c.City,
+            State = c.State,
+            Phone = c.Phone,
+            CreatedAt = c.CreatedAtUtc
+        }).ToList();
 
         // Business-type distribution (for chart)
         var bizTypeDistribution = allCompanies

@@ -37,7 +37,7 @@ public sealed class WhatsAppService
     {
         if (!IsConfigured)
         {
-            _log.LogWarning("[WhatsApp] Not configured. Would send to {Phone}: {Message}", toPhone, message);
+            _log.LogWarning("[WhatsApp] Not configured. Would send to {Phone}", MaskPhone(toPhone));
             return new WhatsAppResult { Success = true, MessageId = "SIMULATED", Simulated = true };
         }
 
@@ -66,18 +66,25 @@ public sealed class WhatsAppService
 
             if (resp.IsSuccessStatusCode)
             {
-                _log.LogInformation("[WhatsApp] Sent to {Phone}", toPhone);
+                _log.LogInformation("[WhatsApp] Sent to {Phone}", MaskPhone(toPhone));
                 return new WhatsAppResult { Success = true, MessageId = body };
             }
 
-            _log.LogError("[WhatsApp] Failed to {Phone}: {Status} {Body}", toPhone, resp.StatusCode, body);
+            _log.LogError("[WhatsApp] Failed to {Phone}: {Status}", MaskPhone(toPhone), resp.StatusCode);
             return new WhatsAppResult { Success = false, Error = body };
         }
         catch (Exception ex)
         {
-            _log.LogError(ex, "[WhatsApp] Exception sending to {Phone}", toPhone);
+            _log.LogError(ex, "[WhatsApp] Exception sending to {Phone}", MaskPhone(toPhone));
             return new WhatsAppResult { Success = false, Error = ex.Message };
         }
+    }
+
+    private static string MaskPhone(string? phone)
+    {
+        var raw = (phone ?? string.Empty).Trim();
+        if (raw.Length <= 4) return "****";
+        return new string('*', raw.Length - 4) + raw[^4..];
     }
 
     public sealed class WhatsAppResult

@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RetailERP.Services;
 
 namespace RetailERP.Controllers;
 
 [AllowAnonymous]
 [Route("portal/supplier")]
+[EnableRateLimiting("Api")]
 public class SupplierPortalController : Controller
 {
     private readonly PortalService _portal;

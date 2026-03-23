@@ -112,20 +112,25 @@ public class AdminUsersController : Controller
         if (!IsSuperAdmin())
             roles.Remove("Admin");
 
-        var rows = new List<UserRowVm>(users.Count);
-        foreach (var u in users)
-        {
-            var userRoles = (await _userManager.GetRolesAsync(u)).ToList();
+        var userIds = users.Select(u => u.Id).ToList();
+        var roleMap = await (from ur in _db.UserRoles.AsNoTracking()
+                             join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
+                             where userIds.Contains(ur.UserId)
+                             select new { ur.UserId, RoleName = r.Name! })
+            .ToListAsync();
 
-            rows.Add(new UserRowVm
-            {
-                UserId = u.Id,
-                DisplayName = u.DisplayName,
-                Email = u.Email ?? u.UserName ?? "(no email)",
-                IsActive = u.IsActive,
-                Roles = userRoles
-            });
-        }
+        var rolesByUser = roleMap
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.RoleName).ToList());
+
+        var rows = users.Select(u => new UserRowVm
+        {
+            UserId = u.Id,
+            DisplayName = u.DisplayName,
+            Email = u.Email ?? u.UserName ?? "(no email)",
+            IsActive = u.IsActive,
+            Roles = rolesByUser.TryGetValue(u.Id, out var roleList) ? roleList : new List<string>()
+        }).ToList();
 
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
         var currentUser = await _userManager.GetUserAsync(User);

@@ -251,6 +251,32 @@
     border-top: 1px solid #e0e0e0;
 }
 
+.pos-bill-adj .adj-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 86px;
+    gap: 8px;
+    align-items: end;
+}
+.pos-bill-adj .adj-field label {
+    color: #455a64;
+    margin-bottom: 3px;
+    display: block;
+}
+.pos-bill-adj .input-group-text {
+    min-width: 30px;
+    justify-content: center;
+    font-weight: 700;
+    color: #455a64;
+    background: #eef2f6;
+    border-color: #cfd8dc;
+}
+.pos-bill-adj input.form-control {
+    text-align: right;
+    font-weight: 600;
+}
+.pos-bill-adj #btnClearDisc { white-space: nowrap; }
+.pos-bill-adj .adj-actions .btn { height: 31px; }
+
 .btn-row-del {
     background: none;
     border: none;

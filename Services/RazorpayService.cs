@@ -92,7 +92,7 @@ public class RazorpayService
 
         if (!response.IsSuccessStatusCode)
         {
-            _log.LogError("Razorpay: Order creation failed. Status={Status}, Body={Body}", response.StatusCode, responseBody);
+            _log.LogError("Razorpay: Order creation failed. Status={Status}", response.StatusCode);
             return null;
         }
 
@@ -143,7 +143,7 @@ public class RazorpayService
 
         if (!response.IsSuccessStatusCode)
         {
-            _log.LogError("Razorpay: Fetch payment failed. PaymentId={PaymentId}, Body={Body}", paymentId, body);
+            _log.LogError("Razorpay: Fetch payment failed. PaymentId={PaymentId}, Status={Status}", paymentId, response.StatusCode);
             return null;
         }
 
@@ -176,7 +176,7 @@ public class RazorpayService
 
         if (!response.IsSuccessStatusCode)
         {
-            _log.LogError("Razorpay: Refund failed. PaymentId={PaymentId}, Body={Body}", paymentId, responseBody);
+            _log.LogError("Razorpay: Refund failed. PaymentId={PaymentId}, Status={Status}", paymentId, response.StatusCode);
             return null;
         }
 

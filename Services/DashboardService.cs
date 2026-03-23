@@ -211,7 +211,6 @@ public sealed class DashboardService
             "recent-invoices" => new
             {
                 rows = await _db.Invoices.AsNoTracking()
-                    .Include(x => x.Customer).Include(x => x.Warehouse)
                     .OrderByDescending(x => x.InvoiceDate).ThenByDescending(x => x.InvoiceNo)
                     .Take(5)
                     .Select(x => new {
@@ -226,7 +225,6 @@ public sealed class DashboardService
             "recent-pos-bills" => new
             {
                 rows = await _db.PosBills.AsNoTracking()
-                    .Include(x => x.Customer).Include(x => x.Store)
                     .OrderByDescending(x => x.BillDate).ThenByDescending(x => x.BillNo)
                     .Take(5)
                     .Select(x => new {
@@ -241,8 +239,6 @@ public sealed class DashboardService
             "expiring-items" => new
             {
                 rows = await _db.Stocks.AsNoTracking()
-                    .Include(s => s.Item)
-                    .Include(s => s.Warehouse)
                     .Where(s => s.ExpiryDate != null && s.ExpiryDate <= DateTime.Today.AddDays(90) && s.Quantity > 0)
                     .OrderBy(s => s.ExpiryDate)
                     .Take(10)
@@ -260,7 +256,6 @@ public sealed class DashboardService
             "eod-summary" => new
             {
                 rows = await _db.EodReports.AsNoTracking()
-                    .Include(e => e.Store)
                     .Where(e => e.ReportDate == DateTime.Today)
                     .Select(e => new {
                         store = e.Store != null ? e.Store.Name : "-",
@@ -333,8 +328,6 @@ public sealed class DashboardService
     private async Task<object> GetCategoryPieAsync(DateTime monthStart, DateTime monthEnd)
     {
         var data = await _db.PosBillLines.AsNoTracking()
-            .Include(l => l.Item).ThenInclude(i => i!.Category)
-            .Include(l => l.PosBill)
             .Where(l => l.PosBill!.Status == 2 && l.PosBill.BillDate >= monthStart && l.PosBill.BillDate < monthEnd)
             .GroupBy(l => l.Item!.Category!.Name)
             .Select(g => new { category = g.Key ?? "Uncategorized", total = g.Sum(l => l.LineTotal) })
@@ -358,7 +351,6 @@ public sealed class DashboardService
     private async Task<object> GetTopItemsBarAsync(DateTime monthStart, DateTime monthEnd)
     {
         var data = await _db.PosBillLines.AsNoTracking()
-            .Include(l => l.Item).Include(l => l.PosBill)
             .Where(l => l.PosBill!.Status == 2 && l.PosBill.BillDate >= monthStart && l.PosBill.BillDate < monthEnd)
             .GroupBy(l => l.Item!.Name)
             .Select(g => new { item = g.Key ?? "?", qty = g.Sum(l => l.Qty) })

@@ -21,6 +21,15 @@
     </div>
 
     <div class="mb-3">
+        <label class="form-label">Style Preset</label>
+        <select name="preset" class="form-select">
+            <option value="modern" selected>Modern (clean, minimal)</option>
+            <option value="classic">Classic (traditional invoice style)</option>
+        </select>
+        <div class="form-text">You can further customize everything in Designer after creating.</div>
+    </div>
+
+    <div class="mb-3">
         <label class="form-label">Paper Size</label>
         <select asp-for="PaperSize" class="form-select">
             <option value="Thermal58mm">Thermal 58mm</option>

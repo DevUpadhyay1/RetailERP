@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+    using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
 using RetailERP.Models.Api;
@@ -8,6 +8,7 @@ namespace RetailERP.Controllers.Api;
 /// <summary>
 /// Read-only API for POS bills. Actual POS operations stay in MVC controller.
 /// </summary>
+[Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Manager,Cashier")]
 public class PosController : ApiBaseController
 {
     private readonly ApplicationDbContext _db;
