@@ -43,6 +43,7 @@ public class CustomersController : ApiBaseController
     {
         var c = await _db.Customers.AsNoTracking().FirstOrDefaultAsync(x => x.CustomerId == id);
         if (c is null) return NotFound(ApiResponse<object>.Fail("Customer not found."));
+        if (c.CompanyId != GetCompanyId()) return Forbid();
         return Ok(ApiResponse<CustomerDto>.Ok(new CustomerDto { CustomerId = c.CustomerId, Name = c.Name, Phone = c.Phone, Email = c.Email }));
     }
 
@@ -62,6 +63,7 @@ public class CustomersController : ApiBaseController
     {
         var entity = await _db.Customers.FindAsync(id);
         if (entity is null) return NotFound(ApiResponse<object>.Fail("Customer not found."));
+        if (entity.CompanyId != GetCompanyId()) return Forbid();
         entity.Name = dto.Name; entity.Phone = dto.Phone; entity.Email = dto.Email;
         await _db.SaveChangesAsync();
         return Ok(ApiResponse<string>.Ok("Customer updated."));
@@ -72,6 +74,7 @@ public class CustomersController : ApiBaseController
     {
         var entity = await _db.Customers.FindAsync(id);
         if (entity is null) return NotFound(ApiResponse<object>.Fail("Customer not found."));
+        if (entity.CompanyId != GetCompanyId()) return Forbid();
         _db.Customers.Remove(entity);
         await _db.SaveChangesAsync();
         return Ok(ApiResponse<string>.Ok("Customer deleted."));

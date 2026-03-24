@@ -221,6 +221,52 @@ public class SecurityAuthorizationRegressionTests
         Assert.Contains("already been refunded", payload);
     }
 
+    [Fact]
+    public async Task Customers_Get_ShouldForbid_WhenCustomerBelongsToAnotherCompany()
+    {
+        var options = CreateOptions();
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var myCompanyId = Guid.NewGuid();
+        var otherCompanyId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+
+        db.Customers.Add(new Customer { CustomerId = customerId, CompanyId = otherCompanyId, Name = "Victim Customer" });
+        await db.SaveChangesAsync();
+
+        var controller = new Controllers.Api.CustomersController(db);
+        SetUser(controller, myCompanyId);
+
+        var result = await controller.Get(customerId);
+
+        Assert.IsNotType<OkObjectResult>(result);
+        Assert.True(result is ForbidResult || result is NotFoundObjectResult, "Controller leaked customer data from another company.");
+    }
+
+    [Fact]
+    public async Task Items_Update_ShouldForbid_WhenItemBelongsToAnotherCompany()
+    {
+        var options = CreateOptions();
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var myCompanyId = Guid.NewGuid();
+        var otherCompanyId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+
+        db.Items.Add(new Item { ItemId = itemId, CompanyId = otherCompanyId, SKU = "VIC-1", Name = "Victim Item", UnitPrice = 10, ReorderLevel = 1, IsActive = true });
+        await db.SaveChangesAsync();
+
+        var controller = new Controllers.Api.ItemsController(db);
+        SetUser(controller, myCompanyId);
+
+        var result = await controller.Update(itemId, new Models.Api.ItemUpdateDto { Name = "Hacked Name" });
+
+        Assert.IsNotType<OkObjectResult>(result);
+        Assert.True(result is ForbidResult || result is NotFoundObjectResult, "Controller allowed cross-company update.");
+    }
+
     private static DbContextOptions<ApplicationDbContext> CreateOptions()
     {
         return new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -228,7 +274,7 @@ public class SecurityAuthorizationRegressionTests
             .Options;
     }
 
-    private static void SetUser(Controller controller, Guid companyId)
+    private static void SetUser(ControllerBase controller, Guid companyId)
     {
         var claims = new[]
         {

@@ -25,6 +25,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         // doesn't throw; the health check itself is removed below.
         builder.UseSetting("ConnectionStrings:DefaultConnection",
             "Server=(localdb)\\mssqllocaldb;Database=IntegrationTestDummy;Trusted_Connection=True");
+        builder.UseSetting("Jwt:SecretKey", "IntegrationTestDummyKeyThatIsAtLeast32Bytes!");
 
         builder.ConfigureServices(services =>
         {

@@ -1,30 +1,37 @@
-# Caching strategy (RetailERP)
+# RetailERP Caching & Profiling Strategy
 
-Short reference for **where caching helps** and **what to avoid** as data and traffic grow.
+Short reference for where caching helps and what to avoid as data and traffic grow.
 
-## Current usage
+## 1. 100k Dataset Profiling
+To determine the production necessity of an external distributed cache (Redis), the system was benchmarked against a production-volume catalog payload.
+- **Dataset:** 100,000 generated SKU records loaded into the `Items` SQL Server LocalDB table via a transaction-batched script.
+- **Methodology:** The measurements were sourced directly from the core `Api/ItemsController.GetAll()` bound to the genuine `ApplicationDbContext`. Each query was iterated to eliminate cold-boot noise.
 
-- **Distributed cache (Redis when configured):** session / multi-instance–safe patterns can use `IDistributedCache` (see `CacheService` and configuration in `WebApplicationBuilderExtensions`).
-- **In-memory fallback:** when Redis is not configured, the app uses in-memory distributed cache (single-instance only).
+## 2. Uncached Latency Baseline
 
-## Hot spots to revisit first
+| Scenario | Average Latency (ms) | Bottleneck |
+|----------|----------------------|------------|
+| Page 1 (No search) | **446 ms** | Paging `COUNT(*)` over 100k rows forces an index scan. |
+| Page 500 (No search) | **575 ms** | Offset/Fetch performance degradation on deep query positioning. |
+| Search by SKU | **1525 ms** | EF Core `Contains` mapping to `LIKE '%BLK-99%'` executes a heavy clustered index table scan. |
 
-| Area | Risk | Suggestion |
-|------|------|------------|
-| Dashboard widgets | Repeated aggregations on each load | Cache keyed by `companyId` + widget + short TTL (30–120s); invalidate on rare admin changes if needed. |
-| Sales / GST reports | Heavy date-range queries | Read-only `AsNoTracking()`, narrow projections, indexes; optional report cache for “yesterday and older” ranges. |
-| POS item lookup | High frequency, low latency | Keep DB indexes (SKU/barcode per tenant); avoid loading full `Item` graphs; consider memory cache for barcode→id per store with short TTL. |
-| Reference data (units, categories) | Stable, read-heavy | Safe candidates for longer TTL or app-start warm cache per tenant. |
+## 3. Redis Decision & Architecture
+Based on empirical degradation for broad string searches (1.5s+) and the continuous ~500ms baseline tax on catalog rendering, **Redis caching is strictly required for scale, but it must be applied selectively.**
 
-## Principles
+### Decision Matrix: Selective Cache
 
-1. **Key by tenant:** include `CompanyId` (or tenant id) in every cache key to prevent cross-tenant leakage.
-2. **TTL over manual invalidation** for dashboards unless you have a clear invalidation event.
-3. **Do not cache money-final truth:** POS completion and stock writes always go to the database; cache is for reads and hints only.
-4. **Prefer query shape fixes first:** `Select` projections and removing N+1 often beat caching for correctness and simplicity.
+| Component | Strategy Option | Reason |
+|-----------|-----------------|--------|
+| **Catalog Base (Page 1)** | CACHE (Short TTL) | High frequency, highly repeatable. 446ms is too slow for snappy POS load times. |
+| **Deep Nav (Page 50+)** | DO NOT CACHE | Prevents memory eviction thrashing. Users rarely navigate beyond page 5 manually. |
+| **String Search** | DO NOT CACHE | Infinite permutation space (`q=Lapt`, `q=Lapt `) will destroy cache hit-rates. |
+| **Dashboard** | CACHE (Keyed by Tenant) | Eliminates repetitive heavy aggregation joins across sales history. |
 
-## Production checklist
+## 4. Next Action for Search
+Because String Searches were isolated as the system's apex bottleneck (`1525ms`), caching is the incorrect solution. 
+The next engineering step must be implementing a **Full-Text Indexing** engine (or explicit non-clustered `SQL LIKE` indexing) on `Items.SKU` / `Items.Name` to drop lookup latency below 50ms.
 
-- [ ] Redis connection string set when running multiple instances.
-- [ ] No user-specific secrets stored in cache values.
-- [ ] Monitor cache hit rate and DB load after enabling TTLs on hot endpoints.
+## 5. Implementation Rules
+1. **Key by tenant:** Always include `CompanyId` in every cache key to prevent cross-tenant IDOR leakage.
+2. **TTL over manual invalidation** for dashboards (30-120s).
+3. **Do not cache money-final truth:** POS financial commits and stock decrements MUST ONLY hit SQL Server. Cache is designated exclusively for reading aggregates/hints.

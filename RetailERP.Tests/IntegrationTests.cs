@@ -79,4 +79,59 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
         Assert.False(string.IsNullOrWhiteSpace(generated), "Expected a generated correlation ID");
         Assert.NotEqual("test-123", generated); // must be a fresh value
     }
+
+    /// <summary>
+    /// Confirm Manager role receives 403 Forbidden (or AccessDenied redirect) on a SuperAdmin route.
+    /// Addresses the "Admin role boundary" security requirement.
+    /// </summary>
+    [Fact]
+    public async Task AdminBoundary_ManagerCannotAccessSuperAdminRoute()
+    {
+        // Setup client with a mock auth handler that injects "Manager" role
+        using var factory = new CustomWebApplicationFactory();
+        var client = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.AddAuthentication(defaultScheme: "TestScheme")
+                    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, TestAuthHandler>(
+                        "TestScheme", options => { });
+            });
+        }).CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("TestScheme");
+
+        // Target a route restricted to [Authorize(Roles = "SuperAdmin")]
+        var response = await client.GetAsync("/Companies");
+
+        // MVC will issue a 403 Forbidden or redirect to AccessDenied 
+        // depending on how the Authorization middleware is configured.
+        Assert.True(response.StatusCode == HttpStatusCode.Forbidden || response.StatusCode == HttpStatusCode.Redirect,
+            $"Expected Forbid (403) or Redirect (302) to AccessDenied, got {response.StatusCode}");
+        
+        if (response.StatusCode == HttpStatusCode.Redirect)
+        {
+            Assert.Contains("AccessDenied", response.Headers.Location?.ToString() ?? "", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+}
+
+public class TestAuthHandler : Microsoft.AspNetCore.Authentication.AuthenticationHandler<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions>
+{
+    public TestAuthHandler(Microsoft.Extensions.Options.IOptionsMonitor<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions> options, 
+        Microsoft.Extensions.Logging.ILoggerFactory logger, System.Text.Encodings.Web.UrlEncoder encoder)
+        : base(options, logger, encoder) { }
+
+    protected override Task<Microsoft.AspNetCore.Authentication.AuthenticateResult> HandleAuthenticateAsync()
+    {
+        var claims = new[] { 
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "TestManager"),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Manager") 
+        };
+        var identity = new System.Security.Claims.ClaimsIdentity(claims, "TestScheme");
+        var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+        var ticket = new Microsoft.AspNetCore.Authentication.AuthenticationTicket(principal, "TestScheme");
+
+        return Task.FromResult(Microsoft.AspNetCore.Authentication.AuthenticateResult.Success(ticket));
+    }
 }

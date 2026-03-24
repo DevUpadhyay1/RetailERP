@@ -149,6 +149,7 @@ public class ItemsController : ApiBaseController
 
         var entity = await _db.Items.FindAsync(id);
         if (entity is null) return NotFound(ApiResponse<object>.Fail("Item not found."));
+        if (entity.CompanyId != GetCompanyId()) return Forbid();
 
         entity.SKU = dto.SKU; entity.Name = dto.Name; entity.Barcode = dto.Barcode;
         entity.UnitPrice = dto.UnitPrice; entity.MRP = dto.MRP; entity.PurchasePrice = dto.PurchasePrice;
@@ -164,6 +165,7 @@ public class ItemsController : ApiBaseController
     {
         var entity = await _db.Items.FindAsync(id);
         if (entity is null) return NotFound(ApiResponse<object>.Fail("Item not found."));
+        if (entity.CompanyId != GetCompanyId()) return Forbid();
 
         _db.Items.Remove(entity);
         await _db.SaveChangesAsync();

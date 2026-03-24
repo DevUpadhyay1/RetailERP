@@ -14,6 +14,12 @@ Set on the host or container:
 | `Jwt__SecretKey` | 32+ random characters | **Never** use dev sample from repo |
 | `AllowedHosts` | `shop.yourdomain.com` | Override `*` — validation warns if `*` |
 | `ConnectionStrings__Redis` | `redis:6379` | Optional; health check probes Redis when cache uses it |
+| `Razorpay__KeyId` | `rzp_live_...` | Required for payments |
+| `Razorpay__KeySecret` | `...` | Required for payments |
+| `Twilio__AccountSid` | `AC...` | Required for SMS |
+| `Twilio__AuthToken` | `...` | Required for SMS |
+| `WhatsApp__PhoneNumberId` | `...` | Required for WhatsApp messages |
+| `WhatsApp__AccessToken` | `...` | Required for WhatsApp messages |
 
 **Azure / Linux env syntax:** double underscore `__` nests configuration sections.
 
@@ -54,5 +60,6 @@ docker run -e ASPNETCORE_ENVIRONMENT=Production \
 - [ ] Razorpay / SMTP / Twilio secrets set if those features are used
 - [ ] HTTPS end-to-end or TLS at proxy + forwarded proto
 - [ ] Backups for SQL Server scheduled
+- [ ] `Logs/` directory ACLs restricted to the application service account only
 
 See also: [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md)

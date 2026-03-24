@@ -23,6 +23,8 @@ public static class SerilogBootstrap
                 path: "Logs/retailerp-.log",
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 30,
+                fileSizeLimitBytes: 50 * 1024 * 1024, // 50 MB max per file
+                rollOnFileSizeLimit: true,
                 outputTemplate:
                 "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} | {Message:lj} {Properties:j}{NewLine}{Exception}");
     }

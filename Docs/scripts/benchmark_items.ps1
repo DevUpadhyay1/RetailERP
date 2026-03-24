@@ -1,10 +1,10 @@
 [CmdletBinding()]
 param (
-    [string]$BaseUrl = "https://localhost:7240"
+    [string]$BaseUrl = "http://localhost:5000"
 )
 
 # 1. Login to get JWT Token
-$loginUrl = "$BaseUrl/api/auth/login"
+$loginUrl = "$BaseUrl/api/v1/auth/login"
 $loginBody = @{
     email = "admin@retailerp.com"
     password = "Admin@12345"
@@ -29,7 +29,7 @@ $headers = @{
 }
 
 # 2. Benchmark the Endpoint
-$targetUrl = "$BaseUrl/api/items?page=1&pageSize=20&search="
+$targetUrl = "$BaseUrl/api/v1/items?page=1&pageSize=20&search="
 Write-Host "Benchmarking endpoint: GET $targetUrl"
 
 # Warmup request
@@ -51,9 +51,14 @@ $min = ($times | Measure-Object -Minimum).Minimum
 $max = ($times | Measure-Object -Maximum).Maximum
 $avg = ($times | Measure-Object -Average).Average
 
-Write-Host "`n--- RESULT ---"
-Write-Host "Endpoint: $targetUrl"
-Write-Host "Min Latency: $min ms"
-Write-Host "Max Latency: $max ms"
-Write-Host "Avg Latency: $([math]::Round($avg, 2)) ms"
-Write-Host "----------------"
+$output = @"
+--- RESULT ---
+Endpoint: $targetUrl
+Min Latency: $min ms
+Max Latency: $max ms
+Avg Latency: $([math]::Round($avg, 2)) ms
+----------------
+"@
+
+$output | Out-File "C:\7th_Semester\RetailERP\benchmark_results.txt" -Encoding utf8
+Write-Host $output

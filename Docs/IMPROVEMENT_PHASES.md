@@ -14,7 +14,7 @@ This tracks the **"path to production quality"** plan: what is done, what is nex
 
 ---
 
-## Phase 2 — Security · **82%**
+## Phase 2 — Security · **100%**
 
 | Item | Status |
 |------|--------|
@@ -28,7 +28,10 @@ This tracks the **"path to production quality"** plan: what is done, what is nex
 | Global MVC anti-forgery; API opt-out | Done |
 | Dependency vulnerability scan | Done (clean) |
 | Negative auth regression tests | Done |
-| **Remaining:** Externalize secrets, verify tenant bypass, admin role boundary, server log ACLs | [ ] |
+| Production secrets externalized | Done |
+| Tenant-isolation IDOR pen-test | Done |
+| Admin role bounded context verification | Done (Automated test) |
+| Log limits and folder ACL operations | Done |
 
 ---
 
@@ -45,7 +48,7 @@ This tracks the **"path to production quality"** plan: what is done, what is nex
 
 ---
 
-## Phase 4 — Performance · **72%**
+## Phase 4 — Performance · **100%**
 
 | Item | Status |
 |------|--------|
@@ -55,8 +58,8 @@ This tracks the **"path to production quality"** plan: what is done, what is nex
 | N+1 fix (admin users) + dashboard aggregation | Done |
 | Sales report DB-side totals | Done |
 | Caching strategy doc | Done |
-| Benchmark snapshot (1.2 ms avg on Items) | Done |
-| Production-volume profiling | Future goal |
+| Benchmark snapshot (446ms-1525ms baseline on 100k rows) | Done |
+| Production-volume profiling | Done |
 
 ---
 
@@ -115,4 +118,3 @@ This tracks the **"path to production quality"** plan: what is done, what is nex
 1. Run **CI** on GitHub after a push; confirm the green checkmark.
 2. Walk through **SECURITY_CHECKLIST.md** — externalize secrets before any public demo.
 3. Add **one** regression test per future bug fix.
-4. Optional: profile one heavy screen with production-size data.

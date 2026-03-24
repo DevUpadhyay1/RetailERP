@@ -4,10 +4,10 @@ Use this before **production** or **public demo with real data**. Not all items 
 
 ## Configuration & secrets
 
-- [ ] `ConnectionStrings:DefaultConnection` is not committed with production passwords (use User Secrets / env / Key Vault).
-- [ ] `Jwt:SecretKey` is a **long random** value in production (not the sample from `appsettings.json`).
+- [x] `ConnectionStrings:DefaultConnection` is not committed with production passwords (use User Secrets / env / Key Vault).
+- [x] `Jwt:SecretKey` is a **long random** value in production (not the sample from `appsettings.json`, and removed from source code).
 - [x] With `ASPNETCORE_ENVIRONMENT=Production`, the app **validates** DB + JWT at startup (`ProductionStartupValidation`) — weak dev secrets **fail fast**.
-- [ ] `Razorpay`, `Twilio`, `WhatsApp`, SMTP passwords are in secrets, not in git.
+- [x] `Razorpay`, `Twilio`, `WhatsApp`, SMTP passwords are in secrets, not in git.
 
 ## Authentication & authorization
 
@@ -29,8 +29,8 @@ Use this before **production** or **public demo with real data**. Not all items 
 
 ## Data & multi-tenant
 
-- [ ] Confirm global query filters / `CompanyId` cannot be bypassed by crafted requests (review critical services).
-- [ ] Admin/SuperAdmin routes cannot be called by lower roles (verify once).
+- [x] Confirm global query filters / `CompanyId` cannot be bypassed by crafted requests (review critical services — fixed IDOR on Items/Customers API).
+- [x] Admin/SuperAdmin routes cannot be called by lower roles (automated test: `IntegrationTests.AdminBoundary_ManagerCannotAccessSuperAdminRoute`).
 - [x] High-risk controllers now enforce company scoping checks on sensitive actions (payment, e-invoice, portal admin).
 - [x] Automated negative tests added for cross-company forbidden access in high-risk controllers (`RetailERP.Tests/SecurityAuthorizationRegressionTests.cs`).
 - [x] Additional malformed/replay-style negative tests added (sync invalid payload/action + duplicate refund attempt rejection).
@@ -43,7 +43,7 @@ Use this before **production** or **public demo with real data**. Not all items 
 
 - [x] Logs reviewed and hardened to avoid sensitive response-body/token-like exposure on payment/SMS/WhatsApp paths.
 - [x] Correlation ID implemented for end-to-end request tracing via `CorrelationIdMiddleware.cs`.
-- [ ] Log retention and access controlled on the server.
+- [x] Log retention and access controlled on the server.
   - **Guidance:** Rotate or cap `Logs/retailerp-*.log` size (Serilog rolling) in production; restrict folder ACLs to app identity + ops only; ship logs to a SIEM if available; define how long payment-related audit trails must be kept for compliance (GST / company policy).
 
 ## Deployment
