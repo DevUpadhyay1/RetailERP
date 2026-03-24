@@ -95,6 +95,8 @@ This tracks the **"path to production quality"** plan: what is done, what is nex
 - **Phase 2:** API auth/CSRF cleanup; ops evidence tables for remaining checklist items.
 - **Phase 3:** End-to-end correlation ID support (`X-Correlation-Id`) → middleware → Serilog → response header.
 - **Phase 4:** Performance snapshot for `Api/ItemsController.GetAll` (1.2 ms avg raw latency via DB projection).
+- **Phase 4:** Lighthouse charset compatibility fix — enforced UTF-8 on HTML responses and hardened dashboard bootstrap to avoid noisy JSON-parse console errors.
+- **Phase 5:** Clone-safe UI asset loading fixed via CDN Bootstrap links (prevent unstyled UI on fresh clone).
 - **Phase 6:** Created `REAL_WORLD_MAPPING.md` bridging code features to real-world engineering practices.
 
 ## Previous batch (reliability + ops)

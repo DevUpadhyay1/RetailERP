@@ -23,6 +23,8 @@ dotnet run --project RetailERP.csproj
 - **Swagger (Development):** `/swagger`
 - **Health:** `GET /health` (includes SQL Server check)
 
+> **Note:** UI assets (Bootstrap CSS/JS) are loaded via CDN (jsDelivr) to ensure the UI renders correctly on a fresh clone without requiring `libman restore`.
+
 ## Configuration & secrets
 
 | Setting | Where |

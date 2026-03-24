@@ -78,6 +78,25 @@ public static class WebApplicationExtensions
             await next();
         });
 
+        // Ensure HTML responses explicitly declare UTF-8 for Lighthouse/browser compatibility checks.
+        app.Use(async (context, next) =>
+        {
+            context.Response.OnStarting(() =>
+            {
+                var contentType = context.Response.ContentType;
+                if (!string.IsNullOrWhiteSpace(contentType)
+                    && contentType.StartsWith("text/html", StringComparison.OrdinalIgnoreCase)
+                    && !contentType.Contains("charset=", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.ContentType = $"{contentType}; charset=utf-8";
+                }
+
+                return Task.CompletedTask;
+            });
+
+            await next();
+        });
+
         app.UseRequestLocalization();
 
         app.UseRouting();

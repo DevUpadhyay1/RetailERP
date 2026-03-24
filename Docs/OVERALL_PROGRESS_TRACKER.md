@@ -13,7 +13,7 @@ Update this after every meaningful work batch.
 | 2 | Security | **100%** | Auth/CSRF/rate-limit/CORS/headers done; secrets externalized; IDOR patched; Admin role boundaries verified automatically; Server operations and log ACL guidance complete |
 | 3 | Observable & operable | **75%** | `/health` + `/health/ready` probes; Correlation ID end-to-end; Serilog file logs + runbook; no centralized metrics/alerting |
 | 4 | Performance | **100%** | AsNoTracking + projection active; DB indices mapped; 100k production-volume profiling generated (446-1525ms baseline); Redis selective cache strategy published |
-| 5 | Maintainable codebase | **85%** | `Program.cs` split into `Infrastructure/` extensions; CONTRIBUTING.md; clean DI composition |
+| 5 | Maintainable codebase | **85%** | `Program.cs` split into `Infrastructure/` extensions; CONTRIBUTING.md; clean DI composition; Clone-safe UI asset loading fixed via CDN Bootstrap links |
 | 6 | Demo & documentation | **85%** | README, DEMO_SCRIPT, ARCHITECTURE (Mermaid), REAL_WORLD_MAPPING, RUNBOOK, 17 docs in `Docs/` |
 
 **Overall completion: ~80%**
@@ -65,6 +65,7 @@ Update this after every meaningful work batch.
 - Forecast snapshot: projection-only stock reads.
 - Benchmark snapshot: `Api/ItemsController.GetAll` averages 1.2 ms raw latency.
 - Caching strategy documented (`CACHING_STRATEGY.md`).
+- Lighthouse compatibility hardening: HTML responses now enforce UTF-8 charset when missing on `text/html`.
 
 ### Phase 5 — Maintainable codebase
 - `Program.cs` → `Infrastructure/WebApplicationBuilderExtensions.cs` + `WebApplicationExtensions.cs`.
@@ -93,5 +94,5 @@ Update this after every meaningful work batch.
 ## Verification
 
 - **Build:** `dotnet build RetailERP.sln -c Release` → 0 errors, 0 warnings (except pre-existing `ReceiptPdfService` obsolete image warning).
-- **Tests:** `dotnet test RetailERP.sln -c Release` → **39 passed, 0 failed**.
+- **Tests:** `dotnet test RetailERP.Tests/RetailERP.Tests.csproj -c Release --no-build` → **43 passed, 0 failed**.
 - **CI:** GitHub Actions green on push/PR.

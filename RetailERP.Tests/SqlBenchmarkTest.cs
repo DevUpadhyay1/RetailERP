@@ -8,7 +8,7 @@ namespace RetailERP.Tests;
 
 public class SqlBenchmarkTest
 {
-    [Fact]
+    [Fact(Skip = "Manual scale benchmark")]
     public async Task Profile_Real_100k_Items()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()

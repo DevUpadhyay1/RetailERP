@@ -1,5 +1,5 @@
 --- 100K SQL BENCHMARK RESULTS ---
-Page 1 Latency: 446 ms avg
-Page 500 Latency (Deep Offset): 575 ms avg
-Search by SKU: 1525 ms avg
+Page 1 Latency: 1178 ms avg
+Page 500 Latency (Deep Offset): 1781 ms avg
+Search by SKU: 3302 ms avg
 ----------------------------------

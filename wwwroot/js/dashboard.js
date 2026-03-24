@@ -11,17 +11,31 @@
     document.addEventListener('DOMContentLoaded', init);
 
     async function init() {
-        const resp = await fetch('/Home/GetLayout');
-        if (!resp.ok) { console.error('Failed to load layout'); return; }
-        const data = await resp.json();
-        catalog = data.catalog;
-        currentLayout = data.layout;
+        try {
+            const resp = await fetch('/Home/GetLayout', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!resp.ok) {
+                console.error('Failed to load dashboard layout. HTTP:', resp.status);
+                return;
+            }
 
-        initGrid();
-        renderWidgets(currentLayout);
-        wireToolbar();
-        applyLockState();
-        initSignalR();
+            const contentType = resp.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                console.warn('Dashboard layout endpoint returned non-JSON content. Skipping widget bootstrap.');
+                return;
+            }
+
+            const data = await resp.json();
+            catalog = data.catalog || [];
+            currentLayout = data.layout || [];
+
+            initGrid();
+            renderWidgets(currentLayout);
+            wireToolbar();
+            applyLockState();
+            initSignalR();
+        } catch (err) {
+            console.error('Dashboard initialization failed:', err);
+        }
     }
 
     function initGrid() {
