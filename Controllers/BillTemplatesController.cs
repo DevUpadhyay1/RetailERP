@@ -322,14 +322,16 @@ public class BillTemplatesController : Controller
     {
         var components = new object[]
         {
-            new { type = "logo",         props = new { maxHeight = 50, align = "center" } },
-            new { type = "store_header", props = new { showGst = true, headerText = "" } },
-            new { type = "bill_info",    props = new { showCustomerPhone = true, showCustomerEmail = false, showCashier = true } },
-            new { type = "items_table",  props = new { showHsn = false } },
-            new { type = "totals",       props = new { showDiscount = true } },
-            new { type = "payments",     props = new { } },
-            new { type = "tax_summary",  props = new { } },
-            new { type = "footer",       props = new { text = "Thank you for shopping!", showItemCount = true } }
+            new { type = "logo",         props = new { maxHeight = 50, align = "center", marginTop = 0, marginBottom = 2 } },
+            new { type = "header_row",   props = new { leftText = "", centerMode = "logo", centerText = "", rightText = "", fontSize = 9, logoHeight = 28, showSeparator = false, marginTop = 0, marginBottom = 2 } },
+            new { type = "store_header", props = new { showGst = true, headerText = "", marginTop = 0, marginBottom = 2 } },
+            new { type = "social_row",   props = new { instagram = "", whatsapp = "", facebook = "", xhandle = "", youtube = "", phone = "", email = "", website = "", align = "center", separator = " | ", fontSize = 9, marginTop = 0, marginBottom = 2 } },
+            new { type = "bill_info",    props = new { showCustomerPhone = true, showCustomerEmail = false, showCashier = true, marginTop = 0, marginBottom = 2 } },
+            new { type = "items_table",  props = new { showHsn = false, marginTop = 0, marginBottom = 2 } },
+            new { type = "totals",       props = new { showDiscount = true, marginTop = 0, marginBottom = 2 } },
+            new { type = "payments",     props = new { marginTop = 0, marginBottom = 2 } },
+            new { type = "tax_summary",  props = new { marginTop = 0, marginBottom = 2 } },
+            new { type = "footer",       props = new { text = "Thank you for shopping!", showItemCount = true, marginTop = 0, marginBottom = 2 } }
         };
         return System.Text.Json.JsonSerializer.Serialize(components);
     }
@@ -340,21 +342,23 @@ public class BillTemplatesController : Controller
         // centered branding, compact bill header, item grid, summary and signature/terms blocks.
         var components = new object[]
         {
-            new { type = "logo",         props = new { maxHeight = 52, align = "center" } },
-            new { type = "store_header", props = new { showGst = true, headerText = templateType == 1 ? "RETAIL INVOICE" : "TAX INVOICE" } },
-            new { type = "bill_info",    props = new { showCustomerPhone = true, showCustomerEmail = false, showCashier = true } },
-            new { type = "separator",    props = new { style = "solid", thickness = 1, color = "#555555" } },
-            new { type = "items_table",  props = new { showHsn = true } },
-            new { type = "separator",    props = new { style = "solid", thickness = 1, color = "#555555" } },
-            new { type = "totals",       props = new { showDiscount = true } },
-            new { type = "payments",     props = new { } },
-            new { type = "text_block",   props = new { text = "Net Amount: {{grand_total}}", fontSize = 12, fontFamily = "serif", align = "right", bold = true, italic = false, color = "#111111" } },
-            new { type = "text_block",   props = new { text = "In Words: {{grand_total_words}}", fontSize = 10, fontFamily = "serif", align = "left", bold = false, italic = false, color = "#333333" } },
-            new { type = "separator",    props = new { style = "dashed", thickness = 1, color = "#999999" } },
-            new { type = "text_block",   props = new { text = "Terms & Conditions:\n1. Goods once sold will not be taken back.\n2. Keep this invoice for exchange/warranty as per policy.", fontSize = 9, fontFamily = "sans-serif", align = "left", bold = false, italic = false, color = "#333333" } },
-            new { type = "spacer",       props = new { height = 8 } },
-            new { type = "text_block",   props = new { text = "Receiver Signature                                Authorised Signatory", fontSize = 9, fontFamily = "sans-serif", align = "left", bold = false, italic = false, color = "#444444" } },
-            new { type = "footer",       props = new { text = "Thank you for your business!", showItemCount = true } }
+            new { type = "logo",         props = new { maxHeight = 52, align = "center", marginTop = 0, marginBottom = 2 } },
+            new { type = "header_row",   props = new { leftText = "", centerMode = "logo", centerText = "", rightText = "", fontSize = 9, logoHeight = 30, showSeparator = true, marginTop = 0, marginBottom = 2 } },
+            new { type = "store_header", props = new { showGst = true, headerText = templateType == 1 ? "RETAIL INVOICE" : "TAX INVOICE", marginTop = 0, marginBottom = 2 } },
+            new { type = "social_row",   props = new { instagram = "", whatsapp = "", facebook = "", xhandle = "", youtube = "", phone = "", email = "", website = "", align = "center", separator = " | ", fontSize = 9, marginTop = 0, marginBottom = 2 } },
+            new { type = "bill_info",    props = new { showCustomerPhone = true, showCustomerEmail = false, showCashier = true, marginTop = 0, marginBottom = 2 } },
+            new { type = "separator",    props = new { style = "solid", thickness = 1, color = "#555555", marginTop = 0, marginBottom = 2 } },
+            new { type = "items_table",  props = new { showHsn = true, marginTop = 0, marginBottom = 2 } },
+            new { type = "separator",    props = new { style = "solid", thickness = 1, color = "#555555", marginTop = 0, marginBottom = 2 } },
+            new { type = "totals",       props = new { showDiscount = true, marginTop = 0, marginBottom = 2 } },
+            new { type = "payments",     props = new { marginTop = 0, marginBottom = 2 } },
+            new { type = "text_block",   props = new { text = "Net Amount: {{grand_total}}", fontSize = 12, fontFamily = "serif", align = "right", bold = true, italic = false, color = "#111111", marginTop = 0, marginBottom = 2 } },
+            new { type = "text_block",   props = new { text = "In Words: {{grand_total_words}}", fontSize = 10, fontFamily = "serif", align = "left", bold = false, italic = false, color = "#333333", marginTop = 0, marginBottom = 2 } },
+            new { type = "separator",    props = new { style = "dashed", thickness = 1, color = "#999999", marginTop = 0, marginBottom = 2 } },
+            new { type = "text_block",   props = new { text = "Terms & Conditions:\n1. Goods once sold will not be taken back.\n2. Keep this invoice for exchange/warranty as per policy.", fontSize = 9, fontFamily = "sans-serif", align = "left", bold = false, italic = false, color = "#333333", marginTop = 0, marginBottom = 2 } },
+            new { type = "spacer",       props = new { height = 8, marginTop = 0, marginBottom = 0 } },
+            new { type = "text_block",   props = new { text = "Receiver Signature                                Authorised Signatory", fontSize = 9, fontFamily = "sans-serif", align = "left", bold = false, italic = false, color = "#444444", marginTop = 0, marginBottom = 2 } },
+            new { type = "footer",       props = new { text = "Thank you for your business!", showItemCount = true, marginTop = 0, marginBottom = 2 } }
         };
         return System.Text.Json.JsonSerializer.Serialize(components);
     }

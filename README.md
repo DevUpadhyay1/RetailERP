@@ -63,9 +63,10 @@ GitHub Actions workflow: `.github/workflows/ci.yml` (build + test on push/PR).
 
 ## Roadmap / improvement phases
 
-See [Docs/IMPROVEMENT_PHASES.md](Docs/IMPROVEMENT_PHASES.md) for what’s done next (tests, security, performance).  
-Overall tracker: [Docs/OVERALL_PROGRESS_TRACKER.md](Docs/OVERALL_PROGRESS_TRACKER.md).  
-Security before production: [Docs/SECURITY_CHECKLIST.md](Docs/SECURITY_CHECKLIST.md).  
+See [Docs/IMPROVEMENT_PHASES.md](Docs/IMPROVEMENT_PHASES.md) for what’s done next (tests, security, performance).
+Overall tracker: [Docs/OVERALL_PROGRESS_TRACKER.md](Docs/OVERALL_PROGRESS_TRACKER.md).
+Architecture overview: [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) · Caching notes: [Docs/CACHING_STRATEGY.md](Docs/CACHING_STRATEGY.md).
+Security before production: [Docs/SECURITY_CHECKLIST.md](Docs/SECURITY_CHECKLIST.md).
 **Production deploy:** [Docs/PRODUCTION_DEPLOYMENT.md](Docs/PRODUCTION_DEPLOYMENT.md) (env vars, Docker, health, proxy).
 
 ## Contributing

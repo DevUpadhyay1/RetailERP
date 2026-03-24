@@ -65,13 +65,23 @@ public class ReceiptPdfService
                 {
                     foreach (var comp in components)
                     {
+                        var marginTop = Math.Clamp(GetInt(comp.Props, "marginTop", 0), 0, 80);
+                        var marginBottom = Math.Clamp(GetInt(comp.Props, "marginBottom", 0), 0, 80);
+                        if (marginTop > 0) col.Item().Height(marginTop);
+
                         switch (comp.Type)
                         {
                             case "logo":
                                 RenderLogo(col, company, comp.Props, isThermal);
                                 break;
+                            case "header_row":
+                                RenderHeaderRow(col, company, comp.Props, isThermal);
+                                break;
                             case "store_header":
                                 RenderStoreHeader(col, bill, company, comp.Props, headerFontSize, subFontSize);
+                                break;
+                            case "social_row":
+                                RenderSocialRow(col, company, comp.Props, subFontSize);
                                 break;
                             case "bill_info":
                                 RenderBillInfo(col, bill, subFontSize, comp.Props);
@@ -101,6 +111,8 @@ public class ReceiptPdfService
                                 RenderSpacer(col, comp.Props);
                                 break;
                         }
+
+                        if (marginBottom > 0) col.Item().Height(marginBottom);
                     }
                 });
             });
@@ -126,6 +138,91 @@ public class ReceiptPdfService
     }
 
     // ── Store Header ──
+    private void RenderHeaderRow(ColumnDescriptor col, Company company, Dictionary<string, JsonElement>? props, bool isThermal)
+    {
+        var leftText = GetStrMultiline(props, "leftText", "");
+        var rightText = GetStrMultiline(props, "rightText", "");
+        var centerMode = GetStr(props, "centerMode", "logo");
+        var centerText = GetStrMultiline(props, "centerText", "");
+        var fontSize = Math.Clamp(GetInt(props, "fontSize", isThermal ? 8 : 10), 7, 24);
+        var logoHeight = Math.Clamp(GetInt(props, "logoHeight", isThermal ? 24 : 30), 12, 80);
+        var showSeparator = GetBool(props, "showSeparator", false);
+
+        col.Item().Row(row =>
+        {
+            row.RelativeItem().AlignLeft().Text(leftText).FontSize(fontSize);
+
+            if (centerMode.Equals("text", StringComparison.OrdinalIgnoreCase))
+            {
+                row.RelativeItem().AlignCenter().Text(centerText).FontSize(fontSize);
+            }
+            else
+            {
+                var hasLogo = !string.IsNullOrWhiteSpace(company.LogoPath);
+                if (hasLogo)
+                {
+                    var fullPath = Path.Combine(_env.WebRootPath, company.LogoPath!.TrimStart('/'));
+                    if (File.Exists(fullPath))
+                    {
+                        row.RelativeItem().AlignCenter().Height(logoHeight).Image(fullPath, ImageScaling.FitHeight);
+                    }
+                    else
+                    {
+                        row.RelativeItem().AlignCenter().Text(company.Name).Bold().FontSize(fontSize);
+                    }
+                }
+                else
+                {
+                    row.RelativeItem().AlignCenter().Text(company.Name).Bold().FontSize(fontSize);
+                }
+            }
+
+            row.RelativeItem().AlignRight().Text(rightText).FontSize(fontSize);
+        });
+
+        if (showSeparator)
+            col.Item().PaddingTop(2).LineHorizontal(0.5f);
+    }
+
+    private static void RenderSocialRow(ColumnDescriptor col, Company company, Dictionary<string, JsonElement>? props, int fallbackFontSize)
+    {
+        var parts = new List<string>();
+
+        var instagram = GetStr(props, "instagram", "");
+        var whatsapp = GetStr(props, "whatsapp", "");
+        var facebook = GetStr(props, "facebook", "");
+        var xhandle = GetStr(props, "xhandle", "");
+        var youtube = GetStr(props, "youtube", "");
+        var phone = GetStr(props, "phone", company.Phone ?? "");
+        var email = GetStr(props, "email", company.Email ?? "");
+        var website = GetStr(props, "website", company.Website ?? "");
+
+        if (!string.IsNullOrWhiteSpace(instagram)) parts.Add($"IG: {instagram}");
+        if (!string.IsNullOrWhiteSpace(whatsapp)) parts.Add($"WA: {whatsapp}");
+        if (!string.IsNullOrWhiteSpace(facebook)) parts.Add($"FB: {facebook}");
+        if (!string.IsNullOrWhiteSpace(xhandle)) parts.Add($"X: {xhandle}");
+        if (!string.IsNullOrWhiteSpace(youtube)) parts.Add($"YT: {youtube}");
+        if (!string.IsNullOrWhiteSpace(phone)) parts.Add($"Ph: {phone}");
+        if (!string.IsNullOrWhiteSpace(email)) parts.Add($"Email: {email}");
+        if (!string.IsNullOrWhiteSpace(website)) parts.Add($"Web: {website}");
+
+        if (parts.Count == 0) return;
+
+        var sep = GetStr(props, "separator", " | ");
+        var align = GetStr(props, "align", "center");
+        var fontSize = Math.Clamp(GetInt(props, "fontSize", fallbackFontSize), 7, 20);
+        var line = string.Join(sep, parts);
+
+        var item = align switch
+        {
+            "left" => col.Item().AlignLeft(),
+            "right" => col.Item().AlignRight(),
+            _ => col.Item().AlignCenter()
+        };
+
+        item.Text(line).FontSize(fontSize);
+    }
+
     private static void RenderStoreHeader(ColumnDescriptor col, PosBill bill, Company company, Dictionary<string, JsonElement>? props, int headerFontSize, int subFontSize)
     {
         col.Item().AlignCenter().Text(text =>

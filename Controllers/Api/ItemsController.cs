@@ -19,23 +19,48 @@ public class ItemsController : ApiBaseController
                                              [FromQuery] int pageSize = 20)
     {
         pageSize = Math.Clamp(pageSize, 1, 100);
-        IQueryable<Item> q = _db.Items.AsNoTracking().Include(i => i.Unit).Include(i => i.Category);
+        IQueryable<Item> q = _db.Items.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var term = search.Trim().ToLower();
-            q = q.Where(i => i.Name.ToLower().Contains(term) || i.SKU.ToLower().Contains(term)
-                           || (i.Barcode != null && i.Barcode.ToLower().Contains(term)));
+            var term = search.Trim();
+            var like = $"%{term}%";
+            q = q.Where(i =>
+                EF.Functions.Like(i.Name, like) ||
+                EF.Functions.Like(i.SKU, like) ||
+                (i.Barcode != null && EF.Functions.Like(i.Barcode, like)));
         }
         if (active.HasValue) q = q.Where(i => i.IsActive == active.Value);
         if (categoryId.HasValue) q = q.Where(i => i.CategoryId == categoryId.Value);
 
         var total = await q.CountAsync();
-        var items = await q.OrderBy(i => i.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var items = await q
+            .OrderBy(i => i.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(i => new ItemDto
+            {
+                ItemId = i.ItemId,
+                SKU = i.SKU,
+                Name = i.Name,
+                Barcode = i.Barcode,
+                UnitPrice = i.UnitPrice,
+                MRP = i.MRP,
+                PurchasePrice = i.PurchasePrice,
+                GstPercent = i.GstPercent,
+                HsnCode = i.HsnCode,
+                ReorderLevel = i.ReorderLevel,
+                IsActive = i.IsActive,
+                UnitId = i.UnitId,
+                UnitName = i.Unit != null ? i.Unit.Name : null,
+                CategoryId = i.CategoryId,
+                CategoryName = i.Category != null ? i.Category.Name : null
+            })
+            .ToListAsync();
 
         return Ok(new PagedResponse<ItemDto>
         {
-            Data = items.Select(i => MapToDto(i)).ToList(),
+            Data = items,
             Page = page, PageSize = pageSize, TotalCount = total
         });
     }
@@ -43,10 +68,29 @@ public class ItemsController : ApiBaseController
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id)
     {
-        var item = await _db.Items.AsNoTracking().Include(i => i.Unit).Include(i => i.Category)
-                         .FirstOrDefaultAsync(i => i.ItemId == id);
+        var item = await _db.Items.AsNoTracking()
+            .Where(i => i.ItemId == id)
+            .Select(i => new ItemDto
+            {
+                ItemId = i.ItemId,
+                SKU = i.SKU,
+                Name = i.Name,
+                Barcode = i.Barcode,
+                UnitPrice = i.UnitPrice,
+                MRP = i.MRP,
+                PurchasePrice = i.PurchasePrice,
+                GstPercent = i.GstPercent,
+                HsnCode = i.HsnCode,
+                ReorderLevel = i.ReorderLevel,
+                IsActive = i.IsActive,
+                UnitId = i.UnitId,
+                UnitName = i.Unit != null ? i.Unit.Name : null,
+                CategoryId = i.CategoryId,
+                CategoryName = i.Category != null ? i.Category.Name : null
+            })
+            .FirstOrDefaultAsync();
         if (item is null) return NotFound(ApiResponse<object>.Fail("Item not found."));
-        return Ok(ApiResponse<ItemDto>.Ok(MapToDto(item)));
+        return Ok(ApiResponse<ItemDto>.Ok(item));
     }
 
     [HttpPost]
@@ -65,9 +109,28 @@ public class ItemsController : ApiBaseController
         _db.Items.Add(entity);
         await _db.SaveChangesAsync();
 
-        var created = await _db.Items.AsNoTracking().Include(i => i.Unit).Include(i => i.Category)
-                            .FirstAsync(i => i.ItemId == entity.ItemId);
-        return CreatedAtAction(nameof(Get), new { id = entity.ItemId }, ApiResponse<ItemDto>.Ok(MapToDto(created)));
+        var created = await _db.Items.AsNoTracking()
+            .Where(i => i.ItemId == entity.ItemId)
+            .Select(i => new ItemDto
+            {
+                ItemId = i.ItemId,
+                SKU = i.SKU,
+                Name = i.Name,
+                Barcode = i.Barcode,
+                UnitPrice = i.UnitPrice,
+                MRP = i.MRP,
+                PurchasePrice = i.PurchasePrice,
+                GstPercent = i.GstPercent,
+                HsnCode = i.HsnCode,
+                ReorderLevel = i.ReorderLevel,
+                IsActive = i.IsActive,
+                UnitId = i.UnitId,
+                UnitName = i.Unit != null ? i.Unit.Name : null,
+                CategoryId = i.CategoryId,
+                CategoryName = i.Category != null ? i.Category.Name : null
+            })
+            .FirstAsync();
+        return CreatedAtAction(nameof(Get), new { id = entity.ItemId }, ApiResponse<ItemDto>.Ok(created));
     }
 
     [HttpPut("{id:guid}")]
@@ -117,8 +180,25 @@ public class ItemsController : ApiBaseController
 
         var ids = slice.Select(x => x.ItemId).ToList();
         var items = await _db.Items.AsNoTracking()
-            .Include(i => i.Unit).Include(i => i.Category)
             .Where(i => ids.Contains(i.ItemId))
+            .Select(i => new ItemDto
+            {
+                ItemId = i.ItemId,
+                SKU = i.SKU,
+                Name = i.Name,
+                Barcode = i.Barcode,
+                UnitPrice = i.UnitPrice,
+                MRP = i.MRP,
+                PurchasePrice = i.PurchasePrice,
+                GstPercent = i.GstPercent,
+                HsnCode = i.HsnCode,
+                ReorderLevel = i.ReorderLevel,
+                IsActive = i.IsActive,
+                UnitId = i.UnitId,
+                UnitName = i.Unit != null ? i.Unit.Name : null,
+                CategoryId = i.CategoryId,
+                CategoryName = i.Category != null ? i.Category.Name : null
+            })
             .ToDictionaryAsync(i => i.ItemId);
         var onHandById = slice.ToDictionary(x => x.ItemId, x => x.OnHand);
 
@@ -129,7 +209,7 @@ public class ItemsController : ApiBaseController
                 var item = items[x.ItemId];
                 return (object)new
                 {
-                    Item = MapToDto(item),
+                    Item = item,
                     CurrentStock = onHandById[x.ItemId],
                     item.ReorderLevel
                 };

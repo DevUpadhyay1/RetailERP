@@ -43,6 +43,7 @@ Use this before **production** or **public demo with real data**. Not all items 
 
 - [x] Logs reviewed and hardened to avoid sensitive response-body/token-like exposure on payment/SMS/WhatsApp paths.
 - [ ] Log retention and access controlled on the server.
+  - **Guidance:** Rotate or cap `Logs/retailerp-*.log` size (Serilog rolling) in production; restrict folder ACLs to app identity + ops only; ship logs to a SIEM if available; define how long payment-related audit trails must be kept for compliance (GST / company policy).
 
 ## Deployment
 

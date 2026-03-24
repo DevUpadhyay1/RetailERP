@@ -38,9 +38,6 @@ public sealed class StockTransactionsController : Controller
 
         var query = _db.StockTransactions
             .AsNoTracking()
-            .Include(x => x.Item)
-            .Include(x => x.Warehouse)
-            .Include(x => x.ActorUser)
             .AsQueryable();
 
         if (from.HasValue)
@@ -90,7 +87,36 @@ public sealed class StockTransactionsController : Controller
         };
 
         var total = await query.CountAsync();
-        var rows = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var rows = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new RetailERP.Data.Entities.StockTransaction
+            {
+                StockTransactionId = x.StockTransactionId,
+                OccurredAtUtc = x.OccurredAtUtc,
+                Type = x.Type,
+                ItemId = x.ItemId,
+                WarehouseId = x.WarehouseId,
+                Qty = x.Qty,
+                RefType = x.RefType,
+                RefId = x.RefId,
+                Reason = x.Reason,
+                ActorUserId = x.ActorUserId,
+                Item = x.Item == null ? null : new RetailERP.Data.Entities.Item
+                {
+                    SKU = x.Item.SKU,
+                    Name = x.Item.Name
+                },
+                Warehouse = x.Warehouse == null ? null : new RetailERP.Data.Entities.Warehouse
+                {
+                    Name = x.Warehouse.Name
+                },
+                ActorUser = x.ActorUser == null ? null : new RetailERP.Data.Identity.ApplicationUser
+                {
+                    Email = x.ActorUser.Email
+                }
+            })
+            .ToListAsync();
 
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
         var fromRow = total == 0 ? 0 : ((page - 1) * pageSize + 1);

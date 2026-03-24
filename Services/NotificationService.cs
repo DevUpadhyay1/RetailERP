@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
 
@@ -12,18 +12,14 @@ namespace RetailERP.Services;
 public sealed class NotificationService
 {
     private readonly ApplicationDbContext _db;
-    private readonly SmsService _sms;
-    private readonly WhatsAppService _whatsApp;
-    private readonly EmailQueueService _emailQueue;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<NotificationService> _log;
 
-    public NotificationService(ApplicationDbContext db, SmsService sms, WhatsAppService whatsApp,
-        EmailQueueService emailQueue, ILogger<NotificationService> log)
+    public NotificationService(ApplicationDbContext db, IServiceScopeFactory scopeFactory,
+        ILogger<NotificationService> log)
     {
         _db = db;
-        _sms = sms;
-        _whatsApp = whatsApp;
-        _emailQueue = emailQueue;
+        _scopeFactory = scopeFactory;
         _log = log;
     }
 
@@ -66,42 +62,10 @@ public sealed class NotificationService
         _db.NotificationLogs.Add(log);
         await _db.SaveChangesAsync();
 
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                switch (channel.ToLower())
-                {
-                    case "sms":
-                        var smsResult = await _sms.SendAsync(recipient, body);
-                        await UpdateLogStatusAsync(log.NotificationLogId,
-                            smsResult.Success ? "Sent" : "Failed",
-                            smsResult.Error, smsResult.MessageId);
-                        break;
-
-                    case "whatsapp":
-                        var waResult = await _whatsApp.SendTextAsync(recipient, body);
-                        await UpdateLogStatusAsync(log.NotificationLogId,
-                            waResult.Success ? "Sent" : "Failed",
-                            waResult.Error, waResult.MessageId);
-                        break;
-
-                    case "email":
-                        await _emailQueue.EnqueueAsync(recipient, subject ?? "RetailERP Notification", body);
-                        await UpdateLogStatusAsync(log.NotificationLogId, "Sent", null, null);
-                        break;
-
-                    default:
-                        await UpdateLogStatusAsync(log.NotificationLogId, "Failed", $"Unknown channel: {channel}", null);
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _log.LogError(ex, "[Notification] Failed to send {Channel} to {Recipient}", channel, recipient);
-                try { await UpdateLogStatusAsync(log.NotificationLogId, "Failed", ex.Message, null); } catch { }
-            }
-        });
+        var logId = log.NotificationLogId;
+        var channelNorm = channel;
+        // Fire-and-forget must not use request-scoped DbContext / HttpClient services (disposed when request ends).
+        _ = Task.Run(() => SendInBackgroundAsync(logId, channelNorm, recipient, subject, body));
 
         return log.NotificationLogId;
     }
@@ -197,14 +161,68 @@ public sealed class NotificationService
         return result;
     }
 
-    private async Task UpdateLogStatusAsync(Guid logId, string status, string? error, string? externalId)
+    private async Task SendInBackgroundAsync(Guid notificationLogId, string channel, string recipient,
+        string? subject, string body)
     {
-        var log = await _db.NotificationLogs.FindAsync(logId);
-        if (log is null) return;
-        log.Status = status;
-        log.ErrorMessage = error;
-        log.ExternalId = externalId;
-        await _db.SaveChangesAsync();
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var sms = scope.ServiceProvider.GetRequiredService<SmsService>();
+            var whatsApp = scope.ServiceProvider.GetRequiredService<WhatsAppService>();
+            var emailQueue = scope.ServiceProvider.GetRequiredService<EmailQueueService>();
+
+            switch (channel.ToLowerInvariant())
+            {
+                case "sms":
+                    var smsResult = await sms.SendAsync(recipient, body);
+                    await UpdateLogStatusAsync(db, notificationLogId,
+                        smsResult.Success ? "Sent" : "Failed",
+                        smsResult.Error, smsResult.MessageId);
+                    break;
+
+                case "whatsapp":
+                    var waResult = await whatsApp.SendTextAsync(recipient, body);
+                    await UpdateLogStatusAsync(db, notificationLogId,
+                        waResult.Success ? "Sent" : "Failed",
+                        waResult.Error, waResult.MessageId);
+                    break;
+
+                case "email":
+                    await emailQueue.EnqueueAsync(recipient, subject ?? "RetailERP Notification", body);
+                    await UpdateLogStatusAsync(db, notificationLogId, "Sent", null, null);
+                    break;
+
+                default:
+                    await UpdateLogStatusAsync(db, notificationLogId, "Failed", $"Unknown channel: {channel}", null);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "[Notification] Failed to send {Channel} to {Recipient}", channel, recipient);
+            try
+            {
+                await using var scope = _scopeFactory.CreateAsyncScope();
+                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                await UpdateLogStatusAsync(db, notificationLogId, "Failed", ex.Message, null);
+            }
+            catch
+            {
+                // best-effort
+            }
+        }
+    }
+
+    private static async Task UpdateLogStatusAsync(ApplicationDbContext db, Guid logId, string status, string? error,
+        string? externalId)
+    {
+        var entity = await db.NotificationLogs.FindAsync(logId);
+        if (entity is null) return;
+        entity.Status = status;
+        entity.ErrorMessage = error;
+        entity.ExternalId = externalId;
+        await db.SaveChangesAsync();
     }
 
     private static string ReplacePlaceholders(string text, Dictionary<string, string> values)

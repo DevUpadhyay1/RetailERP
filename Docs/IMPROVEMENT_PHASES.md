@@ -7,7 +7,7 @@ This tracks the **“path to production quality”** plan: what is done, what is
 | Item | Status |
 |------|--------|
 | GitHub Actions `ci.yml` (build + test on push/PR) | Done |
-| Unit/integration tests for critical services | In progress (11+ tests; focus: POS, JWT, onboarding) |
+| Unit/integration tests for critical services | In progress (33+ tests; POS billing incl. returns/refunds + guardrails, JWT, onboarding, authz regressions) |
 | High coverage of whole codebase | Future goal — prioritize **money + stock + auth** |
 
 **Next steps for you:** Add tests when you change billing, stock, or coupons; run `dotnet test` before every push.
@@ -40,7 +40,7 @@ This tracks the **“path to production quality”** plan: what is done, what is
 | SQL + **Redis** health probes (when Redis cache enabled) | Done |
 | Serilog file + console logging | Done |
 | Runbook | `RUNBOOK.md` |
-| Kubernetes-style readiness JSON | Todo (optional) |
+| Kubernetes-style readiness JSON | Done — `GET /health/ready` (JSON, `ready`-tagged checks) |
 
 ---
 
@@ -49,8 +49,8 @@ This tracks the **“path to production quality”** plan: what is done, what is
 | Item | Status |
 |------|--------|
 | Indexes on Item (SKU, Barcode per company) | Done in `ApplicationDbContext` |
-| Review hot queries (N+1, AsNoTracking) | Todo — do when data grows |
-| Caching strategy doc | Todo |
+| Review hot queries (N+1, AsNoTracking) | In progress — API `ItemsController` moved to projection-first + SQL `LIKE` filtering |
+| Caching strategy doc | Done — [CACHING_STRATEGY.md](CACHING_STRATEGY.md) |
 
 ---
 
@@ -72,7 +72,7 @@ This tracks the **“path to production quality”** plan: what is done, what is
 |------|--------|
 | README.md | Done |
 | DEMO_SCRIPT.md | Done |
-| Architecture diagram (optional) | Todo — draw once for viva |
+| Architecture diagram (optional) | Done — [ARCHITECTURE.md](ARCHITECTURE.md) (Mermaid + narrative) |
 
 ---
 
@@ -82,6 +82,21 @@ This tracks the **“path to production quality”** plan: what is done, what is
 - **Phase 2:** Added `SECURITY_CHECKLIST.md`; small null-safety fixes in controllers (sort/dir binding, POS includes).
 - **Phase 4:** Confirmed DB indexes already exist — no migration needed for barcode/SKU.
 - **Tracking:** This file (`IMPROVEMENT_PHASES.md`) so you always know **what’s next**.
+
+## Latest closure batch (reliability + ops + docs)
+
+- **Phase 1:** `RemoveCouponAsync` regression test; **NotificationService** background sends use `IServiceScopeFactory` (no disposed `DbContext` after request).
+- **Phase 1 (continued):** Loyalty redeem/remove, payment removal → complete shortfall, `ProcessReturnAsync` stock + refund payment tests; **Phase 2:** log retention guidance expanded in `SECURITY_CHECKLIST.md`.
+- **Phase 1 (hardening):** Added safeguards/tests for over-return across multiple returns, empty/non-positive return rejections, refund-payment removal blocking, and payment removal after bill completion.
+- **Phase 4 (query tuning):** `Api/ItemsController` optimized by replacing eager-loaded entity materialization with direct DTO projections and DB-side `LIKE` filtering.
+- **Phase 4 (query tuning):** `Api/ItemsController.LowStock` now loads projected `ItemDto` rows directly (no eager include graph for low-stock page slices).
+- **Phase 4 (query tuning):** `PosController.Index` optimized to projection-only list rows for bill history (lighter payload/object graph per page).
+- **Phase 4 (query tuning):** `PosController.Returns` optimized to projection-only list rows for return history paging.
+- **Phase 4 (query tuning):** `NotificationsController.Index` optimized to projection-only paged rows (keeps list output while reducing include graph load).
+- **Phase 4 (query tuning):** `StockTransactionsController.Index` optimized to projection-only paged rows for stock ledger history.
+- **Phase 3:** `GET /health/ready` JSON for readiness probes (SQL + optional Redis).
+- **Phase 4:** `Docs/CACHING_STRATEGY.md`.
+- **Phase 6:** `Docs/ARCHITECTURE.md` (Mermaid) + README links; `RUNBOOK.md` updated for `/health/ready`.
 
 ## Production-readiness batch (code + ops)
 

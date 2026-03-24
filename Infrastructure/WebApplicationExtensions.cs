@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using RetailERP.Data.Seed;
 using RetailERP.Hubs;
 using Serilog;
@@ -107,5 +109,27 @@ public static class WebApplicationExtensions
         app.MapHub<RetailHub>("/hubs/retail");
 
         app.MapHealthChecks("/health").AllowAnonymous();
+
+        // Kubernetes-style readiness: SQL (+ Redis when enabled), tagged "ready" in AddHealthChecks.
+        app.MapHealthChecks("/health/ready", new HealthCheckOptions
+        {
+            Predicate = r => r.Tags.Contains("ready"),
+            ResponseWriter = async (context, report) =>
+            {
+                context.Response.ContentType = "application/json; charset=utf-8";
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    status = report.Status.ToString(),
+                    checks = report.Entries.ToDictionary(
+                        e => e.Key,
+                        e => new
+                        {
+                            status = e.Value.Status.ToString(),
+                            description = e.Value.Description,
+                            durationMs = Math.Round(e.Value.Duration.TotalMilliseconds, 2)
+                        })
+                });
+            }
+        }).AllowAnonymous();
     }
 }

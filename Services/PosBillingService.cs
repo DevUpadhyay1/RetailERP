@@ -385,6 +385,14 @@ public class PosBillingService
     {
         var payment = await _db.Payments.FirstOrDefaultAsync(p => p.PaymentId == paymentId);
         if (payment is null) return;
+        if (payment.IsRefund)
+            throw new InvalidOperationException("Refund entries cannot be removed.");
+
+        var bill = await _db.PosBills.FirstOrDefaultAsync(b => b.PosBillId == payment.PosBillId);
+        if (bill is null)
+            throw new InvalidOperationException("Bill not found.");
+        if (bill.Status != 1)
+            throw new InvalidOperationException("Payments can be removed only while bill is open.");
 
         _db.Payments.Remove(payment);
         await _db.SaveChangesAsync();
@@ -539,6 +547,8 @@ public class PosBillingService
 
         if (bill.Status != 2)
             throw new InvalidOperationException("Can only return items from completed bills.");
+        if (returnLines is null || returnLines.Count == 0)
+            throw new InvalidOperationException("Add at least one return line.");
 
         var posReturn = new PosReturn
         {
@@ -560,11 +570,18 @@ public class PosBillingService
 
         foreach (var rl in returnLines)
         {
+            if (rl.Qty <= 0)
+                throw new InvalidOperationException("Return quantity must be greater than zero.");
+
             var originalLine = bill.Lines.FirstOrDefault(l => l.PosBillLineId == rl.OriginalBillLineId)
                 ?? throw new InvalidOperationException("Original bill line not found.");
 
-            if (rl.Qty > originalLine.Qty)
-                throw new InvalidOperationException($"Return qty ({rl.Qty}) exceeds billed qty ({originalLine.Qty}) for {originalLine.ItemNameSnapshot}.");
+            var alreadyReturned = await _db.PosReturnLines
+                .Where(l => l.OriginalBillLineId == rl.OriginalBillLineId)
+                .SumAsync(l => l.Qty);
+            var remainingQty = originalLine.Qty - alreadyReturned;
+            if (rl.Qty > remainingQty)
+                throw new InvalidOperationException($"Return qty ({rl.Qty}) exceeds remaining qty ({remainingQty}) for {originalLine.ItemNameSnapshot}.");
 
             var refundAmount = rl.Qty * originalLine.UnitPrice;
             totalRefund += refundAmount;

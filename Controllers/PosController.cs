@@ -54,9 +54,6 @@ public class PosController : Controller
 
         var query = _db.PosBills
             .AsNoTracking()
-            .Include(b => b.Store)
-            .Include(b => b.Customer)
-            .Include(b => b.CashierUser)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(q))
@@ -89,7 +86,31 @@ public class PosController : Controller
         };
 
         var total = await query.CountAsync();
-        var rows = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var rows = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(b => new PosBill
+            {
+                PosBillId = b.PosBillId,
+                BillNo = b.BillNo,
+                BillDate = b.BillDate,
+                GrandTotal = b.GrandTotal,
+                Status = b.Status,
+                Store = b.Store == null ? null : new Store
+                {
+                    Name = b.Store.Name
+                },
+                Customer = b.Customer == null ? null : new Customer
+                {
+                    Name = b.Customer.Name
+                },
+                CashierUser = b.CashierUser == null ? null : new ApplicationUser
+                {
+                    DisplayName = b.CashierUser.DisplayName,
+                    Email = b.CashierUser.Email
+                }
+            })
+            .ToListAsync();
 
         ViewData["total"] = total;
         ViewData["from"] = total == 0 ? 0 : ((page - 1) * pageSize + 1);
@@ -662,9 +683,6 @@ public class PosController : Controller
 
         var query = _db.PosReturns
             .AsNoTracking()
-            .Include(r => r.OriginalBill)
-            .Include(r => r.Customer)
-            .Include(r => r.Store)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(q))
@@ -682,7 +700,31 @@ public class PosController : Controller
         };
 
         var total = await query.CountAsync();
-        var rows = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var rows = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(r => new PosReturn
+            {
+                PosReturnId = r.PosReturnId,
+                ReturnNo = r.ReturnNo,
+                ReturnDate = r.ReturnDate,
+                OriginalBillId = r.OriginalBillId,
+                TotalRefund = r.TotalRefund,
+                Status = r.Status,
+                OriginalBill = r.OriginalBill == null ? null : new PosBill
+                {
+                    BillNo = r.OriginalBill.BillNo
+                },
+                Store = r.Store == null ? null : new Store
+                {
+                    Name = r.Store.Name
+                },
+                Customer = r.Customer == null ? null : new Customer
+                {
+                    Name = r.Customer.Name
+                }
+            })
+            .ToListAsync();
 
         ViewData["total"] = total;
         ViewData["from"] = total == 0 ? 0 : ((page - 1) * pageSize + 1);

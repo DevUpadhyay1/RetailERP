@@ -41,6 +41,8 @@
                 <div class="tb-item" data-type="tax_summary"><i class="bi bi-receipt"></i> Tax Summary</div>
                 <div class="tb-item" data-type="footer"><i class="bi bi-chat-text"></i> Footer</div>
                 <div class="tb-section mt-2">Custom Elements</div>
+                <div class="tb-item" data-type="header_row"><i class="bi bi-layout-three-columns"></i> Header Row (L/C/R)</div>
+                <div class="tb-item" data-type="social_row"><i class="bi bi-share"></i> Social / Contact Row</div>
                 <div class="tb-item" data-type="text_block"><i class="bi bi-fonts"></i> Text Block</div>
                 <div class="tb-item" data-type="separator"><i class="bi bi-dash-lg"></i> Separator</div>
                 <div class="tb-item" data-type="spacer"><i class="bi bi-arrows-expand"></i> Spacer</div>
@@ -126,8 +128,12 @@
 .cv-inner .r{display:flex;justify-content:space-between;gap:4px}
 .cv-inner .b{font-weight:bold}
 .cv-inner .c{text-align:center}
+.cv-inner .l{text-align:left}
+.cv-inner .rr{text-align:right}
 .cv-inner .sm{font-size:9px}
 .cv-inner .md{font-size:10px}
+.cv-inner .hc{display:flex;align-items:center;gap:8px}
+.cv-inner .hc .cell{flex:1;min-width:0}
 
 /* ─── Properties panel ─── */
 #propPanel .pg{margin-bottom:10px}
@@ -158,13 +164,16 @@ const DEFS={
     logo:{l:'Logo',s:true},store_header:{l:'Store',s:true},bill_info:{l:'Bill Info',s:true},
     items_table:{l:'Items',s:true},totals:{l:'Totals',s:true},payments:{l:'Payments',s:true},
     tax_summary:{l:'Tax',s:true},footer:{l:'Footer',s:true},
+    header_row:{l:'Header Row',s:false},social_row:{l:'Social Row',s:false},
     text_block:{l:'Text',s:false},separator:{l:'Line',s:false},spacer:{l:'Space',s:false}
 };
 
 const PRESETS={
     modern:[
         {type:'logo',props:{maxHeight:50,align:'center'}},
+        {type:'header_row',props:{leftText:'',centerMode:'logo',centerText:'',rightText:'',fontSize:9,logoHeight:28,showSeparator:false,marginTop:0,marginBottom:2}},
         {type:'store_header',props:{showGst:true,headerText:''}},
+        {type:'social_row',props:{instagram:'',whatsapp:'',facebook:'',xhandle:'',youtube:'',phone:'',email:'',website:'',align:'center',separator:' | ',fontSize:9,marginTop:0,marginBottom:2}},
         {type:'bill_info',props:{showCustomerPhone:true,showCustomerEmail:false,showCashier:true}},
         {type:'items_table',props:{showHsn:false}},
         {type:'totals',props:{showDiscount:true}},
@@ -174,7 +183,9 @@ const PRESETS={
     ],
     classic:[
         {type:'logo',props:{maxHeight:52,align:'center'}},
+        {type:'header_row',props:{leftText:'',centerMode:'logo',centerText:'',rightText:'',fontSize:9,logoHeight:30,showSeparator:true,marginTop:0,marginBottom:2}},
         {type:'store_header',props:{showGst:true,headerText:'RETAIL INVOICE'}},
+        {type:'social_row',props:{instagram:'',whatsapp:'',facebook:'',xhandle:'',youtube:'',phone:'',email:'',website:'',align:'center',separator:' | ',fontSize:9,marginTop:0,marginBottom:2}},
         {type:'bill_info',props:{showCustomerPhone:true,showCustomerEmail:false,showCashier:true}},
         {type:'separator',props:{style:'solid',thickness:1,color:'#555555'}},
         {type:'items_table',props:{showHsn:true}},
@@ -196,17 +207,19 @@ const gid=()=>'c'+(++uid);
 
 function dp(t){
     const m={
-        logo:{maxHeight:50,align:'center'},
-        store_header:{showGst:true,headerText:''},
-        bill_info:{},
-        items_table:{showHsn:false},
-        totals:{showDiscount:true},
-        payments:{},
-        tax_summary:{},
-        footer:{text:'Thank you for shopping!',showItemCount:true},
-        text_block:{text:'Your text here',fontSize:12,fontFamily:'sans-serif',align:'center',bold:false,italic:false,color:'#000000'},
-        separator:{style:'dashed',thickness:1,color:'#999999'},
-        spacer:{height:12}
+        logo:{maxHeight:50,align:'center',marginTop:0,marginBottom:2},
+        store_header:{showGst:true,headerText:'',marginTop:0,marginBottom:2},
+        bill_info:{marginTop:0,marginBottom:2},
+        items_table:{showHsn:false,marginTop:0,marginBottom:2},
+        totals:{showDiscount:true,marginTop:0,marginBottom:2},
+        payments:{marginTop:0,marginBottom:2},
+        tax_summary:{marginTop:0,marginBottom:2},
+        footer:{text:'Thank you for shopping!',showItemCount:true,marginTop:0,marginBottom:2},
+        header_row:{leftText:'',centerMode:'logo',centerText:'',rightText:'',fontSize:9,logoHeight:28,showSeparator:false,marginTop:0,marginBottom:2},
+        social_row:{instagram:'',whatsapp:'',facebook:'',xhandle:'',youtube:'',phone:'',email:'',website:'',align:'center',separator:' | ',fontSize:9,marginTop:0,marginBottom:2},
+        text_block:{text:'Your text here',fontSize:12,fontFamily:'sans-serif',align:'center',bold:false,italic:false,color:'#000000',marginTop:0,marginBottom:2},
+        separator:{style:'dashed',thickness:1,color:'#999999',marginTop:0,marginBottom:2},
+        spacer:{height:12,marginTop:0,marginBottom:0}
     };
     return JSON.parse(JSON.stringify(m[t]||{}));
 }
@@ -219,7 +232,7 @@ try{
         comps.push({uid:gid(),type:t,props:Object.assign(dp(t),c.props||{})});
     });
 }catch(e){console.warn('parse',e)}
-if(!comps.length)['logo','store_header','bill_info','items_table','totals','payments','tax_summary','footer'].forEach(t=>comps.push({uid:gid(),type:t,props:dp(t)}));
+if(!comps.length)['logo','header_row','store_header','social_row','bill_info','items_table','totals','payments','tax_summary','footer'].forEach(t=>comps.push({uid:gid(),type:t,props:dp(t)}));
 
 const $c=document.getElementById('canvas'), $p=document.getElementById('propPanel');
 
@@ -267,6 +280,10 @@ function render(){
         // WYSIWYG inner content
         const inner=document.createElement('div');
         inner.className='cv-inner';
+        const mt = parseInt(comp.props?.marginTop ?? 0, 10) || 0;
+        const mb = parseInt(comp.props?.marginBottom ?? 0, 10) || 0;
+        inner.style.marginTop = mt + 'px';
+        inner.style.marginBottom = mb + 'px';
         inner.innerHTML=renderWysiwyg(comp);
         blk.appendChild(inner);
 
@@ -285,31 +302,52 @@ function renderWysiwyg(comp){
     const p=comp.props;
     switch(comp.type){
         case 'logo':
-            if(CO.logo) return `<div style="text-align:${p.align||'center'}"><img src="/${CO.logo}?v=1" style="max-height:${p.maxHeight||50}px;max-width:90%"/></div>`;
-            return `<div class="c" style="color:#bbb;padding:8px">[Company Logo]</div>`;
+            if(CO.logo) return applySpacing(`<div style="text-align:${p.align||'center'}"><img src="/${CO.logo}?v=1" style="max-height:${p.maxHeight||50}px;max-width:90%"/></div>`, p);
+            return applySpacing(`<div class="c" style="color:#bbb;padding:8px">[Company Logo]</div>`, p);
+        case 'header_row':{
+            const logoH = p.logoHeight || 28;
+            const center = (p.centerMode||'logo') === 'text'
+                ? `<div class="c" style="font-size:${p.fontSize||9}px">${esc(p.centerText||'')}</div>`
+                : (CO.logo
+                    ? `<div class="c"><img src="/${CO.logo}?v=1" style="max-height:${logoH}px;max-width:95%"/></div>`
+                    : `<div class="c sm text-muted">[Logo]</div>`);
+            let h = `<div class="hc">`
+                + `<div class="cell l" style="font-size:${p.fontSize||9}px;white-space:pre-wrap">${esc(p.leftText||'')}</div>`
+                + `<div class="cell">${center}</div>`
+                + `<div class="cell rr" style="font-size:${p.fontSize||9}px;white-space:pre-wrap">${esc(p.rightText||'')}</div>`
+                + `</div>`;
+            if (p.showSeparator) h += `<hr/>`;
+            return applySpacing(h, p);
+        }
+        case 'social_row':{
+            const parts = renderSocialTokens(p);
+            if (!parts.length) return applySpacing(`<div class="c sm text-muted">[Add Instagram / WhatsApp / Phone / Email in properties]</div>`, p);
+            const ta = p.align || 'center';
+            return applySpacing(`<div style="font-size:${p.fontSize||9}px;text-align:${ta};word-break:break-word">${esc(parts.join(p.separator || ' | '))}</div>`, p);
+        }
         case 'store_header':{
             let h=`<div class="c b" style="font-size:13px">${esc(CO.name)}</div>`;
             if(CO.addr)h+=`<div class="c sm">${esc(CO.addr)}</div>`;
             if(CO.phone)h+=`<div class="c sm">Ph: ${esc(CO.phone)}</div>`;
             if(p.showGst&&CO.gst)h+=`<div class="c sm">GSTIN: ${esc(CO.gst)}</div>`;
             if(p.headerText)h+=`<div class="c sm">${esc(p.headerText)}</div>`;
-            h+='<hr/>';return h;
+            h+='<hr/>';return applySpacing(h, p);
         }
         case 'bill_info':
-            return `<div class="r md"><span>Bill#: <b>POS-0001</b></span><span>08/03/2026</span></div><div class="md">Customer: Walk-in</div><div class="md">Cashier: Admin</div><hr/>`;
+            return applySpacing(`<div class="r md"><span>Bill#: <b>POS-0001</b></span><span>08/03/2026</span></div><div class="md">Customer: Walk-in</div><div class="md">Cashier: Admin</div><hr/>`, p);
         case 'items_table':{
             let h=`<div class="r b md"><span>Item</span>${p.showHsn?'<span>HSN</span>':''}<span>Qty</span><span>Rate</span><span>Amt</span></div>`;
             h+=`<div class="md"><div class="b">Paracetamol 500mg</div><div class="r" style="color:#888"><span>2 x ₹25.00</span>${p.showHsn?'<span>30049099</span>':''}<span>₹50.00</span></div></div>`;
             h+=`<div class="md"><div class="b">Amoxicillin 250mg</div><div class="r" style="color:#888"><span>1 x ₹120.00</span>${p.showHsn?'<span>30041000</span>':''}<span>₹120.00</span></div></div>`;
             h+=`<div class="md"><div class="b">Vitamin D3 Drops</div><div class="r" style="color:#888"><span>1 x ₹180.00</span>${p.showHsn?'<span>29362990</span>':''}<span>₹180.00</span></div></div>`;
-            h+='<hr/>';return h;
+            h+='<hr/>';return applySpacing(h, p);
         }
         case 'totals':{
             let h=`<div class="r md"><span>Sub Total</span><span>₹350.00</span></div>`;
             if(p.showDiscount)h+=`<div class="r md"><span>Discount</span><span>- ₹0.00</span></div>`;
             h+=`<div class="r md"><span>Tax (GST)</span><span>+ ₹21.00</span></div><hr/>`;
             h+=`<div class="r b" style="font-size:13px"><span>GRAND TOTAL</span><span>₹371.00</span></div><hr/>`;
-            return h;
+            return applySpacing(h, p);
         }
         case 'payments':
             return `<div class="b md">Payments:</div><div class="r md"><span>Cash</span><span>₹400.00</span></div><div class="r b md"><span>Change</span><span>₹29.00</span></div><hr/>`;
@@ -320,19 +358,36 @@ function renderWysiwyg(comp){
             if(p.showItemCount)h+=`<div class="c sm">Items: 4 &bull; 08/03/2026 14:30</div>`;
             h+=`<div class="c sm">${esc(p.text||'Thank you!')}</div>`;
             h+=`<div class="c" style="font-size:8px">&mdash; RetailERP POS &mdash;</div>`;
-            return h;
+            return applySpacing(h, p);
         }
         case 'text_block':{
             const ff=p.fontFamily||'sans-serif',fs=p.fontSize||12,fw=p.bold?'bold':'normal',fi=p.italic?'italic':'normal',cl=p.color||'#000',ta=p.align||'center';
             let txt=(p.text||'').replace(/\{\{company_name\}\}/g,CO.name).replace(/\{\{bill_no\}\}/g,'POS-0001').replace(/\{\{date\}\}/g,'08/03/2026').replace(/\{\{grand_total\}\}/g,'₹371.00').replace(/\{\{customer_name\}\}/g,'Walk-in');
-            return `<div style="font-family:${ff};font-size:${fs}px;font-weight:${fw};font-style:${fi};color:${cl};text-align:${ta};white-space:pre-wrap">${esc(txt)}</div>`;
+            return applySpacing(`<div style="font-family:${ff};font-size:${fs}px;font-weight:${fw};font-style:${fi};color:${cl};text-align:${ta};white-space:pre-wrap">${esc(txt)}</div>`, p);
         }
         case 'separator':
-            return `<hr style="border-style:${p.style||'dashed'};border-width:${p.thickness||1}px;border-color:${p.color||'#999'};margin:3px 0"/>`;
+            return applySpacing(`<hr style="border-style:${p.style||'dashed'};border-width:${p.thickness||1}px;border-color:${p.color||'#999'};margin:3px 0"/>`, p);
         case 'spacer':
-            return `<div style="height:${p.height||12}px"></div>`;
+            return applySpacing(`<div style="height:${p.height||12}px"></div>`, p);
         default:return '';
     }
+}
+
+function applySpacing(inner, props){
+    return inner;
+}
+
+function renderSocialTokens(p){
+    const parts=[];
+    if((p.instagram||'').trim()) parts.push(`IG: ${(p.instagram||'').trim()}`);
+    if((p.whatsapp||'').trim()) parts.push(`WA: ${(p.whatsapp||'').trim()}`);
+    if((p.facebook||'').trim()) parts.push(`FB: ${(p.facebook||'').trim()}`);
+    if((p.xhandle||'').trim()) parts.push(`X: ${(p.xhandle||'').trim()}`);
+    if((p.youtube||'').trim()) parts.push(`YT: ${(p.youtube||'').trim()}`);
+    if((p.phone||'').trim()) parts.push(`Ph: ${(p.phone||'').trim()}`);
+    if((p.email||'').trim()) parts.push(`Email: ${(p.email||'').trim()}`);
+    if((p.website||'').trim()) parts.push(`Web: ${(p.website||'').trim()}`);
+    return parts;
 }
 
 function pick(u){
@@ -359,6 +414,28 @@ function renderProps(){
         case 'store_header':
             h+=pChk('showGst','Show GSTIN',comp.props.showGst);
             h+=pTa('headerText','Extra Header Line',comp.props.headerText);
+            break;
+        case 'header_row':
+            h+=pTa('leftText','Left Text',comp.props.leftText);
+            h+=pSel('centerMode','Center Content',comp.props.centerMode,[['logo','Company Logo'],['text','Custom Text']]);
+            h+=pIn('centerText','Center Text (if center is text)',comp.props.centerText);
+            h+=pTa('rightText','Right Text',comp.props.rightText);
+            h+=pNum('fontSize','Font Size',comp.props.fontSize,7,20);
+            h+=pRange('logoHeight','Center Logo Height (px)',comp.props.logoHeight,16,70);
+            h+=pChk('showSeparator','Show Separator Line',comp.props.showSeparator);
+            break;
+        case 'social_row':
+            h+=pIn('instagram','Instagram Handle',comp.props.instagram);
+            h+=pIn('whatsapp','WhatsApp Number/Text',comp.props.whatsapp);
+            h+=pIn('facebook','Facebook Page',comp.props.facebook);
+            h+=pIn('xhandle','X (Twitter) Handle',comp.props.xhandle);
+            h+=pIn('youtube','YouTube Channel',comp.props.youtube);
+            h+=pIn('phone','Phone',comp.props.phone);
+            h+=pIn('email','Email',comp.props.email);
+            h+=pIn('website','Website',comp.props.website);
+            h+=pIn('separator','Separator',comp.props.separator);
+            h+=pSel('align','Alignment',comp.props.align,[['left','Left'],['center','Center'],['right','Right']]);
+            h+=pNum('fontSize','Font Size',comp.props.fontSize,7,20);
             break;
         case 'bill_info':
             h+=`<p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>Auto-filled from bill data: Bill#, Date, Customer, Cashier.</p>`;
@@ -397,6 +474,7 @@ function renderProps(){
               +badge('{{company_name}}')+badge('{{bill_no}}')+badge('{{bill_date}}')+badge('{{bill_time}}')+badge('{{grand_total}}')
               +badge('{{grand_total_words}}')+badge('{{sub_total}}')+badge('{{tax_total}}')+badge('{{discount}}')
               +badge('{{customer_name}}')+badge('{{customer_phone}}')+badge('{{customer_email}}')
+              +badge('IG: yourshop')+badge('WA: +91XXXXXXXXXX')+badge('FB: yourpage')+badge('YT: yourchannel')
               +`</div></div>`;
             break;
         case 'separator':
@@ -408,6 +486,11 @@ function renderProps(){
             h+=pRange('height','Height (px)',comp.props.height,4,60);
             break;
     }
+
+    h+=`<div class="border-top pt-2 mt-2">`;
+    h+=pRange('marginTop','Top Spacing (px)',comp.props.marginTop ?? 0,0,40);
+    h+=pRange('marginBottom','Bottom Spacing (px)',comp.props.marginBottom ?? 0,0,40);
+    h+=`</div>`;
 
     // Delete button
     h+=`<button class="btn btn-outline-danger btn-sm w-100 btn-del-comp"><i class="bi bi-trash me-1"></i>Remove this block</button>`;
@@ -453,6 +536,7 @@ function renderProps(){
 
 // Prop helpers
 function pTa(k,l,v){return `<div class="pg"><div class="pl">${l}</div><textarea data-prop="${k}" class="form-control form-control-sm" rows="2">${esc(v||'')}</textarea></div>`}
+function pIn(k,l,v){return `<div class="pg"><div class="pl">${l}</div><input data-prop="${k}" class="form-control form-control-sm" value="${esc(v||'')}"/></div>`}
 function pNum(k,l,v,mn,mx){return `<div class="pg"><div class="pl">${l}</div><input type="number" data-prop="${k}" class="form-control form-control-sm" value="${v}" min="${mn}" max="${mx}"/></div>`}
 function pRange(k,l,v,mn,mx){return `<div class="pg"><div class="pl">${l}: <span class="rv">${v}</span></div><input type="range" data-prop="${k}" class="form-range" value="${v}" min="${mn}" max="${mx}"/></div>`}
 function pSel(k,l,v,opts){let h=`<div class="pg"><div class="pl">${l}</div><select data-prop="${k}" class="form-select form-select-sm">`;opts.forEach(([o,t])=>{h+=`<option value="${o}"${o===v?' selected':''}>${t}</option>`});return h+'</select></div>'}

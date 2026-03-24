@@ -7,14 +7,14 @@ Update this after every meaningful work batch.
 
 | Phase | Name | Completion |
 |------|------|------------|
-| 1 | Reliable (tests + CI) | 75% |
-| 2 | Security | 96% |
-| 3 | Observable & operable | 88% |
-| 4 | Performance | 86% |
+| 1 | Reliable (tests + CI) | 93% |
+| 2 | Security | 97% |
+| 3 | Observable & operable | 93% |
+| 4 | Performance | 96% |
 | 5 | Maintainable codebase | 90% |
-| 6 | Demo & documentation | 85% |
+| 6 | Demo & documentation | 93% |
 
-**Overall completion:** **~90%**
+**Overall completion:** **~96%**
 
 ---
 
@@ -23,7 +23,7 @@ Update this after every meaningful work batch.
 ### Phase 1 — Reliable (tests + CI)
 
 - CI pipeline is active for build + tests on push/PR.
-- Core service test suite is in place and expanded (17 tests).
+- Core service test suite is in place and expanded (POS billing, security regressions; coupon remove; loyalty attach/redeem/remove; payment removal + complete shortfall; **return/refund** stock + refund payment; over-return prevention, non-positive/empty-return validation, refund-payment removal block, and payment-removal-on-closed-bill safeguards).
 - Regression-first test practice is started but not yet complete.
 
 ### Phase 2 — Security
@@ -54,6 +54,13 @@ Update this after every meaningful work batch.
 - Dashboard widget queries optimized by removing unnecessary eager-loading on projected read paths (recent lists, expiring items, category/top-item charts, EOD summary).
 - Forecast snapshot loading optimized by removing unnecessary eager-loading/materialization on stock reads (project-only required fields).
 - Sales report endpoint optimized to compute totals/counts in database instead of aggregating from paged in-memory rows.
+- Caching strategy note added (`Docs/CACHING_STRATEGY.md`) for dashboard/report/POS hotspots.
+- API items listing/details/create-read path optimized to projection-first DTO queries (`Select`) and SQL `LIKE` search (removed unnecessary eager-loading/materialization).
+- API low-stock path optimized to projection-first DTO loading (removed eager `Include` materialization for item/unit/category reads).
+- POS bill history list optimized to projection-only rows (removed eager graph materialization while keeping list fields unchanged).
+- POS returns list optimized to projection-only rows (reduced query/materialization overhead for return history paging).
+- Notifications log list optimized to projection-only paging rows (removed unnecessary include/materialization of related entities).
+- Stock ledger list optimized to projection-only paging rows (reduced related-entity graph materialization for stock movement history).
 - Structured broader performance review (query shape/read-only optimization on more screens) is still pending.
 
 ### Phase 5 — Maintainable codebase
@@ -64,6 +71,7 @@ Update this after every meaningful work batch.
 ### Phase 6 — Demo & documentation
 
 - Core project docs and demo support docs are available.
+- Architecture overview with Mermaid diagram: `Docs/ARCHITECTURE.md`.
 - Documentation tracking process is now established with this file.
 
 ---
@@ -72,13 +80,12 @@ Update this after every meaningful work batch.
 
 ### Phase 1 (Reliable) pending
 
-- Add regression tests for:
-  - hold/unhold + complete transitions,
-  - additional edge paths around coupons/loyalty/payment removals.
+- Optional: further POS edge cases (multi-line partial returns with discounts/tax, mixed refund methods) as issues appear.
+- **Reliability fix:** async notification sends now resolve a **new DI scope** for DB + HTTP clients (avoids `ObjectDisposedException` on scoped `DbContext` after the HTTP request ends).
 
 ### Phase 2 (Security) pending
 
-- Log retention/access control verification on target deployment environment.
+- Apply log retention/ACL guidance on the target server (see expanded bullets in `SECURITY_CHECKLIST.md`).
 
 ### Phase 4 (Performance) pending
 
@@ -121,11 +128,11 @@ Update this after every meaningful work batch.
 - **Security operations:** verify server-side log retention/access controls and complete one final pen-style execution run.
 - **Performance validation:** run basic profiling on production-like data volume and capture before/after query timings.
 - **Testing depth:** continue adding regression tests for newly fixed bugs and critical money/stock edge cases.
-- **Architecture artifact:** add one final architecture diagram for handover/viva pack.
+- **Architecture artifact:** `Docs/ARCHITECTURE.md` (expand with deployment topology if needed).
 
 ### Current status
 
-- **Estimated overall completion:** **~90%**
+- **Estimated overall completion:** **~96%**
 - **Project state:** demo-ready and strong for viva; final production-hardening tasks remain.
 
 ---

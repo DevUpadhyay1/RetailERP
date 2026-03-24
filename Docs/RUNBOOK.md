@@ -12,6 +12,7 @@
 | Check | Action |
 |-------|--------|
 | App listening | Hit site root or `/health` |
+| Readiness (LB / K8s) | `GET /health/ready` returns JSON; includes SQL (+ Redis when enabled) |
 | Database | `/health` should report SQL check; verify migrations applied |
 | Logs | Inspect `Logs/retailerp-*.log` on server |
 | Redis | Optional; if misconfigured, app uses in-memory cache (see startup logs) |

@@ -27,8 +27,6 @@ public class NotificationsController : Controller
     {
         const int pageSize = 30;
         var query = _db.NotificationLogs.AsNoTracking()
-            .Include(n => n.Customer)
-            .Include(n => n.Template)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(channel))
@@ -47,7 +45,25 @@ public class NotificationsController : Controller
         };
 
         var total = await query.CountAsync();
-        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(n => new NotificationLog
+            {
+                NotificationLogId = n.NotificationLogId,
+                Channel = n.Channel,
+                Recipient = n.Recipient,
+                Subject = n.Subject,
+                Status = n.Status,
+                ErrorMessage = n.ErrorMessage,
+                RefType = n.RefType,
+                SentAtUtc = n.SentAtUtc,
+                Customer = n.Customer == null ? null : new Customer
+                {
+                    Name = n.Customer.Name
+                }
+            })
+            .ToListAsync();
 
         ViewBag.Channel = channel;
         ViewBag.Status = status;
