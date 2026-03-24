@@ -34,10 +34,19 @@ public class StoresController : ApiBaseController
         {
             Data = list.Select(s => new StoreDto
             {
-                StoreId = s.StoreId, StoreCode = s.StoreCode, Name = s.Name, Address = s.Address,
-                Phone = s.Phone, City = s.City, State = s.State, GstNo = s.GstNo, IsActive = s.IsActive
+                StoreId = s.StoreId,
+                StoreCode = s.StoreCode,
+                Name = s.Name,
+                Address = s.Address,
+                Phone = s.Phone,
+                City = s.City,
+                State = s.State,
+                GstNo = s.GstNo,
+                IsActive = s.IsActive
             }).ToList(),
-            Page = page, PageSize = pageSize, TotalCount = total
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
         });
     }
 
@@ -48,8 +57,15 @@ public class StoresController : ApiBaseController
         if (s is null) return NotFound(ApiResponse<object>.Fail("Store not found."));
         return Ok(ApiResponse<StoreDto>.Ok(new StoreDto
         {
-            StoreId = s.StoreId, StoreCode = s.StoreCode, Name = s.Name, Address = s.Address,
-            Phone = s.Phone, City = s.City, State = s.State, GstNo = s.GstNo, IsActive = s.IsActive
+            StoreId = s.StoreId,
+            StoreCode = s.StoreCode,
+            Name = s.Name,
+            Address = s.Address,
+            Phone = s.Phone,
+            City = s.City,
+            State = s.State,
+            GstNo = s.GstNo,
+            IsActive = s.IsActive
         }));
     }
 
@@ -59,17 +75,28 @@ public class StoresController : ApiBaseController
         if (!ModelState.IsValid) return BadRequest(ApiResponse<object>.Fail("Validation failed."));
         var entity = new Store
         {
-            StoreCode = dto.StoreCode, Name = dto.Name, Address = dto.Address,
-            Phone = dto.Phone, City = dto.City, State = dto.State, GstNo = dto.GstNo
+            StoreCode = dto.StoreCode,
+            Name = dto.Name,
+            Address = dto.Address,
+            Phone = dto.Phone,
+            City = dto.City,
+            State = dto.State,
+            GstNo = dto.GstNo
         };
         _db.Stores.Add(entity);
         await _db.SaveChangesAsync();
         return CreatedAtAction(nameof(Get), new { id = entity.StoreId },
             ApiResponse<StoreDto>.Ok(new StoreDto
             {
-                StoreId = entity.StoreId, StoreCode = entity.StoreCode, Name = entity.Name,
-                Address = entity.Address, Phone = entity.Phone, City = entity.City,
-                State = entity.State, GstNo = entity.GstNo, IsActive = true
+                StoreId = entity.StoreId,
+                StoreCode = entity.StoreCode,
+                Name = entity.Name,
+                Address = entity.Address,
+                Phone = entity.Phone,
+                City = entity.City,
+                State = entity.State,
+                GstNo = entity.GstNo,
+                IsActive = true
             }));
     }
 

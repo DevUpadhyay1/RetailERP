@@ -34,7 +34,9 @@ public class PromotionsController : ApiBaseController
         return Ok(new PagedResponse<PromotionDto>
         {
             Data = items.Select(MapToDto).ToList(),
-            Page = page, PageSize = pageSize, TotalCount = total
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
         });
     }
 

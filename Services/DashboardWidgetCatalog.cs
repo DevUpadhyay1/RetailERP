@@ -99,7 +99,7 @@ public static class DashboardWidgetCatalog
             .ToList();
 
         // Lay out top KPI cards in a row of 4, then charts, then tables
-        var kpis   = available.Where(w => w.Type == WidgetType.Kpi).Take(4).ToList();
+        var kpis = available.Where(w => w.Type == WidgetType.Kpi).Take(4).ToList();
         var charts = available.Where(w => w.Type == WidgetType.Chart).Take(2).ToList();
         var tables = available.Where(w => w.Type == WidgetType.Table).Take(2).ToList();
 

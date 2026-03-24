@@ -32,7 +32,9 @@ public class WarehousesController : ApiBaseController
         return Ok(new PagedResponse<WarehouseDto>
         {
             Data = list.Select(MapToDto).ToList(),
-            Page = page, PageSize = pageSize, TotalCount = total
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
         });
     }
 
@@ -77,7 +79,10 @@ public class WarehousesController : ApiBaseController
 
     private static WarehouseDto MapToDto(Warehouse w) => new()
     {
-        WarehouseId = w.WarehouseId, Name = w.Name, Address = w.Address,
-        StoreId = w.StoreId, StoreName = w.Store?.Name
+        WarehouseId = w.WarehouseId,
+        Name = w.Name,
+        Address = w.Address,
+        StoreId = w.StoreId,
+        StoreName = w.Store?.Name
     };
 }

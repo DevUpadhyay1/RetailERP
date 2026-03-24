@@ -19,7 +19,7 @@ dotnet ef database update   # from project folder, if you use EF CLI
 dotnet run --project RetailERP.csproj
 ```
 
-- **HTTP profile:** see `Properties/launchSettings.json` (e.g. `http://localhost:6000` if you changed ports to avoid Windows socket issues).
+- **HTTP profile:** see `Properties/launchSettings.json` (runs on `http://localhost:5820` or `https://localhost:7240` by default).
 - **Swagger (Development):** `/swagger`
 - **Health:** `GET /health` (includes SQL Server check)
 
@@ -52,20 +52,22 @@ GitHub Actions workflow: `.github/workflows/ci.yml` (build + test on push/PR).
 | `Services/` | Business logic (POS, invoices, loyalty, etc.) |
 | `Data/` | EF Core context, entities, migrations |
 | `Infrastructure/` | Startup composition (`AddRetailErp`, `UseRetailErpPipelineAsync`) |
-| `RetailERP.Tests/` | xUnit + in-memory EF tests |
+| `RetailERP.Tests/` | xUnit + in-memory EF integration and unit tests |
 
 ## Operations (short runbook)
 
 1. **Deploy:** publish `RetailERP.csproj`, set `ASPNETCORE_ENVIRONMENT=Production`, configure connection string and secrets on the host.
 2. **Database:** run migrations (`dotnet ef database update`) against production DB from a controlled pipeline or maintenance window.
 3. **Logs:** file logs under `Logs/retailerp-*.log` (rolling daily); console in Development.
-4. **Smoke checks:** `GET /health` after deploy.
+4. **Smoke checks:** `GET /health` after deploy. See [Docs/RUNBOOK.md](Docs/RUNBOOK.md) for more.
 
-## Roadmap / improvement phases
+## Roadmap / improvement phases (~80% complete)
 
-See [Docs/IMPROVEMENT_PHASES.md](Docs/IMPROVEMENT_PHASES.md) for what’s done next (tests, security, performance).
+See [Docs/IMPROVEMENT_PHASES.md](Docs/IMPROVEMENT_PHASES.md) for what's done next (tests, security, performance).
 Overall tracker: [Docs/OVERALL_PROGRESS_TRACKER.md](Docs/OVERALL_PROGRESS_TRACKER.md).
+Viva / Real-World Demo guide: [Docs/REAL_WORLD_MAPPING.md](Docs/REAL_WORLD_MAPPING.md).
 Architecture overview: [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) · Caching notes: [Docs/CACHING_STRATEGY.md](Docs/CACHING_STRATEGY.md).
+Operational runbook: [Docs/RUNBOOK.md](Docs/RUNBOOK.md).
 Security before production: [Docs/SECURITY_CHECKLIST.md](Docs/SECURITY_CHECKLIST.md).
 **Production deploy:** [Docs/PRODUCTION_DEPLOYMENT.md](Docs/PRODUCTION_DEPLOYMENT.md) (env vars, Docker, health, proxy).
 

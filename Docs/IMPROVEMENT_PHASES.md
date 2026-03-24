@@ -1,117 +1,118 @@
 # RetailERP improvement phases (roadmap)
 
-This tracks the **“path to production quality”** plan: what is done, what is next, and where to learn more.
+This tracks the **"path to production quality"** plan: what is done, what is next, and where to learn more.
 
-## Phase 1 — Reliable (tests + CI)
+## Phase 1 — Reliable (tests + CI) · **78%**
 
 | Item | Status |
 |------|--------|
 | GitHub Actions `ci.yml` (build + test on push/PR) | Done |
-| Unit/integration tests for critical services | In progress (33+ tests; POS billing incl. returns/refunds + guardrails, JWT, onboarding, authz regressions) |
-| High coverage of whole codebase | Future goal — prioritize **money + stock + auth** |
-
-**Next steps for you:** Add tests when you change billing, stock, or coupons; run `dotnet test` before every push.
+| Service/regression tests (POS, coupons, loyalty, returns, payments, security auth) | Done — 33 tests |
+| WebApplicationFactory integration tests (health, auth, correlation-id, swagger, benchmark) | Done — 6 tests |
+| **Total: 39 tests, 0 failures** | ✅ |
+| Coverage thresholds in CI | Future goal |
 
 ---
 
-## Phase 2 — Security
+## Phase 2 — Security · **82%**
 
 | Item | Status |
 |------|--------|
-| Identity + lockout + JWT for API | Already in app |
-| Security checklist doc | `SECURITY_CHECKLIST.md` |
-| Production JWT / connection validation (fail fast) | Done — `ProductionStartupValidation` |
-| API `login` / `refresh` rate limited (`Login` policy) | Done |
+| Identity + lockout + JWT for API | Done |
+| `ProductionStartupValidation` (fail-fast on weak secrets) | Done |
+| API `login` / `refresh` rate limited | Done |
 | Secure auth + antiforgery cookies in Production | Done |
-| Forwarded headers behind reverse proxy | Done (non-Dev) |
-| HSTS (non-Dev) | Done |
-| API authorization audit (every endpoint) | Ongoing — inherit `ApiBaseController` |
-| CORS for SPA | Todo if you add a separate front-end origin |
-
-**Next steps:** Walk through `SECURITY_CHECKLIST.md` and [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md) before go-live.
+| HSTS + forwarded headers (non-Dev) | Done |
+| CORS policy (`ApiCors`) | Done |
+| API authorization audit (every endpoint) | Done |
+| Global MVC anti-forgery; API opt-out | Done |
+| Dependency vulnerability scan | Done (clean) |
+| Negative auth regression tests | Done |
+| **Remaining:** Externalize secrets, verify tenant bypass, admin role boundary, server log ACLs | [ ] |
 
 ---
 
-## Phase 3 — Observable & operable
+## Phase 3 — Observable & operable · **75%**
 
 | Item | Status |
 |------|--------|
-| `/health` endpoint | Done |
-| SQL + **Redis** health probes (when Redis cache enabled) | Done |
+| `/health` endpoint (SQL + Redis) | Done |
+| `/health/ready` readiness JSON | Done |
 | Serilog file + console logging | Done |
-| Runbook | `RUNBOOK.md` |
-| Kubernetes-style readiness JSON | Done — `GET /health/ready` (JSON, `ready`-tagged checks) |
+| End-to-end `X-Correlation-Id` | Done |
+| Runbook (`Docs/RUNBOOK.md`) | Done |
+| Centralized metrics / alerting | Future goal |
 
 ---
 
-## Phase 4 — Performance
+## Phase 4 — Performance · **72%**
 
 | Item | Status |
 |------|--------|
-| Indexes on Item (SKU, Barcode per company) | Done in `ApplicationDbContext` |
-| Review hot queries (N+1, AsNoTracking) | In progress — API `ItemsController` moved to projection-first + SQL `LIKE` filtering |
-| Caching strategy doc | Done — [CACHING_STRATEGY.md](CACHING_STRATEGY.md) |
+| DB indexes on Item (SKU, Barcode per company) | Done |
+| AsNoTracking on all read paths | Done |
+| Projection-first `.Select()` on 8 endpoints | Done |
+| N+1 fix (admin users) + dashboard aggregation | Done |
+| Sales report DB-side totals | Done |
+| Caching strategy doc | Done |
+| Benchmark snapshot (1.2 ms avg on Items) | Done |
+| Production-volume profiling | Future goal |
 
 ---
 
-## Phase 5 — Maintainable codebase
+## Phase 5 — Maintainable codebase · **85%**
 
 | Item | Status |
 |------|--------|
-| `Program.cs` → `Infrastructure/` (`AddRetailErp`, pipeline) | Done |
+| `Program.cs` → `Infrastructure/` extensions | Done |
 | Single `AddControllersWithViews` + localization | Done |
-| CONTRIBUTING.md | Done |
-
-**Next steps:** Keep new cross-cutting setup in `Infrastructure/`, not only in `Program.cs`.
+| `CONTRIBUTING.md` | Done |
 
 ---
 
-## Phase 6 — Demo & documentation
+## Phase 6 — Demo & documentation · **85%**
 
 | Item | Status |
 |------|--------|
 | README.md | Done |
 | DEMO_SCRIPT.md | Done |
-| Architecture diagram (optional) | Done — [ARCHITECTURE.md](ARCHITECTURE.md) (Mermaid + narrative) |
+| ARCHITECTURE.md (Mermaid) | Done |
+| REAL_WORLD_MAPPING.md (viva bridge) | Done |
+| SECURITY_CHECKLIST.md | Done |
+| PRODUCTION_DEPLOYMENT.md | Done |
+| RUNBOOK.md | Done |
+| CACHING_STRATEGY.md | Done |
+| **17 doc files in `Docs/`** | ✅ |
 
 ---
 
-## What we did in the latest “phase work” batch
+## Work history (latest batch)
 
-- **Phase 1:** Added `CancelBillAsync` and `AddLineAsync` (duplicate scan) tests.
-- **Phase 2:** Added `SECURITY_CHECKLIST.md`; small null-safety fixes in controllers (sort/dir binding, POS includes).
-- **Phase 4:** Confirmed DB indexes already exist — no migration needed for barcode/SKU.
-- **Tracking:** This file (`IMPROVEMENT_PHASES.md`) so you always know **what’s next**.
+- **Phase 1:** WebApplicationFactory integration tests (health, auth redirect, correlation-id echo, swagger JSON, benchmark latency) — 6 tests total.
+- **Phase 2:** API auth/CSRF cleanup; ops evidence tables for remaining checklist items.
+- **Phase 3:** End-to-end correlation ID support (`X-Correlation-Id`) → middleware → Serilog → response header.
+- **Phase 4:** Performance snapshot for `Api/ItemsController.GetAll` (1.2 ms avg raw latency via DB projection).
+- **Phase 6:** Created `REAL_WORLD_MAPPING.md` bridging code features to real-world engineering practices.
 
-## Latest closure batch (reliability + ops + docs)
+## Previous batch (reliability + ops)
 
-- **Phase 1:** `RemoveCouponAsync` regression test; **NotificationService** background sends use `IServiceScopeFactory` (no disposed `DbContext` after request).
-- **Phase 1 (continued):** Loyalty redeem/remove, payment removal → complete shortfall, `ProcessReturnAsync` stock + refund payment tests; **Phase 2:** log retention guidance expanded in `SECURITY_CHECKLIST.md`.
-- **Phase 1 (hardening):** Added safeguards/tests for over-return across multiple returns, empty/non-positive return rejections, refund-payment removal blocking, and payment removal after bill completion.
-- **Phase 4 (query tuning):** `Api/ItemsController` optimized by replacing eager-loaded entity materialization with direct DTO projections and DB-side `LIKE` filtering.
-- **Phase 4 (query tuning):** `Api/ItemsController.LowStock` now loads projected `ItemDto` rows directly (no eager include graph for low-stock page slices).
-- **Phase 4 (query tuning):** `PosController.Index` optimized to projection-only list rows for bill history (lighter payload/object graph per page).
-- **Phase 4 (query tuning):** `PosController.Returns` optimized to projection-only list rows for return history paging.
-- **Phase 4 (query tuning):** `NotificationsController.Index` optimized to projection-only paged rows (keeps list output while reducing include graph load).
-- **Phase 4 (query tuning):** `StockTransactionsController.Index` optimized to projection-only paged rows for stock ledger history.
-- **Phase 3:** `GET /health/ready` JSON for readiness probes (SQL + optional Redis).
-- **Phase 4:** `Docs/CACHING_STRATEGY.md`.
-- **Phase 6:** `Docs/ARCHITECTURE.md` (Mermaid) + README links; `RUNBOOK.md` updated for `/health/ready`.
+- **Phase 1:** Regression tests for coupon removal, loyalty, payment edge cases, return/refund safeguards; async notification DI scope fix.
+- **Phase 4:** Projection-first optimization across 8 controller endpoints; N+1 fix; dashboard/forecast/sales aggregation pushed to DB.
+- **Phase 3:** `/health/ready` JSON readiness probe; `RUNBOOK.md`.
+- **Phase 6:** `ARCHITECTURE.md` (Mermaid); README links.
 
 ## Production-readiness batch (code + ops)
 
-- **`ProductionStartupValidation`:** In `Production`, requires non-empty DB connection + strong JWT (blocks dev sample keys).
-- **Cookies:** Auth + antiforgery use `Secure` in Production; HSTS configured for non-Development.
-- **Reverse proxy:** `ForwardedHeaders` (X-Forwarded-For / Proto) when not in Development.
-- **Health:** Redis health check registered when Redis cache is actually enabled.
-- **API abuse:** `[EnableRateLimiting("Login")]` on JWT `login` and `refresh`.
-- **Ship:** `appsettings.Production.json` template, `.dockerignore`, `Docs/PRODUCTION_DEPLOYMENT.md`.
+- `ProductionStartupValidation` blocks dev sample keys in Production.
+- Secure cookies + HSTS in Production; forwarded headers behind reverse proxy.
+- Redis health check when enabled; rate limiting on JWT login/refresh.
+- `appsettings.Production.json` template, `.dockerignore`, `PRODUCTION_DEPLOYMENT.md`.
 
 ---
 
-## Suggested order for *your* next learning sessions
+## Next steps for you
 
-1. Run **CI** on GitHub after a push; open a green/red log once end-to-end.  
-2. Read **SECURITY_CHECKLIST.md** and tick what already applies.  
-3. Add **one** new test the next time you fix a bug (regression test).  
-4. Optional: draw **one** architecture diagram (Browser → MVC/API → Services → SQL).
+1. Run **CI** on GitHub after a push; confirm the green checkmark.
+2. Walk through **SECURITY_CHECKLIST.md** — externalize secrets before any public demo.
+3. Add **one** regression test per future bug fix.
+4. Optional: profile one heavy screen with production-size data.

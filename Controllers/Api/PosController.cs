@@ -1,4 +1,4 @@
-    using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
 using RetailERP.Models.Api;
@@ -41,13 +41,22 @@ public class PosController : ApiBaseController
         {
             Data = list.Select(b => new PosBillDto
             {
-                PosBillId = b.PosBillId, BillNo = b.BillNo, BillDate = b.BillDate,
-                StoreId = b.StoreId, StoreName = b.Store?.Name,
-                CustomerId = b.CustomerId, CustomerName = b.Customer?.Name,
-                SubTotal = b.SubTotal, TaxTotal = b.TaxTotal,
-                DiscountTotal = b.DiscountTotal, GrandTotal = b.GrandTotal, Status = b.Status
+                PosBillId = b.PosBillId,
+                BillNo = b.BillNo,
+                BillDate = b.BillDate,
+                StoreId = b.StoreId,
+                StoreName = b.Store?.Name,
+                CustomerId = b.CustomerId,
+                CustomerName = b.Customer?.Name,
+                SubTotal = b.SubTotal,
+                TaxTotal = b.TaxTotal,
+                DiscountTotal = b.DiscountTotal,
+                GrandTotal = b.GrandTotal,
+                Status = b.Status
             }).ToList(),
-            Page = page, PageSize = pageSize, TotalCount = total
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
         });
     }
 
@@ -64,18 +73,28 @@ public class PosController : ApiBaseController
 
         var dto = new PosBillDto
         {
-            PosBillId = b.PosBillId, BillNo = b.BillNo, BillDate = b.BillDate,
-            StoreId = b.StoreId, StoreName = b.Store?.Name,
-            CustomerId = b.CustomerId, CustomerName = b.Customer?.Name,
-            SubTotal = b.SubTotal, TaxTotal = b.TaxTotal,
-            DiscountTotal = b.DiscountTotal, GrandTotal = b.GrandTotal, Status = b.Status,
+            PosBillId = b.PosBillId,
+            BillNo = b.BillNo,
+            BillDate = b.BillDate,
+            StoreId = b.StoreId,
+            StoreName = b.Store?.Name,
+            CustomerId = b.CustomerId,
+            CustomerName = b.Customer?.Name,
+            SubTotal = b.SubTotal,
+            TaxTotal = b.TaxTotal,
+            DiscountTotal = b.DiscountTotal,
+            GrandTotal = b.GrandTotal,
+            Status = b.Status,
             Lines = b.Lines.Select(l => new PosBillLineDto
             {
-                PosBillLineId = l.PosBillLineId, ItemId = l.ItemId,
+                PosBillLineId = l.PosBillLineId,
+                ItemId = l.ItemId,
                 ItemName = l.ItemNameSnapshot ?? l.Item?.Name,
                 SKU = l.SkuSnapshot ?? l.Item?.SKU,
-                Qty = l.Qty, UnitPrice = l.UnitPrice,
-                DiscountAmount = l.DiscountAmount, LineTotal = l.LineTotal
+                Qty = l.Qty,
+                UnitPrice = l.UnitPrice,
+                DiscountAmount = l.DiscountAmount,
+                LineTotal = l.LineTotal
             }).ToList()
         };
 

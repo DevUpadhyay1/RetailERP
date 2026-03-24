@@ -19,6 +19,10 @@ public static class WebApplicationExtensions
         if (!app.Environment.IsDevelopment())
             app.UseForwardedHeaders();
 
+        // Correlation ID: must run before Serilog request logging so the ID is
+        // available in LogContext and diagnostic-context enrichment below.
+        app.UseMiddleware<CorrelationIdMiddleware>();
+
         if (app.Environment.IsDevelopment())
         {
             app.UseMigrationsEndPoint();
@@ -47,6 +51,7 @@ public static class WebApplicationExtensions
                 diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
                 diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.FirstOrDefault());
                 diagnosticContext.Set("UserName", httpContext.User?.Identity?.Name ?? "anonymous");
+                diagnosticContext.Set("CorrelationId", httpContext.TraceIdentifier);
             };
         });
 

@@ -33,7 +33,9 @@ public class StocksController : ApiBaseController
         return Ok(new PagedResponse<StockDto>
         {
             Data = list.Select(MapToDto).ToList(),
-            Page = page, PageSize = pageSize, TotalCount = total
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
         });
     }
 
@@ -79,7 +81,8 @@ public class StocksController : ApiBaseController
 
     private static StockDto MapToDto(Stock s) => new()
     {
-        StockId = s.StockId, ItemId = s.ItemId,
+        StockId = s.StockId,
+        ItemId = s.ItemId,
         ItemName = s.Item?.Name ?? string.Empty,
         SKU = s.Item?.SKU,
         WarehouseId = s.WarehouseId,

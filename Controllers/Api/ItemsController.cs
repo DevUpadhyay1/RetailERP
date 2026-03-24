@@ -61,7 +61,9 @@ public class ItemsController : ApiBaseController
         return Ok(new PagedResponse<ItemDto>
         {
             Data = items,
-            Page = page, PageSize = pageSize, TotalCount = total
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
         });
     }
 
@@ -100,10 +102,17 @@ public class ItemsController : ApiBaseController
 
         var entity = new Item
         {
-            SKU = dto.SKU, Name = dto.Name, Barcode = dto.Barcode, UnitPrice = dto.UnitPrice,
-            MRP = dto.MRP, PurchasePrice = dto.PurchasePrice, GstPercent = dto.GstPercent,
-            HsnCode = dto.HsnCode, ReorderLevel = dto.ReorderLevel,
-            UnitId = dto.UnitId, CategoryId = dto.CategoryId
+            SKU = dto.SKU,
+            Name = dto.Name,
+            Barcode = dto.Barcode,
+            UnitPrice = dto.UnitPrice,
+            MRP = dto.MRP,
+            PurchasePrice = dto.PurchasePrice,
+            GstPercent = dto.GstPercent,
+            HsnCode = dto.HsnCode,
+            ReorderLevel = dto.ReorderLevel,
+            UnitId = dto.UnitId,
+            CategoryId = dto.CategoryId
         };
 
         _db.Items.Add(entity);
@@ -174,7 +183,9 @@ public class ItemsController : ApiBaseController
             return Ok(new PagedResponse<object>
             {
                 Data = new List<object>(),
-                Page = page, PageSize = pageSize, TotalCount = total
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = total
             });
         }
 
@@ -219,16 +230,28 @@ public class ItemsController : ApiBaseController
         return Ok(new PagedResponse<object>
         {
             Data = data,
-            Page = page, PageSize = pageSize, TotalCount = total
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
         });
     }
 
     private static ItemDto MapToDto(Item i) => new()
     {
-        ItemId = i.ItemId, SKU = i.SKU, Name = i.Name, Barcode = i.Barcode,
-        UnitPrice = i.UnitPrice, MRP = i.MRP, PurchasePrice = i.PurchasePrice,
-        GstPercent = i.GstPercent, HsnCode = i.HsnCode, ReorderLevel = i.ReorderLevel,
-        IsActive = i.IsActive, UnitId = i.UnitId, UnitName = i.Unit?.Name,
-        CategoryId = i.CategoryId, CategoryName = i.Category?.Name
+        ItemId = i.ItemId,
+        SKU = i.SKU,
+        Name = i.Name,
+        Barcode = i.Barcode,
+        UnitPrice = i.UnitPrice,
+        MRP = i.MRP,
+        PurchasePrice = i.PurchasePrice,
+        GstPercent = i.GstPercent,
+        HsnCode = i.HsnCode,
+        ReorderLevel = i.ReorderLevel,
+        IsActive = i.IsActive,
+        UnitId = i.UnitId,
+        UnitName = i.Unit?.Name,
+        CategoryId = i.CategoryId,
+        CategoryName = i.Category?.Name
     };
 }

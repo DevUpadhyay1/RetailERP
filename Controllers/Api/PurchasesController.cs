@@ -36,7 +36,9 @@ public class PurchasesController : ApiBaseController
         return Ok(new PagedResponse<PurchaseDto>
         {
             Data = items.Select(MapToDto).ToList(),
-            Page = page, PageSize = pageSize, TotalCount = total
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
         });
     }
 

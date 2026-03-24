@@ -11,7 +11,7 @@ Use this before **production** or **public demo with real data**. Not all items 
 
 ## Authentication & authorization
 
-- [ ] Cookie auth: login, lockout, and inactive user sign-out behave as expected (`Program.cs`).
+- [x] Cookie auth: login, lockout, and inactive user sign-out behave as expected (`Program.cs` / `WebApplicationBuilderExtensions.cs`).
 - [x] New MVC actions have correct `[Authorize(Roles = "...")]` (or inherit policy) based on current controller audit.
 - [x] New API controllers use `[Authorize]` and JWT where intended; anonymous only where deliberate (`[AllowAnonymous]`) based on current controller audit.
 - [x] API controllers now have explicit role-based authorization at controller level (`Controllers/Api/*`).
@@ -20,7 +20,7 @@ Use this before **production** or **public demo with real data**. Not all items 
 
 - [x] HTTPS enabled in production; HSTS on (`Program.cs`/pipeline non-Development branch).
 - [x] Rate limiting policies exist and are applied for login/POS/API paths (`WebApplicationBuilderExtensions`, auth and API controllers).
-- [ ] CORS: if you add a SPA, restrict `WithOrigins(...)` — do not use `AllowAnyOrigin` with credentials.
+- [x] CORS: if you add a SPA, restrict `WithOrigins(...)` — do not use `AllowAnyOrigin` with credentials (`ApiCors` policy in `WebApplicationBuilderExtensions.cs`).
 - [x] API rate limiting is enforced by default via `ApiBaseController`.
 - [x] Anonymous portal endpoints are rate-limited (`CustomerPortalController`, `SupplierPortalController`).
 - [x] Anonymous sync queue endpoint is rate-limited and validates key request fields (`SyncController.QueueChange`).
@@ -42,6 +42,7 @@ Use this before **production** or **public demo with real data**. Not all items 
 ## Logging & privacy
 
 - [x] Logs reviewed and hardened to avoid sensitive response-body/token-like exposure on payment/SMS/WhatsApp paths.
+- [x] Correlation ID implemented for end-to-end request tracing via `CorrelationIdMiddleware.cs`.
 - [ ] Log retention and access controlled on the server.
   - **Guidance:** Rotate or cap `Logs/retailerp-*.log` size (Serilog rolling) in production; restrict folder ACLs to app identity + ops only; ship logs to a SIEM if available; define how long payment-related audit trails must be kept for compliance (GST / company policy).
 

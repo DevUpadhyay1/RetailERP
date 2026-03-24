@@ -33,10 +33,16 @@ public class SuppliersController : ApiBaseController
         {
             Data = list.Select(s => new SupplierDto
             {
-                SupplierId = s.SupplierId, Name = s.Name, Phone = s.Phone, Email = s.Email,
-                Address = s.Address, IsActive = s.IsActive
+                SupplierId = s.SupplierId,
+                Name = s.Name,
+                Phone = s.Phone,
+                Email = s.Email,
+                Address = s.Address,
+                IsActive = s.IsActive
             }).ToList(),
-            Page = page, PageSize = pageSize, TotalCount = total
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
         });
     }
 
@@ -47,8 +53,12 @@ public class SuppliersController : ApiBaseController
         if (s is null) return NotFound(ApiResponse<object>.Fail("Supplier not found."));
         return Ok(ApiResponse<SupplierDto>.Ok(new SupplierDto
         {
-            SupplierId = s.SupplierId, Name = s.Name, Phone = s.Phone, Email = s.Email,
-            Address = s.Address, IsActive = s.IsActive
+            SupplierId = s.SupplierId,
+            Name = s.Name,
+            Phone = s.Phone,
+            Email = s.Email,
+            Address = s.Address,
+            IsActive = s.IsActive
         }));
     }
 
@@ -62,8 +72,12 @@ public class SuppliersController : ApiBaseController
         return CreatedAtAction(nameof(Get), new { id = entity.SupplierId },
             ApiResponse<SupplierDto>.Ok(new SupplierDto
             {
-                SupplierId = entity.SupplierId, Name = entity.Name, Phone = entity.Phone,
-                Email = entity.Email, Address = entity.Address, IsActive = true
+                SupplierId = entity.SupplierId,
+                Name = entity.Name,
+                Phone = entity.Phone,
+                Email = entity.Email,
+                Address = entity.Address,
+                IsActive = true
             }));
     }
 

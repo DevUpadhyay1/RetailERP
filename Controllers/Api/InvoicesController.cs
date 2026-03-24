@@ -36,7 +36,9 @@ public class InvoicesController : ApiBaseController
         return Ok(new PagedResponse<InvoiceDto>
         {
             Data = items.Select(MapToDto).ToList(),
-            Page = page, PageSize = pageSize, TotalCount = total
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
         });
     }
 

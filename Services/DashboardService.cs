@@ -201,10 +201,13 @@ public sealed class DashboardService
             {
                 rows = await LowStockReporting.Query(_db)
                     .OrderBy(x => x.OnHand).Take(10)
-                    .Select(x => new {
-                        sku = x.SKU, name = x.Name,
+                    .Select(x => new
+                    {
+                        sku = x.SKU,
+                        name = x.Name,
                         warehouse = "All",
-                        qty = x.OnHand, reorder = x.ReorderLevel
+                        qty = x.OnHand,
+                        reorder = x.ReorderLevel
                     }).ToListAsync()
             },
 
@@ -213,12 +216,15 @@ public sealed class DashboardService
                 rows = await _db.Invoices.AsNoTracking()
                     .OrderByDescending(x => x.InvoiceDate).ThenByDescending(x => x.InvoiceNo)
                     .Take(5)
-                    .Select(x => new {
-                        id = x.InvoiceId, no = x.InvoiceNo,
+                    .Select(x => new
+                    {
+                        id = x.InvoiceId,
+                        no = x.InvoiceNo,
                         date = x.InvoiceDate.ToString("dd-MMM-yyyy"),
                         customer = x.Customer != null ? x.Customer.Name : "-",
                         warehouse = x.Warehouse != null ? x.Warehouse.Name : "-",
-                        amount = x.TotalAmount, status = (int)x.Status
+                        amount = x.TotalAmount,
+                        status = (int)x.Status
                     }).ToListAsync()
             },
 
@@ -227,12 +233,15 @@ public sealed class DashboardService
                 rows = await _db.PosBills.AsNoTracking()
                     .OrderByDescending(x => x.BillDate).ThenByDescending(x => x.BillNo)
                     .Take(5)
-                    .Select(x => new {
-                        id = x.PosBillId, no = x.BillNo,
+                    .Select(x => new
+                    {
+                        id = x.PosBillId,
+                        no = x.BillNo,
                         date = x.BillDate.ToString("dd-MMM-yyyy"),
                         customer = x.Customer != null ? x.Customer.Name : "Walk-in",
                         store = x.Store != null ? x.Store.Name : "-",
-                        amount = x.GrandTotal, status = (int)x.Status
+                        amount = x.GrandTotal,
+                        status = (int)x.Status
                     }).ToListAsync()
             },
 
@@ -242,7 +251,8 @@ public sealed class DashboardService
                     .Where(s => s.ExpiryDate != null && s.ExpiryDate <= DateTime.Today.AddDays(90) && s.Quantity > 0)
                     .OrderBy(s => s.ExpiryDate)
                     .Take(10)
-                    .Select(s => new {
+                    .Select(s => new
+                    {
                         itemName = s.Item != null ? s.Item.Name : "-",
                         sku = s.Item != null ? s.Item.SKU : "-",
                         warehouse = s.Warehouse != null ? s.Warehouse.Name : "-",
@@ -257,7 +267,8 @@ public sealed class DashboardService
             {
                 rows = await _db.EodReports.AsNoTracking()
                     .Where(e => e.ReportDate == DateTime.Today)
-                    .Select(e => new {
+                    .Select(e => new
+                    {
                         store = e.Store != null ? e.Store.Name : "-",
                         date = e.ReportDate.ToString("dd-MMM-yyyy"),
                         totalSales = e.TotalSales,

@@ -28,10 +28,15 @@ public class CategoriesController : ApiBaseController
         {
             Data = list.Select(c => new CategoryDto
             {
-                CategoryId = c.CategoryId, Name = c.Name, IsActive = c.IsActive,
-                ParentCategoryId = c.ParentCategoryId, ParentCategoryName = c.ParentCategory?.Name
+                CategoryId = c.CategoryId,
+                Name = c.Name,
+                IsActive = c.IsActive,
+                ParentCategoryId = c.ParentCategoryId,
+                ParentCategoryName = c.ParentCategory?.Name
             }).ToList(),
-            Page = page, PageSize = pageSize, TotalCount = total
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
         });
     }
 
@@ -42,8 +47,11 @@ public class CategoriesController : ApiBaseController
         if (c is null) return NotFound(ApiResponse<object>.Fail("Category not found."));
         return Ok(ApiResponse<CategoryDto>.Ok(new CategoryDto
         {
-            CategoryId = c.CategoryId, Name = c.Name, IsActive = c.IsActive,
-            ParentCategoryId = c.ParentCategoryId, ParentCategoryName = c.ParentCategory?.Name
+            CategoryId = c.CategoryId,
+            Name = c.Name,
+            IsActive = c.IsActive,
+            ParentCategoryId = c.ParentCategoryId,
+            ParentCategoryName = c.ParentCategory?.Name
         }));
     }
 

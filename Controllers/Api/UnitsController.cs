@@ -21,7 +21,9 @@ public class UnitsController : ApiBaseController
         return Ok(new PagedResponse<UnitDto>
         {
             Data = list.Select(u => new UnitDto { UnitId = u.UnitId, Name = u.Name, Symbol = u.Symbol, IsActive = u.IsActive }).ToList(),
-            Page = page, PageSize = pageSize, TotalCount = total
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
         });
     }
 

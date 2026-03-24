@@ -679,10 +679,10 @@ public class PosBillingService
     private void RecalcTotals(PosBill bill)
     {
         bill.SubTotal = bill.Lines.Sum(l => l.Qty * l.UnitPrice);
-        
+
         // Line-level discounts
         var lineDiscounts = bill.Lines.Sum(l => l.DiscountAmount);
-        
+
         // Bill-level additional discount
         if (bill.AddDiscountPercent > 0)
             bill.AddDiscountAmount = Math.Round(bill.SubTotal * bill.AddDiscountPercent / 100m, 2);

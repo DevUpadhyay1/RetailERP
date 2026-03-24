@@ -32,7 +32,9 @@ public class CustomersController : ApiBaseController
         return Ok(new PagedResponse<CustomerDto>
         {
             Data = list.Select(c => new CustomerDto { CustomerId = c.CustomerId, Name = c.Name, Phone = c.Phone, Email = c.Email }).ToList(),
-            Page = page, PageSize = pageSize, TotalCount = total
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total
         });
     }
 

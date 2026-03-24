@@ -27,3 +27,6 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+// Make the auto-generated Program class accessible to WebApplicationFactory<Program> in test projects.
+public partial class Program { }
