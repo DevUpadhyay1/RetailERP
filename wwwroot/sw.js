@@ -11,9 +11,9 @@ const APP_SHELL = [
     '/favicon.ico',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
-    '/lib/bootstrap/dist/css/bootstrap.min.css',
-    '/lib/jquery/dist/jquery.min.js',
-    '/lib/bootstrap/dist/js/bootstrap.bundle.min.js',
+    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
+    'https://code.jquery.com/jquery-3.7.1.min.js',
+    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js',
     '/offline.html'
 ];
 
