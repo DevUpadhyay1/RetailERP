@@ -1,4 +1,4 @@
-﻿# .NET
+# .NET
 bin/
 obj/
 [Bb]in/
@@ -16,6 +16,7 @@ obj/
 
 # Logs
 *.log
+Logs/
 
 # OS
 .DS_Store
@@ -37,8 +38,25 @@ wwwroot/lib/
 node_modules/
 dist/
 
-# Python venvs (if any)
+# Python
+*.py
+__pycache__/
 .env/
 venv/
 env/
 
+# Build verification artifacts
+_build_verify/
+
+# Benchmark / temp output
+benchmark_*.txt
+bench.log
+server.log
+server_error.log
+test_err.log
+
+# Office docs (use Markdown in Docs/)
+*.docx
+
+# Test results
+**/TestResults/
