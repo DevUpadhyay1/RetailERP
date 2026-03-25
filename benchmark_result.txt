@@ -1,6 +1,0 @@
---- BENCHMARK RESULTS ---
-Endpoint: Api/ItemsController.GetAll
-Min Latency: 0 ms
-Max Latency: 7 ms
-Avg Latency: 1.4 ms
--------------------------
