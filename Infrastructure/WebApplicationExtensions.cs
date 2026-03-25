@@ -69,8 +69,8 @@ public static class WebApplicationExtensions
             h.TryAdd("Content-Security-Policy",
                 "default-src 'self'; " +
                 "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://checkout.razorpay.com https://api.razorpay.com; " +
-                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
-                "font-src 'self' https://cdn.jsdelivr.net data:; " +
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
+                "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; " +
                 "img-src 'self' data: https://rzp.io https://lumberjack.razorpay.com; " +
                 "connect-src 'self' wss: ws: https://cdn.jsdelivr.net https://api.razorpay.com https://lumberjack.razorpay.com; " +
                 "frame-src https://api.razorpay.com https://checkout.razorpay.com; " +

@@ -848,8 +848,9 @@ body.dark-mode .toast { background: var(--erp-bg-card); color: var(--erp-text); 
     .app-sidebar .small span { display: none; }
     .app-sidebar .sidebar-link { justify-content: center; gap: 0; }
 
-    .app-sidebar .sidebar-group-toggle { display: none; }
-    .app-sidebar .sidebar-group .collapse { display: block !important; height: auto !important; border-left: none; margin-left: 0; padding-left: 0; }
+    /* Keep Bootstrap collapse toggles usable; do not force .collapse display (breaks data-bs-toggle). */
+    .app-sidebar .sidebar-group-toggle { padding-left: 8px; padding-right: 8px; justify-content: center; }
+    .app-sidebar .sidebar-group-toggle > span:not(.sidebar-icon):not(.sidebar-chevron) { display: none; }
     .app-sidebar .sidebar-group .collapse .sidebar-link { justify-content: center; gap: 0; padding-left: 10px; }
     .app-sidebar .sidebar-group .collapse .sidebar-link span { display: none; }
 }
