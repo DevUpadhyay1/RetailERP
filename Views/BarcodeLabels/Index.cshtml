@@ -2,7 +2,7 @@
 @{ ViewData["Title"] = "Barcode Label Printing"; }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0"><i class="bi bi-upc-scan"></i> Barcode / QR Label Printing</h4>
+    <h4 class="mb-0"><i class="bi bi-upc-scan"></i> 1D Barcode Label Printing</h4>
 </div>
 
 <form method="get" class="row g-2 mb-3">
@@ -63,8 +63,8 @@
             <div class="row g-3 mt-1">
                 <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showName" value="true" checked /><label class="form-check-label">Item Name</label></div></div>
                 <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showSku" value="true" checked /><label class="form-check-label">SKU</label></div></div>
-                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showBarcode" value="true" checked /><label class="form-check-label">Barcode</label></div></div>
-                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showQrCode" value="true" checked /><label class="form-check-label">QR Code</label></div></div>
+                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showBarcode" value="true" checked /><label class="form-check-label">1D Barcode (Code128)</label></div></div>
+                <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showQrCode" value="true" /><label class="form-check-label">QR Code (optional)</label></div></div>
                 <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showPrice" value="true" checked /><label class="form-check-label">Price/MRP</label></div></div>
                 <div class="col-auto"><div class="form-check"><input class="form-check-input" type="checkbox" name="showExpiry" value="true" /><label class="form-check-label">Expiry Date</label></div></div>
             </div>
@@ -82,7 +82,7 @@
                     <th>Category</th>
                     <th>MRP</th>
                     <th>Price</th>
-                    <th>QR Preview</th>
+                    <th>QR Preview (optional)</th>
                 </tr>
             </thead>
             <tbody>

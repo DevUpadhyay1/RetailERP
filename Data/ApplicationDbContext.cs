@@ -866,6 +866,19 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .HasForeignKey(x => x.FranchiseeCompanyId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Explicit decimal precision to avoid silent truncation warnings.
+        builder.Entity<FranchiseAgreement>()
+            .Property(x => x.RoyaltyPercent)
+            .HasPrecision(9, 4);
+
+        builder.Entity<FranchiseAgreement>()
+            .Property(x => x.MonthlyFlatFee)
+            .HasPrecision(18, 2);
+
+        builder.Entity<FranchiseAgreement>()
+            .Property(x => x.MinMonthlyRoyalty)
+            .HasPrecision(18, 2);
+
         builder.Entity<RoyaltyPayment>()
             .HasIndex(x => new { x.FranchiseAgreementId, x.PeriodYear, x.PeriodMonth })
             .IsUnique();
@@ -878,6 +891,26 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .WithMany(x => x.RoyaltyPayments)
             .HasForeignKey(x => x.FranchiseAgreementId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<RoyaltyPayment>()
+            .Property(x => x.GrossSales)
+            .HasPrecision(18, 2);
+
+        builder.Entity<RoyaltyPayment>()
+            .Property(x => x.RoyaltyAmount)
+            .HasPrecision(18, 2);
+
+        builder.Entity<RoyaltyPayment>()
+            .Property(x => x.FlatFeeAmount)
+            .HasPrecision(18, 2);
+
+        builder.Entity<RoyaltyPayment>()
+            .Property(x => x.TotalDue)
+            .HasPrecision(18, 2);
+
+        builder.Entity<RoyaltyPayment>()
+            .Property(x => x.AmountPaid)
+            .HasPrecision(18, 2);
 
         ConfigureAuditUserFks<FranchiseAgreement>(builder);
         ConfigureAuditDefaults<FranchiseAgreement>(builder);

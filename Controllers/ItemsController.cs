@@ -33,35 +33,40 @@ namespace RetailERP.Controllers
             ViewData["page"] = page;
             ViewData["pageSize"] = pageSize;
 
-            var query = _context.Items
+            // Base query WITHOUT Includes — keeps COUNT fast on large tables
+            var baseQuery = _context.Items
                 .AsNoTracking()
-                .Include(x => x.Unit)
-                .Include(x => x.Category)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(q))
-                query = query.Where(x => x.SKU.Contains(q) || x.Name.Contains(q));
+                baseQuery = baseQuery.Where(x => x.SKU.Contains(q) || x.Name.Contains(q));
 
             if (active is true)
-                query = query.Where(x => x.IsActive);
+                baseQuery = baseQuery.Where(x => x.IsActive);
             else if (active is false)
-                query = query.Where(x => !x.IsActive);
+                baseQuery = baseQuery.Where(x => !x.IsActive);
 
             var ascending = !string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
-            query = sort?.ToLowerInvariant() switch
+            baseQuery = sort?.ToLowerInvariant() switch
             {
-                "name" => ascending ? query.OrderBy(x => x.Name) : query.OrderByDescending(x => x.Name),
-                "price" => ascending ? query.OrderBy(x => x.UnitPrice) : query.OrderByDescending(x => x.UnitPrice),
-                "category" => ascending ? query.OrderBy(x => x.Category!.Name) : query.OrderByDescending(x => x.Category!.Name),
-                "status" => ascending ? query.OrderBy(x => x.IsActive) : query.OrderByDescending(x => x.IsActive),
-                _ => ascending ? query.OrderBy(x => x.SKU) : query.OrderByDescending(x => x.SKU)
+                "name" => ascending ? baseQuery.OrderBy(x => x.Name) : baseQuery.OrderByDescending(x => x.Name),
+                "price" => ascending ? baseQuery.OrderBy(x => x.UnitPrice) : baseQuery.OrderByDescending(x => x.UnitPrice),
+                "category" => ascending ? baseQuery.OrderBy(x => x.Category!.Name) : baseQuery.OrderByDescending(x => x.Category!.Name),
+                "status" => ascending ? baseQuery.OrderBy(x => x.IsActive) : baseQuery.OrderByDescending(x => x.IsActive),
+                _ => ascending ? baseQuery.OrderBy(x => x.SKU) : baseQuery.OrderByDescending(x => x.SKU)
             };
 
             if (page < 1) page = 1;
             if (pageSize is < 10 or > 200) pageSize = 20;
 
-            var total = await query.CountAsync();
-            var data = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+            // COUNT on lightweight query (no JOINs)
+            var total = await baseQuery.CountAsync();
+            // Include navigation properties only for the small paginated slice
+            var data = await baseQuery
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .Include(x => x.Unit)
+                .Include(x => x.Category)
+                .ToListAsync();
 
             ViewData["total"] = total;
             ViewData["from"] = total == 0 ? 0 : ((page - 1) * pageSize + 1);

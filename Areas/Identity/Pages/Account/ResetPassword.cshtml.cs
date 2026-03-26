@@ -18,6 +18,7 @@ namespace RetailERP.Areas.Identity.Pages.Account
     [AllowAnonymous]
     public class ResetPasswordModel : PageModel
     {
+        private const string ResetPasswordTokenPurpose = "ResetPassword";
         private readonly UserManager<ApplicationUser> _userManager;
 
         public ResetPasswordModel(UserManager<ApplicationUser> userManager)
@@ -73,24 +74,69 @@ namespace RetailERP.Areas.Identity.Pages.Account
 
         }
 
-        public IActionResult OnGet(string code = null)
+        public async Task<IActionResult> OnGet(string code = null, string email = null)
         {
-            if (code == null)
+            if (User?.Identity?.IsAuthenticated == true)
             {
-                return BadRequest("A code must be supplied for password reset.");
+                return Redirect("~/");
             }
-            else
+
+            if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(email))
             {
-                Input = new InputModel
-                {
-                    Code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code))
-                };
+                ModelState.AddModelError(string.Empty, "Invalid password reset link.");
+                Input = new InputModel();
                 return Page();
             }
+
+            string decodedCode;
+            try
+            {
+                decodedCode = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+            }
+            catch
+            {
+                ModelState.AddModelError(string.Empty, "Invalid password reset link.");
+                Input = new InputModel { Email = email };
+                return Page();
+            }
+
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user is null)
+            {
+                ModelState.AddModelError(string.Empty, "Invalid password reset link.");
+                Input = new InputModel { Email = email };
+                return Page();
+            }
+
+            var tokenProvider = _userManager.Options.Tokens.PasswordResetTokenProvider;
+            var isTokenValid = await _userManager.VerifyUserTokenAsync(
+                user,
+                tokenProvider,
+                ResetPasswordTokenPurpose,
+                decodedCode);
+
+            if (!isTokenValid)
+            {
+                ModelState.AddModelError(string.Empty, "Invalid or expired password reset link.");
+                Input = new InputModel { Email = email };
+                return Page();
+            }
+
+            Input = new InputModel
+            {
+                Email = email,
+                Code = decodedCode
+            };
+            return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
+            if (User?.Identity?.IsAuthenticated == true)
+            {
+                return Redirect("~/");
+            }
+
             if (!ModelState.IsValid)
             {
                 return Page();
@@ -101,6 +147,19 @@ namespace RetailERP.Areas.Identity.Pages.Account
             {
                 // Don't reveal that the user does not exist
                 return RedirectToPage("./ResetPasswordConfirmation");
+            }
+
+            var tokenProvider = _userManager.Options.Tokens.PasswordResetTokenProvider;
+            var isTokenValid = await _userManager.VerifyUserTokenAsync(
+                user,
+                tokenProvider,
+                ResetPasswordTokenPurpose,
+                Input.Code);
+
+            if (!isTokenValid)
+            {
+                ModelState.AddModelError(string.Empty, "Invalid or expired password reset link.");
+                return Page();
             }
 
             var result = await _userManager.ResetPasswordAsync(user, Input.Code, Input.Password);

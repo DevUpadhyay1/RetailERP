@@ -1,7 +1,9 @@
+using BarcodeStandard;
 using QRCoder;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using SkiaSharp;
 using Unit = QuestPDF.Infrastructure.Unit;
 
 namespace RetailERP.Services;
@@ -84,8 +86,16 @@ public sealed class BarcodeLabelService
 
         if (options.ShowBarcode && !string.IsNullOrWhiteSpace(item.Barcode))
         {
-            col.Item().AlignCenter().Height(20, Unit.Millimetre)
-                .Text(item.Barcode).FontFamily("Courier").FontSize(fontSize);
+            var barcodeImage = GenerateCode128Png(item.Barcode, 420, 90);
+            if (barcodeImage is not null)
+            {
+                col.Item().AlignCenter().Height(14, Unit.Millimetre).Image(barcodeImage);
+            }
+            else
+            {
+                col.Item().AlignCenter().Height(20, Unit.Millimetre)
+                    .Text(item.Barcode).FontFamily("Courier").FontSize(fontSize);
+            }
         }
 
         if (options.ShowQrCode && !string.IsNullOrWhiteSpace(item.Barcode))
@@ -129,6 +139,24 @@ public sealed class BarcodeLabelService
         return qrCode.GetGraphic(pixelsPerModule);
     }
 
+    private static byte[]? GenerateCode128Png(string data, int width, int height)
+    {
+        try
+        {
+            var barcode = new Barcode
+            {
+                IncludeLabel = false
+            };
+            using var image = barcode.Encode(BarcodeStandard.Type.Code128, data, SKColors.Black, SKColors.White, width, height);
+            using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
+            return encoded?.ToArray();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public sealed class LabelItem
     {
         public string Name { get; set; } = "";
@@ -150,7 +178,7 @@ public sealed class BarcodeLabelService
         public bool ShowName { get; set; } = true;
         public bool ShowSku { get; set; } = true;
         public bool ShowBarcode { get; set; } = true;
-        public bool ShowQrCode { get; set; } = true;
+        public bool ShowQrCode { get; set; }
         public bool ShowPrice { get; set; } = true;
         public bool ShowExpiry { get; set; }
     }

@@ -169,6 +169,9 @@
                         <div class="input-group mt-1">
                             <span class="input-group-text bg-white"><i class="bi bi-lock text-muted"></i></span>
                             <input asp-for="Input.Password" class="form-control" autocomplete="current-password" placeholder="••••••••" />
+                            <button class="btn btn-outline-secondary" type="button" id="toggle-password" aria-label="Show password" aria-pressed="false">
+                                <i class="bi bi-eye"></i>
+                            </button>
                         </div>
                         <span asp-validation-for="Input.Password" class="text-danger small"></span>
                     </div>
@@ -205,5 +208,44 @@
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js" integrity="sha384-aEDtD4n2FLrMdE9psop0SHdNyy/W9cBjH22rSRp+3wPHd62Y32uijc0H2eLmgaSn" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js" integrity="sha384-DU2a51mTHKDhpXhTyJQ++hP8L9L8Gc48TlvbzBmUof71V7kNVs4ELmaVJKPxcAGn" crossorigin="anonymous"></script>
+    <script>
+        (function () {
+            const passwordInput = document.getElementById('Input_Password');
+            const togglePasswordButton = document.getElementById('toggle-password');
+            const loginForm = document.getElementById('account');
+            const submitButton = document.getElementById('login-submit');
+
+            if (passwordInput && togglePasswordButton) {
+                togglePasswordButton.addEventListener('click', function () {
+                    const showPassword = passwordInput.type === 'password';
+                    passwordInput.type = showPassword ? 'text' : 'password';
+                    togglePasswordButton.setAttribute('aria-pressed', showPassword ? 'true' : 'false');
+                    togglePasswordButton.setAttribute('aria-label', showPassword ? 'Hide password' : 'Show password');
+                    togglePasswordButton.innerHTML = showPassword
+                        ? '<i class="bi bi-eye-slash"></i>'
+                        : '<i class="bi bi-eye"></i>';
+                });
+            }
+
+            if (loginForm && submitButton) {
+                loginForm.addEventListener('submit', function () {
+                    let isValid = true;
+
+                    if (window.jQuery && typeof window.jQuery(loginForm).valid === 'function') {
+                        isValid = window.jQuery(loginForm).valid();
+                    } else if (typeof loginForm.checkValidity === 'function') {
+                        isValid = loginForm.checkValidity();
+                    }
+
+                    if (!isValid || submitButton.disabled) {
+                        return;
+                    }
+
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Signing in...';
+                });
+            }
+        })();
+    </script>
 </body>
 </html>

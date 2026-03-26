@@ -47,7 +47,7 @@ public class BarcodeLabelsController : Controller
     public async Task<IActionResult> GeneratePdf(List<Guid> selectedItems, string paperSize = "Thermal",
         float labelWidth = 50, float labelHeight = 30, int columns = 3, int fontSize = 8,
         bool showName = true, bool showSku = true, bool showBarcode = true,
-        bool showQrCode = true, bool showPrice = true, bool showExpiry = false, int copies = 1)
+        bool showQrCode = false, bool showPrice = true, bool showExpiry = false, int copies = 1)
     {
         if (selectedItems.Count == 0)
         {
