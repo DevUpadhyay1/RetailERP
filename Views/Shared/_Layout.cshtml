@@ -65,7 +65,7 @@
     @if (User?.Identity?.IsAuthenticated == true)
     {
         <div class="app-shell d-flex" id="appShell">
-            <aside class="app-sidebar" id="appSidebar">
+            <aside class="app-sidebar" id="appSidebar" aria-label="Main navigation">
                 <div class="sidebar-brand-area">
                     <a class="text-white text-decoration-none d-flex align-items-center gap-2" asp-controller="Home" asp-action="Dashboard">
                         <div class="sidebar-brand-logo">
@@ -308,13 +308,14 @@
                             <i class="bi bi-list fs-5"></i>
                         </button>
 
-                        <form class="flex-grow-1" asp-controller="Search" asp-action="Index" method="get" style="max-width:520px;">
+                        <form class="flex-grow-1" asp-controller="Search" asp-action="Index" method="get" style="max-width:520px;" role="search">
+                            <label for="globalSearchInput" class="visually-hidden">Search invoices, items, customers</label>
                             <div class="input-group">
-                                <span class="input-group-text">
+                                <span class="input-group-text" aria-hidden="true">
                                     <i class="bi bi-search"></i>
                                 </span>
-                                <input class="form-control" name="q"
-                                       placeholder="Search invoices, items, customers..." />
+                                <input class="form-control" id="globalSearchInput" name="q"
+                                       placeholder="Search invoices, items, customers..." autocomplete="off" />
                             </div>
                         </form>
 
@@ -342,7 +343,7 @@
                     </div>
                 </header>
 
-                <main role="main" class="container-fluid py-3 flex-grow-1">
+                <main id="mainContent" role="main" class="container-fluid py-3 flex-grow-1">
                     @RenderBody()
                 </main>
 
@@ -374,7 +375,7 @@
         </header>
 
         <div class="container-xxl py-4">
-            <main role="main" class="pb-3">
+            <main id="mainContent" role="main" class="pb-3">
                 @RenderBody()
             </main>
         </div>

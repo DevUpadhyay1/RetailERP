@@ -12,7 +12,7 @@
     --erp-sidebar-bg-flat: #0f172a;
     --erp-sidebar-hover: rgba(255,255,255,.08);
     --erp-sidebar-active-bg: #3b82f6;
-    --erp-section-color: rgba(255,255,255,.35);
+    --erp-section-color: rgba(255,255,255,.55);
 
     --erp-bg-page: #f1f5f9;
     --erp-bg-card: #ffffff;
@@ -23,7 +23,7 @@
 
     --erp-text: #1e293b;
     --erp-text-secondary: #64748b;
-    --erp-text-muted: #94a3b8;
+    --erp-text-muted: #8194aa;
 
     --erp-primary: #3b82f6;
     --erp-primary-hover: #2563eb;
@@ -181,7 +181,7 @@ main.container-fluid > *:nth-child(4) { animation-delay: .15s; }
     border: none;
     border-radius: .5rem;
     background: transparent;
-    color: rgba(255,255,255,.5);
+    color: rgba(255,255,255,.6);
     font-size: .7rem;
     font-weight: 600;
     letter-spacing: .08em;

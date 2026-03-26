@@ -18,6 +18,7 @@
     <link href="/css/pos.css" rel="stylesheet" />
 </head>
 <body class="pos-body">
+<a class="visually-hidden" href="#posMainContent">Skip to main content</a>
 
 <!-- ═══════════════════  TOP HEADER  ═══════════════════ -->
 <header class="pos-topbar">
@@ -47,6 +48,7 @@
             <span class="cb-label">Customer Name</span>
             @if (isOpen)
             {
+                <label for="customerNameInput" class="visually-hidden">Customer Name</label>
                 <input id="customerNameInput" class="form-control form-control-sm" value="@(Model.Customer?.Name ?? "")" placeholder="Walk-in" />
             }
             else
@@ -58,6 +60,7 @@
             <span class="cb-label">Phone</span>
             @if (isOpen)
             {
+                <label for="customerPhoneInput" class="visually-hidden">Customer Phone</label>
                 <input id="customerPhoneInput" class="form-control form-control-sm" maxlength="10" value="@(Model.Customer?.Phone ?? "")" placeholder="10-digit mobile" />
             }
             else
@@ -69,6 +72,7 @@
             <span class="cb-label">Email</span>
             @if (isOpen)
             {
+                <label for="customerEmailInput" class="visually-hidden">Customer Email</label>
                 <input id="customerEmailInput" class="form-control form-control-sm" value="@(Model.Customer?.Email ?? "")" placeholder="optional@email.com" />
             }
             else
@@ -94,7 +98,7 @@
 </div>
 
 <!-- ═══════════════════  MAIN AREA  ═══════════════════ -->
-<div class="pos-main">
+<main id="posMainContent" class="pos-main" role="main">
 
     <!-- ──── LEFT : Scan + Table ──── -->
     <div class="pos-left">
@@ -107,8 +111,9 @@
                 <div class="scan-field scan-barcode">
                     <label class="scan-lbl">Scan Item</label>
                     <div class="input-group input-group-sm">
+                        <label for="barcodeInput" class="visually-hidden">Scan barcode or SKU</label>
                         <input type="text" id="barcodeInput" class="form-control" placeholder="Barcode / SKU" autofocus autocomplete="off" />
-                        <button id="btnScan" class="btn btn-primary" type="button"><i class="bi bi-search"></i></button>
+                        <button id="btnScan" class="btn btn-primary" type="button" aria-label="Search item"><i class="bi bi-search"></i></button>
                     </div>
                 </div>
                 <div class="scan-field" id="sf_uom"><label class="scan-lbl">UoM</label><span class="scan-val" id="scanUom">—</span></div>
@@ -167,7 +172,7 @@
                             <td class="col-gst">@(l.DiscountPercent > 0 ? l.DiscountPercent.ToString("0.##") + "%" : "—")</td>
                             <td class="col-amt">₹@l.LineTotal.ToString("N2")</td>
                             @if (isOpen) {
-                                <td class="col-act"><button class="btn-row-del btn-remove-line" data-line-id="@l.PosBillLineId" title="Remove"><i class="bi bi-x-lg"></i></button></td>
+                                <td class="col-act"><button class="btn-row-del btn-remove-line" data-line-id="@l.PosBillLineId" title="Remove" aria-label="Remove item"><i class="bi bi-x-lg"></i></button></td>
                             }
                         </tr>
                     }
@@ -245,7 +250,7 @@
                         <span class="pay-method">@p.Method</span>
                         <span class="pay-ref">@(p.Reference ?? "")</span>
                         <span class="pay-amt">₹@p.Amount.ToString("N2")</span>
-                        <button class="btn-row-del btn-remove-payment" data-payment-id="@p.PaymentId"><i class="bi bi-x"></i></button>
+                        <button class="btn-row-del btn-remove-payment" data-payment-id="@p.PaymentId" aria-label="Remove payment"><i class="bi bi-x"></i></button>
                     </div>
                 }
             </div>
@@ -258,8 +263,8 @@
                 <button class="pbtn pbtn-online" data-method="Online" id="btnPayOnline"><i class="bi bi-globe2"></i><span>Online</span></button>
             </div>
             <div class="row g-1 mt-1">
-                <div class="col-5"><input id="payAmount" type="number" class="form-control form-control-sm" placeholder="Amount" min="0.01" step="0.01" /></div>
-                <div class="col-7"><input id="payRef" type="text" class="form-control form-control-sm" placeholder="Ref# (optional)" /></div>
+                <div class="col-5"><label for="payAmount" class="visually-hidden">Payment amount</label><input id="payAmount" type="number" class="form-control form-control-sm" placeholder="Amount" min="0.01" step="0.01" /></div>
+                <div class="col-7"><label for="payRef" class="visually-hidden">Payment reference</label><input id="payRef" type="text" class="form-control form-control-sm" placeholder="Ref# (optional)" /></div>
             </div>
             <div id="razorpayFeedback" class="small mt-1"></div>
         </div>
@@ -271,21 +276,21 @@
                 <div id="loyaltyInfo" style="@(Model.LoyaltyCardId.HasValue ? "" : "display:none")">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="small fw-medium" id="loyaltyCardNumber">@Model.LoyaltyCard?.CardNumber</span>
-                        <button class="btn-row-del" id="btnRemoveLoyalty"><i class="bi bi-x"></i></button>
+                        <button class="btn-row-del" id="btnRemoveLoyalty" aria-label="Remove loyalty card"><i class="bi bi-x"></i></button>
                     </div>
                     <div class="extra-meta">
                         <span class="badge bg-warning text-dark" id="loyaltyTier" style="font-size:.6rem">@(Model.LoyaltyCard != null ? RetailERP.Services.LoyaltyService.GetTierName(Model.LoyaltyCard.Tier) : "")</span>
                         Pts: <span id="loyaltyPoints">@(Model.LoyaltyCard?.PointsBalance.ToString("N0") ?? "0")</span>
                     </div>
                     <div class="input-group input-group-sm mt-1" id="loyaltyRedeemRow">
-                        <input id="redeemPoints" type="number" class="form-control" placeholder="Redeem pts" min="50" step="1" />
-                        <button id="btnRedeem" class="btn btn-outline-warning btn-sm"><i class="bi bi-arrow-down-circle"></i></button>
+                        <input id="redeemPoints" type="number" class="form-control" placeholder="Redeem pts" min="50" step="1" aria-label="Points to redeem" />
+                        <button id="btnRedeem" class="btn btn-outline-warning btn-sm" aria-label="Redeem loyalty points"><i class="bi bi-arrow-down-circle"></i></button>
                     </div>
                 </div>
                 <div id="loyaltyLookup" style="@(Model.LoyaltyCardId.HasValue ? "display:none" : "")">
                     <div class="input-group input-group-sm">
-                        <input id="loyaltySearch" type="text" class="form-control" placeholder="Phone / Card#" autocomplete="off" />
-                        <button id="btnLoyaltyLookup" class="btn btn-outline-primary btn-sm"><i class="bi bi-search"></i></button>
+                        <input id="loyaltySearch" type="text" class="form-control" placeholder="Phone / Card#" autocomplete="off" aria-label="Loyalty card search" />
+                        <button id="btnLoyaltyLookup" class="btn btn-outline-primary btn-sm" aria-label="Search loyalty card"><i class="bi bi-search"></i></button>
                     </div>
                     <div id="loyaltyFeedback" class="small mt-1"></div>
                 </div>
@@ -296,13 +301,13 @@
                     <div class="d-flex justify-content-between align-items-center gap-1">
                         <span class="badge bg-info text-white" id="couponCode">@Model.Coupon?.Code</span>
                         <span class="small text-success fw-medium" id="couponDiscountVal">-₹@Model.CouponDiscount.ToString("N2")</span>
-                        <button class="btn-row-del" id="btnRemoveCoupon"><i class="bi bi-x"></i></button>
+                        <button class="btn-row-del" id="btnRemoveCoupon" aria-label="Remove coupon"><i class="bi bi-x"></i></button>
                     </div>
                 </div>
                 <div id="couponInput" style="@(Model.CouponId.HasValue ? "display:none" : "")">
                     <div class="input-group input-group-sm">
-                        <input id="couponCodeInput" type="text" class="form-control" placeholder="Enter code" autocomplete="off" />
-                        <button id="btnApplyCoupon" class="btn btn-outline-info btn-sm"><i class="bi bi-check-lg"></i></button>
+                        <input id="couponCodeInput" type="text" class="form-control" placeholder="Enter code" autocomplete="off" aria-label="Coupon code" />
+                        <button id="btnApplyCoupon" class="btn btn-outline-info btn-sm" aria-label="Apply coupon"><i class="bi bi-check-lg"></i></button>
                     </div>
                     <div id="couponFeedback" class="small mt-1"></div>
                 </div>
@@ -356,7 +361,7 @@
         </div>
         }
     </div>
-</div>
+</main>
 
 <!-- Held Bills Modal -->
 <div class="modal fade" id="heldBillsModal" tabindex="-1">
