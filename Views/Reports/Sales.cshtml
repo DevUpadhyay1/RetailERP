@@ -1,4 +1,4 @@
-﻿@model RetailERP.Controllers.ReportsController.SalesReportVm
+@model RetailERP.Controllers.ReportsController.SalesReportVm
 @{
     ViewData["Title"] = "Sales Report";
 }
@@ -28,46 +28,75 @@
     <div class="col-12 col-md-6 col-xl-3">
         <div class="card shadow-sm h-100 border-start border-4 border-success">
             <div class="card-body">
-                <div class="text-muted small">Posted Invoices</div>
-                <div class="fs-3 fw-semibold">@Model.TotalInvoices</div>
+                <div class="text-muted small">Total Sales (All)</div>
+                <div class="fs-3 fw-semibold">₹@Model.TotalSales.ToString("N2")</div>
             </div>
         </div>
     </div>
     <div class="col-12 col-md-6 col-xl-3">
         <div class="card shadow-sm h-100 border-start border-4 border-primary">
             <div class="card-body">
-                <div class="text-muted small">Total Sales</div>
-                <div class="fs-3 fw-semibold">@Model.TotalSales.ToString("0.00")</div>
+                <div class="text-muted small">Invoice Sales</div>
+                <div class="fs-4 fw-semibold">₹@Model.TotalInvoiceSales.ToString("N2")</div>
+                <div class="text-muted small mt-1">@Model.TotalInvoices invoices</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card shadow-sm h-100 border-start border-4 border-info">
+            <div class="card-body">
+                <div class="text-muted small">POS Sales</div>
+                <div class="fs-4 fw-semibold">₹@Model.TotalPosSales.ToString("N2")</div>
+                <div class="text-muted small mt-1">@Model.TotalPosBills bills</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card shadow-sm h-100 border-start border-4 border-warning">
+            <div class="card-body">
+                <div class="text-muted small">Total Transactions</div>
+                <div class="fs-3 fw-semibold">@(Model.TotalInvoices + Model.TotalPosBills)</div>
             </div>
         </div>
     </div>
 </div>
 
 <div class="card shadow-sm border-0">
-    <div class="card-header">Invoice Detail</div>
+    <div class="card-header">Sales Detail (Invoices + POS)</div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0 align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>Invoice No</th>
-                        <th style="width:200px;">Posted At (UTC)</th>
+                        <th>Ref No</th>
+                        <th>Source</th>
+                        <th style="width:200px;">Date (UTC)</th>
                         <th style="width:170px;" class="text-end">Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (!Model.Rows.Any())
                     {
-                        <tr><td colspan="3" class="p-4 text-muted">No posted invoices in this period.</td></tr>
+                        <tr><td colspan="4" class="p-4 text-muted">No sales in this period.</td></tr>
                     }
                     else
                     {
                         foreach (var r in Model.Rows)
                         {
                             <tr>
-                                <td class="fw-semibold">@r.InvoiceNo</td>
-                                <td class="text-muted">@r.PostedAt.ToString("yyyy-MM-dd HH:mm")</td>
-                                <td class="text-end">@r.TotalAmount.ToString("0.00")</td>
+                                <td class="fw-semibold">@r.RefNo</td>
+                                <td>
+                                    @if (r.Source == "POS")
+                                    {
+                                        <span class="badge bg-info">POS</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-primary">Invoice</span>
+                                    }
+                                </td>
+                                <td class="text-muted">@r.Date.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="text-end">₹@r.TotalAmount.ToString("N2")</td>
                             </tr>
                         }
                     }

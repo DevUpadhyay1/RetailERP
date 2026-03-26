@@ -67,8 +67,7 @@ public class PosBillingService
         var stockQty = await _db.Stocks
             .AsNoTracking()
             .Where(s => s.ItemId == item.ItemId && s.WarehouseId == warehouseId)
-            .Select(s => s.Quantity)
-            .FirstOrDefaultAsync();
+            .SumAsync(s => (decimal?)s.Quantity) ?? 0m;
 
         return new ItemLookupResult
         {
