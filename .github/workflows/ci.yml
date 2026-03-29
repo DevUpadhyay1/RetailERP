@@ -29,28 +29,45 @@ jobs:
         run: dotnet build RetailERP.sln -c Release --no-restore
 
       - name: Test with coverage
-        run: dotnet test RetailERP.sln -c Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory TestResults
+        run: dotnet test RetailERP.Tests/RetailERP.Tests.csproj -c Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory TestResults
+
+      - name: Coverage debug info
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Listing TestResults tree"
+          find TestResults -maxdepth 4 -type f || true
 
       - name: Enforce coverage threshold
         shell: bash
         run: |
           set -euo pipefail
-          COVERAGE_FILE="$(find TestResults -name 'coverage.cobertura.xml' | head -n 1)"
-          if [ -z "${COVERAGE_FILE:-}" ]; then
-            echo "Coverage report not found."
-            exit 1
-          fi
+          python - <<'PY'
+          import glob
+          import os
+          import sys
+          import xml.etree.ElementTree as ET
 
-          LINE_RATE="$(sed -n 's/.*line-rate="\([0-9.]*\)".*/\1/p' "$COVERAGE_FILE" | head -n 1)"
-          if [ -z "${LINE_RATE:-}" ]; then
-            echo "Could not parse line coverage from $COVERAGE_FILE"
-            exit 1
-          fi
+          files = glob.glob("TestResults/**/coverage.cobertura.xml", recursive=True)
+          if not files:
+              print("Coverage report not found under TestResults/**/coverage.cobertura.xml")
+              sys.exit(1)
 
-          COVERAGE_PERCENT="$(awk -v r="$LINE_RATE" 'BEGIN { printf "%.2f", r * 100 }')"
-          echo "Line Coverage: ${COVERAGE_PERCENT}% (threshold ${COVERAGE_THRESHOLD}%)"
+          latest = max(files, key=os.path.getmtime)
+          root = ET.parse(latest).getroot()
+          line_rate = float(root.attrib.get("line-rate", "0"))
+          percent = round(line_rate * 100, 2)
+          threshold = float(os.environ.get("COVERAGE_THRESHOLD", "0"))
 
-          awk -v r="$LINE_RATE" -v t="$COVERAGE_THRESHOLD" 'BEGIN { if ((r * 100) < t) exit 1; else exit 0 }'
+          print(f"Coverage file: {latest}")
+          print(f"Line Coverage: {percent}% (threshold {threshold}%)")
+
+          if percent < threshold:
+              print("Coverage threshold check failed.")
+              sys.exit(1)
+
+          print("Coverage threshold check passed.")
+          PY
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
