@@ -342,6 +342,7 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddScoped<CacheService>();
 
         builder.Services.AddScoped<FranchiseService>();
+        builder.Services.AddSingleton<AppMetricsService>();
 
         builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
         builder.Services.Configure<RequestLocalizationOptions>(options =>

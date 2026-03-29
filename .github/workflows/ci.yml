@@ -10,6 +10,9 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    env:
+      # Initial baseline gate; raise gradually each sprint (e.g. 2 -> 5 -> 10 -> 20+)
+      COVERAGE_THRESHOLD: "2"
     steps:
       - uses: actions/checkout@v4
 
@@ -24,5 +27,32 @@ jobs:
       - name: Build
         run: dotnet build RetailERP.sln -c Release --no-restore
 
-      - name: Test
-        run: dotnet test RetailERP.sln -c Release --no-build --verbosity normal
+      - name: Test with coverage
+        run: dotnet test RetailERP.sln -c Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory TestResults
+
+      - name: Enforce coverage threshold
+        shell: bash
+        run: |
+          set -euo pipefail
+          COVERAGE_FILE="$(find TestResults -name 'coverage.cobertura.xml' | head -n 1)"
+          if [ -z "${COVERAGE_FILE:-}" ]; then
+            echo "Coverage report not found."
+            exit 1
+          fi
+
+          LINE_RATE="$(sed -n 's/.*line-rate="\([0-9.]*\)".*/\1/p' "$COVERAGE_FILE" | head -n 1)"
+          if [ -z "${LINE_RATE:-}" ]; then
+            echo "Could not parse line coverage from $COVERAGE_FILE"
+            exit 1
+          fi
+
+          COVERAGE_PERCENT="$(awk -v r="$LINE_RATE" 'BEGIN { printf "%.2f", r * 100 }')"
+          echo "Line Coverage: ${COVERAGE_PERCENT}% (threshold ${COVERAGE_THRESHOLD}%)"
+
+          awk -v r="$LINE_RATE" -v t="$COVERAGE_THRESHOLD" 'BEGIN { exit (r * 100 < t) ? 1 : 0 }'
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-coverage-cobertura
+          path: TestResults/**/coverage.cobertura.xml

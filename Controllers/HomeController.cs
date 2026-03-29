@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -281,5 +282,52 @@ public class HomeController : Controller
         if (string.IsNullOrWhiteSpace(id)) return BadRequest();
         var data = await _dash.GetWidgetDataAsync(id);
         return Json(data);
+    }
+
+    [AllowAnonymous]
+    [HttpGet]
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult Error()
+    {
+        var feature = HttpContext.Features.Get<IExceptionHandlerPathFeature>();
+        var vm = new ErrorViewModel
+        {
+            RequestId = HttpContext.TraceIdentifier,
+            StatusCode = 500,
+            Title = "Something went wrong",
+            Message = "We could not process your request right now. Please try again."
+        };
+
+        if (feature?.Error is not null)
+            HttpContext.Items["UnhandledExceptionType"] = feature.Error.GetType().Name;
+
+        Response.StatusCode = StatusCodes.Status500InternalServerError;
+        return View(vm);
+    }
+
+    [AllowAnonymous]
+    [HttpGet]
+    [Route("Home/HttpStatus/{statusCode:int}")]
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult HttpStatus(int statusCode)
+    {
+        var (title, message) = statusCode switch
+        {
+            404 => ("Page not found", "The page you requested does not exist or was moved."),
+            403 => ("Access denied", "You do not have permission to access this page."),
+            401 => ("Unauthorized", "Please sign in to continue."),
+            _ => ("Request could not be completed", "Please try again or contact support if this continues.")
+        };
+
+        var vm = new ErrorViewModel
+        {
+            RequestId = HttpContext.TraceIdentifier,
+            StatusCode = statusCode,
+            Title = title,
+            Message = message
+        };
+
+        Response.StatusCode = statusCode;
+        return View("StatusCode", vm);
     }
 }

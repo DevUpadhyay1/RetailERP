@@ -22,6 +22,7 @@ dotnet run --project RetailERP.csproj
 - **HTTP profile:** see `Properties/launchSettings.json` (runs on `http://localhost:5820` or `https://localhost:7240` by default).
 - **Swagger (Development):** `/swagger`
 - **Health:** `GET /health` (includes SQL Server check)
+- **Metrics:** `GET /metrics` (Prometheus text format)
 
 > **Note:** UI assets (Bootstrap CSS/JS) are loaded via CDN (jsDelivr) to ensure the UI renders correctly on a fresh clone without requiring `libman restore`.
 
@@ -45,6 +46,8 @@ dotnet test RetailERP.sln -c Release
 ```
 
 GitHub Actions workflow: `.github/workflows/ci.yml` (build + test on push/PR).
+CI also collects Cobertura coverage and enforces a baseline threshold (`COVERAGE_THRESHOLD` in workflow).
+Staging deployment workflow: `.github/workflows/deploy-staging.yml` (build image + optional SSH deploy).
 
 ## Project layout (high level)
 

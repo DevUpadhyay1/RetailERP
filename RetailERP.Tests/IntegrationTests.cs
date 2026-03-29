@@ -53,7 +53,7 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
     {
         var response = await _client.GetAsync("/");
 
-        // FallbackPolicy + Cookie auth → 302 redirect
+        // FallbackPolicy + Cookie auth â†’ 302 redirect
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.NotNull(response.Headers.Location);
     }
@@ -80,6 +80,37 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
         Assert.NotEqual("test-123", generated); // must be a fresh value
     }
 
+    [Fact]
+    public async Task Metrics_ReturnsPrometheusPayload()
+    {
+        var response = await _client.GetAsync("/metrics");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("retailerp_requests_total", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("retailerp_errors_total", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task StatusEndpoint_ReturnsCustom404Page()
+    {
+        var response = await _client.GetAsync("/Home/HttpStatus/404");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Contains("Page not found", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ErrorEndpoint_ReturnsCustom500Page()
+    {
+        var response = await _client.GetAsync("/Home/Error");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Contains("Something went wrong", body, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>
     /// Confirm Manager role receives 403 Forbidden (or AccessDenied redirect) on a SuperAdmin route.
     /// Addresses the "Admin role boundary" security requirement.
@@ -104,11 +135,11 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
         // Target a route restricted to [Authorize(Roles = "SuperAdmin")]
         var response = await client.GetAsync("/Companies");
 
-        // MVC will issue a 403 Forbidden or redirect to AccessDenied 
+        // MVC will issue a 403 Forbidden or redirect to AccessDenied
         // depending on how the Authorization middleware is configured.
         Assert.True(response.StatusCode == HttpStatusCode.Forbidden || response.StatusCode == HttpStatusCode.Redirect,
             $"Expected Forbid (403) or Redirect (302) to AccessDenied, got {response.StatusCode}");
-        
+
         if (response.StatusCode == HttpStatusCode.Redirect)
         {
             Assert.Contains("AccessDenied", response.Headers.Location?.ToString() ?? "", StringComparison.OrdinalIgnoreCase);
@@ -118,15 +149,15 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
 
 public class TestAuthHandler : Microsoft.AspNetCore.Authentication.AuthenticationHandler<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions>
 {
-    public TestAuthHandler(Microsoft.Extensions.Options.IOptionsMonitor<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions> options, 
+    public TestAuthHandler(Microsoft.Extensions.Options.IOptionsMonitor<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions> options,
         Microsoft.Extensions.Logging.ILoggerFactory logger, System.Text.Encodings.Web.UrlEncoder encoder)
         : base(options, logger, encoder) { }
 
     protected override Task<Microsoft.AspNetCore.Authentication.AuthenticateResult> HandleAuthenticateAsync()
     {
-        var claims = new[] { 
+        var claims = new[] {
             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "TestManager"),
-            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Manager") 
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Manager")
         };
         var identity = new System.Security.Claims.ClaimsIdentity(claims, "TestScheme");
         var principal = new System.Security.Claims.ClaimsPrincipal(identity);

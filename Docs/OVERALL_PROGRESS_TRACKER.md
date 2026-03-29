@@ -1,98 +1,56 @@
 # RetailERP overall progress tracker
 
-This document is the single source to track what was completed, what is in progress, and what is next.
-Update this after every meaningful work batch.
+This document tracks what is completed, what is partially done, and what remains.
 
 ## Current phase completion (estimated)
 
-**Last doc sync:** 2026-03-24
+**Last doc sync:** 2026-03-29
 
 | Phase | Name | % | Rationale |
 |-------|------|---|-----------|
-| 1 | Reliable (tests + CI) | **78%** | CI active on push/PR; 39 passing tests (33 service/regression + 6 WebApplicationFactory integration); no coverage threshold yet |
-| 2 | Security | **100%** | Auth/CSRF/rate-limit/CORS/headers done; secrets externalized; IDOR patched; Admin role boundaries verified automatically; Server operations and log ACL guidance complete |
-| 3 | Observable & operable | **75%** | `/health` + `/health/ready` probes; Correlation ID end-to-end; Serilog file logs + runbook; no centralized metrics/alerting |
-| 4 | Performance | **100%** | AsNoTracking + projection active; DB indices mapped; 100k production-volume profiling generated (446-1525ms baseline); Redis selective cache strategy published |
-| 5 | Maintainable codebase | **85%** | `Program.cs` split into `Infrastructure/` extensions; CONTRIBUTING.md; clean DI composition; Clone-safe UI asset loading fixed via CDN Bootstrap links |
-| 6 | Demo & documentation | **85%** | README, DEMO_SCRIPT, ARCHITECTURE (Mermaid), REAL_WORLD_MAPPING, RUNBOOK, 17 docs in `Docs/` |
+| 1 | Reliable (tests + CI) | **84%** | 51 automated tests (50 pass, 1 manual benchmark skipped), CI build+test+coverage artifact, baseline coverage threshold enforced |
+| 2 | Security | **100%** | Auth/CSRF/rate-limit/CORS/headers, tenant authorization regression coverage, production validation guardrails |
+| 3 | Observable & operable | **82%** | `/health`, `/health/ready`, correlation IDs, Serilog, `/metrics` endpoint, runbook alerting baseline |
+| 4 | Performance | **100%** | AsNoTracking/projection passes, indexing work, benchmark tooling and 100k profile scripts |
+| 5 | Maintainable codebase | **86%** | Program split to infrastructure extensions, cleaner service registration and pipeline structure |
+| 6 | Demo & documentation | **90%** | Architecture/demo/security/deployment/runbook docs are in place and updated with latest CI/metrics/staging flow |
 
-**Overall completion: ~80%**
+**Overall completion: ~87%**
 
 ---
 
 ## Current status
 
-**Demo-ready:** Yes. The system has a working CI pipeline, 39 automated tests, health probes, correlation-based observability, rate limiting, security headers, and comprehensive documentation. Suitable for viva or stakeholder demo.
+**Demo-ready:** Yes.  
+Core ERP flows are functional with automated tests, CI checks, and operational docs.
 
-**Production-ready:** Not yet. Secrets are still in `appsettings.json` (must be externalized), server-side log retention/ACLs are unconfigured, tenant-isolation bypass testing is incomplete, and there is no production-volume performance baseline.
+**Production-ready:** Close, but not fully closed.  
+Main remaining work is raising coverage targets, adding centralized dashboards/alerts, and finalizing staged rollout operations.
 
 ---
 
-## What's done (phase-by-phase)
+## What's done recently (latest batch)
 
-### Phase 1 — Reliable (tests + CI)
-- GitHub Actions `ci.yml` runs build + test on every push/PR.
-- 33 service/regression tests covering POS billing, coupons, loyalty, payments, returns, refund edge cases, and security authorization.
-- 6 WebApplicationFactory integration tests: `/health` 200, `/health/ready` JSON, auth redirect 302, correlation-id echo, swagger JSON, benchmark latency.
-- DI scope fix for background notification sends (`IServiceScopeFactory`).
-
-### Phase 2 — Security
-- Identity + JWT authentication with lockout.
-- `ProductionStartupValidation` blocks weak dev secrets in Production.
-- Global MVC anti-forgery; explicit API opt-out.
-- Rate limiting on login, API, Portal, Sync endpoints.
-- CORS policy with explicit production origins.
-- HSTS + HTTPS in non-Development.
-- Forwarded headers for reverse proxy.
-- Dependency vulnerability scan clean.
-- Automated negative auth regression tests (cross-company, malformed payloads).
-- Logging/privacy hardening on payment/SMS paths.
-
-### Phase 3 — Observable & operable
-- `/health` endpoint (SQL + optional Redis checks).
-- `/health/ready` JSON readiness probe.
-- Serilog file + console logging (daily rolling).
-- End-to-end `X-Correlation-Id` via custom middleware → Serilog LogContext → response header.
-- `Docs/RUNBOOK.md` for operational procedures.
-
-### Phase 4 — Performance
-- `AsNoTracking()` applied on all read-only query paths.
-- `.Select()` projection-first pattern on 8 endpoints (Items, LowStock, POS bills, POS returns, Notifications, StockTransactions, Admin users, Dashboard widgets).
-- DB indexes on Item (SKU, Barcode per company).
-- N+1 fix on admin users listing.
-- Sales report aggregation pushed to database.
-- SuperAdmin dashboard company rows: set-based grouped counts.
-- Forecast snapshot: projection-only stock reads.
-- Benchmark snapshot: `Api/ItemsController.GetAll` averages 1.2 ms raw latency.
-- Caching strategy documented (`CACHING_STRATEGY.md`).
-- Lighthouse compatibility hardening: HTML responses now enforce UTF-8 charset when missing on `text/html`.
-
-### Phase 5 — Maintainable codebase
-- `Program.cs` → `Infrastructure/WebApplicationBuilderExtensions.cs` + `WebApplicationExtensions.cs`.
-- Single `AddControllersWithViews` + localization call.
-- `CONTRIBUTING.md` for developer onboarding.
-
-### Phase 6 — Demo & documentation
-- `README.md` with quick start, config table, project layout.
-- `DEMO_SCRIPT.md` (5–10 min viva script).
-- `ARCHITECTURE.md` (Mermaid diagram + narrative).
-- `REAL_WORLD_MAPPING.md` (code ↔ real-world engineering bridge for viva).
-- `SECURITY_CHECKLIST.md`, `PRODUCTION_DEPLOYMENT.md`, `RUNBOOK.md`, `CACHING_STRATEGY.md`.
-- 17 documentation files in `Docs/`.
+1. Added customer/supplier/item migration onboarding with opening stock support and tests.
+2. Added CI coverage collection with threshold gate and artifact upload.
+3. Added production error/status pages and status-code re-execution flow.
+4. Added lightweight Prometheus-style `/metrics` endpoint.
+5. Added staging deployment workflow (`deploy-staging.yml`) and updated runbook/deployment docs.
 
 ---
 
 ## Remaining for production closure
 
-1. **Tenant isolation verification:** Manual pen-test `CompanyId` bypass on critical service paths.
-3. **Admin role boundary:** Verify SuperAdmin/Admin routes reject lower roles (one manual pass).
-4. **Server ops:** Configure log retention/ACLs, firewall rules (ports 443/22 only), deploy pipeline secret gating.
-5. **Production profiling:** Run benchmark with production-like data volume; capture before/after if further optimization needed.
+1. Raise coverage threshold gradually each sprint (current baseline is intentionally low).
+2. Add centralized metrics/alerting stack (Prometheus + Grafana or Application Insights dashboards).
+3. Add stricter staging/prod promotion gates (manual approvals + smoke test checks + rollback script automation).
+4. Complete tenant-isolation verification and targeted security pen-test checklist.
+5. Keep eliminating obsolete warnings and tighten CI warning budgets.
 
 ---
 
-## Verification
+## Verification snapshot
 
-- **Build:** `dotnet build RetailERP.sln -c Release` → 0 errors, 0 warnings (except pre-existing `ReceiptPdfService` obsolete image warning).
-- **Tests:** `dotnet test RetailERP.Tests/RetailERP.Tests.csproj -c Release --no-build` → **43 passed, 0 failed**.
-- **CI:** GitHub Actions green on push/PR.
+- Build: `dotnet build RetailERP.sln -c Release` passed.
+- Tests: `dotnet test RetailERP.sln -c Release --no-build` passed (`50 passed, 1 skipped`).
+- Coverage run: `dotnet test ... --collect:\"XPlat Code Coverage\"` generated Cobertura report (current line coverage ~2.3%).

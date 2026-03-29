@@ -1,4 +1,4 @@
-# RetailERP — short runbook
+# RetailERP â€” short runbook
 
 ## Local developer
 
@@ -15,7 +15,17 @@
 | Readiness (LB / K8s) | `GET /health/ready` returns JSON; includes SQL (+ Redis when enabled) |
 | Database | `/health` should report SQL check; verify migrations applied |
 | Logs | Inspect `Logs/retailerp-*.log` on server |
+| Metrics | `GET /metrics` (Prometheus format) should return request/error counters |
 | Redis | Optional; if misconfigured, app uses in-memory cache (see startup logs) |
+
+## Alerting Baseline
+
+Configure at least these alerts in your monitoring tool (Prometheus/Grafana/Datadog/New Relic):
+
+1. **Error spike:** `retailerp_errors_total` rate increases abnormally (5xx burst).
+2. **Latency spike:** `retailerp_request_duration_ms_total / retailerp_requests_total` exceeds your SLO.
+3. **Health readiness down:** `/health/ready` status not Healthy for > 2 minutes.
+4. **No traffic anomaly:** sudden drop in `retailerp_requests_total` during business hours.
 
 ## Rollback
 

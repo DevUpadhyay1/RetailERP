@@ -41,6 +41,7 @@ public static class WebApplicationExtensions
         else
         {
             app.UseExceptionHandler("/Home/Error");
+            app.UseStatusCodePagesWithReExecute("/Home/HttpStatus/{0}");
             app.UseHsts();
         }
 
@@ -53,6 +54,16 @@ public static class WebApplicationExtensions
                 diagnosticContext.Set("UserName", httpContext.User?.Identity?.Name ?? "anonymous");
                 diagnosticContext.Set("CorrelationId", httpContext.TraceIdentifier);
             };
+        });
+
+        var appMetrics = app.Services.GetRequiredService<AppMetricsService>();
+        app.Use(async (context, next) =>
+        {
+            var startedAt = DateTime.UtcNow;
+            using var _ = appMetrics.BeginRequest();
+            await next();
+            var durationMs = (long)Math.Max(0, (DateTime.UtcNow - startedAt).TotalMilliseconds);
+            appMetrics.TrackCompletedRequest(context, durationMs);
         });
 
         app.UseHttpsRedirection();
@@ -154,6 +165,12 @@ public static class WebApplicationExtensions
                         })
                 });
             }
+        }).AllowAnonymous();
+
+        app.MapGet("/metrics", () =>
+        {
+            var payload = appMetrics.RenderPrometheus();
+            return Results.Text(payload, "text/plain; version=0.0.4; charset=utf-8");
         }).AllowAnonymous();
     }
 }
