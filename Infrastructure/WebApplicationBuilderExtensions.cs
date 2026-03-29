@@ -311,6 +311,8 @@ public static class WebApplicationBuilderExtensions
         builder.Services.AddScoped<GstReportService>();
         builder.Services.AddScoped<EInvoiceService>();
         builder.Services.AddScoped<ItemOnboardingService>();
+        builder.Services.AddScoped<CustomerOnboardingService>();
+        builder.Services.AddScoped<SupplierOnboardingService>();
         builder.Services.AddScoped<PortalService>();
 
         builder.Services.AddSignalR();

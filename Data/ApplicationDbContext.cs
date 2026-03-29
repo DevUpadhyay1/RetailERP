@@ -109,7 +109,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         // Sprint 4: unique indexes are now composite with CompanyId
         // so different tenants can have the same SKU, name, code, etc.
         builder.Entity<Item>()
-            .HasIndex(x => new { x.SKU, x.CompanyId })
+            .HasIndex(x => new { x.CompanyId, x.SKU })
             .IsUnique();
 
         // DMART Phase 1: barcode is optional for now; enforce uniqueness when provided.
@@ -118,16 +118,28 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .IsUnique()
             .HasFilter("[Barcode] IS NOT NULL");
 
+        builder.Entity<Item>()
+            .Property(x => x.UnitPrice)
+            .HasPrecision(18, 2);
+
+        builder.Entity<Item>()
+            .Property(x => x.PurchasePrice)
+            .HasPrecision(18, 2);
+
+        builder.Entity<Item>()
+            .Property(x => x.MRP)
+            .HasPrecision(18, 2);
+
         builder.Entity<Unit>()
-            .HasIndex(x => new { x.Name, x.CompanyId })
+            .HasIndex(x => new { x.CompanyId, x.Name })
             .IsUnique();
 
         builder.Entity<Category>()
-            .HasIndex(x => new { x.Name, x.CompanyId })
+            .HasIndex(x => new { x.CompanyId, x.Name })
             .IsUnique();
 
         builder.Entity<Store>()
-            .HasIndex(x => new { x.StoreCode, x.CompanyId })
+            .HasIndex(x => new { x.CompanyId, x.StoreCode })
             .IsUnique();
 
         // Sprint 6: Only one default template per type per company
@@ -137,11 +149,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .IsUnique();
 
         builder.Entity<Warehouse>()
-            .HasIndex(x => new { x.Name, x.CompanyId })
+            .HasIndex(x => new { x.CompanyId, x.Name })
             .IsUnique();
 
         builder.Entity<Supplier>()
-            .HasIndex(x => new { x.Name, x.CompanyId })
+            .HasIndex(x => new { x.CompanyId, x.Name })
             .IsUnique();
 
         builder.Entity<Employee>()
@@ -152,11 +164,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .ToTable(t => t.HasCheckConstraint("CK_Employees_Status", "[Status] IN (1,2,3,4)"));
 
         builder.Entity<Purchase>()
-            .HasIndex(x => new { x.PurchaseNo, x.CompanyId })
+            .HasIndex(x => new { x.CompanyId, x.PurchaseNo })
             .IsUnique();
 
         builder.Entity<Invoice>()
-            .HasIndex(x => new { x.InvoiceNo, x.CompanyId })
+            .HasIndex(x => new { x.CompanyId, x.InvoiceNo })
             .IsUnique();
 
         builder.Entity<Invoice>()
@@ -319,7 +331,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .ToTable(t => t.HasCheckConstraint("CK_StockTransactions_QtyNonZero", "[Qty] <> 0"));
 
         builder.Entity<StockTransaction>()
-            .ToTable(t => t.HasCheckConstraint("CK_StockTransactions_Type", "[Type] IN ('IN','OUT','ADJUSTMENT','TRANSFER','RETURN')"));
+            .ToTable(t => t.HasCheckConstraint("CK_StockTransactions_Type", "[Type] IN ('IN','OUT','ADJUSTMENT','TRANSFER','RETURN','OPENING')"));
 
         builder.Entity<StockTransaction>()
             .HasOne(x => x.Item)

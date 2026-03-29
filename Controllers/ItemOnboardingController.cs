@@ -9,10 +9,17 @@ namespace RetailERP.Controllers;
 public class ItemOnboardingController : Controller
 {
     private readonly ItemOnboardingService _onboarding;
+    private readonly CustomerOnboardingService _customerOnboarding;
+    private readonly SupplierOnboardingService _supplierOnboarding;
 
-    public ItemOnboardingController(ItemOnboardingService onboarding)
+    public ItemOnboardingController(
+        ItemOnboardingService onboarding,
+        CustomerOnboardingService customerOnboarding,
+        SupplierOnboardingService supplierOnboarding)
     {
         _onboarding = onboarding;
+        _customerOnboarding = customerOnboarding;
+        _supplierOnboarding = supplierOnboarding;
     }
 
     [HttpGet]
@@ -34,6 +41,20 @@ public class ItemOnboardingController : Controller
             : _onboarding.BuildStandardTemplateCsv();
 
         return File(bytes, "text/csv", fileName);
+    }
+
+    [HttpGet]
+    public IActionResult DownloadCustomerTemplate()
+    {
+        var bytes = _customerOnboarding.BuildTemplateCsv();
+        return File(bytes, "text/csv", "RetailERP_Customer_Import_Template.csv");
+    }
+
+    [HttpGet]
+    public IActionResult DownloadSupplierTemplate()
+    {
+        var bytes = _supplierOnboarding.BuildTemplateCsv();
+        return File(bytes, "text/csv", "RetailERP_Supplier_Import_Template.csv");
     }
 
     [HttpPost]
@@ -68,6 +89,62 @@ public class ItemOnboardingController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ImportCustomers(IFormFile? file, bool updateExistingCustomers = true)
+    {
+        var vm = BuildVm();
+        vm.CustomerUpdateExisting = updateExistingCustomers;
+
+        if (file is null || file.Length == 0)
+        {
+            vm.CustomerError = "Please choose a customer CSV file.";
+            return View(nameof(Index), vm);
+        }
+
+        if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            vm.CustomerError = "Only .csv files are supported for customer import.";
+            return View(nameof(Index), vm);
+        }
+
+        await using var stream = file.OpenReadStream();
+        vm.CustomerImportResult = await _customerOnboarding.ImportCsvAsync(
+            stream,
+            file.FileName,
+            updateExistingCustomers);
+
+        return View(nameof(Index), vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ImportSuppliers(IFormFile? file, bool updateExistingSuppliers = true)
+    {
+        var vm = BuildVm();
+        vm.SupplierUpdateExisting = updateExistingSuppliers;
+
+        if (file is null || file.Length == 0)
+        {
+            vm.SupplierError = "Please choose a supplier CSV file.";
+            return View(nameof(Index), vm);
+        }
+
+        if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+        {
+            vm.SupplierError = "Only .csv files are supported for supplier import.";
+            return View(nameof(Index), vm);
+        }
+
+        await using var stream = file.OpenReadStream();
+        vm.SupplierImportResult = await _supplierOnboarding.ImportCsvAsync(
+            stream,
+            file.FileName,
+            updateExistingSuppliers);
+
+        return View(nameof(Index), vm);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApplyStarterPack(BusinessType businessType, bool updateExistingPack = false)
     {
         var vm = BuildVm();
@@ -92,7 +169,9 @@ public class ItemOnboardingController : Controller
             BusinessTypes = bizTypes,
             SelectedBusinessType = BusinessType.Other,
             UpdateExisting = true,
-            CreateMissingLookups = true
+            CreateMissingLookups = true,
+            CustomerUpdateExisting = true,
+            SupplierUpdateExisting = true
         };
     }
 
@@ -102,6 +181,12 @@ public class ItemOnboardingController : Controller
         public bool CreateMissingLookups { get; set; }
         public string? GeneralError { get; set; }
         public ItemOnboardingService.ItemImportResult? ImportResult { get; set; }
+        public bool CustomerUpdateExisting { get; set; }
+        public bool SupplierUpdateExisting { get; set; }
+        public string? CustomerError { get; set; }
+        public string? SupplierError { get; set; }
+        public CustomerOnboardingService.CustomerImportResult? CustomerImportResult { get; set; }
+        public SupplierOnboardingService.SupplierImportResult? SupplierImportResult { get; set; }
         public List<BusinessTypeOption> BusinessTypes { get; set; } = new();
         public BusinessType SelectedBusinessType { get; set; }
         public bool UpdateExistingPack { get; set; }

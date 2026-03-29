@@ -25,18 +25,18 @@ public sealed class ItemOnboardingService
     public byte[] BuildStandardTemplateCsv()
     {
         const string csv =
-            "SKU,Name,UnitPrice,MRP,PurchasePrice,GstPercent,HsnCode,Barcode,ReorderLevel,UnitName,CategoryName,IsActive\r\n" +
-            "RICE-001,Basmati Rice 5kg,525,549,480,5,100630,8901234567001,10,PCS,Grocery,true\r\n" +
-            "SOAP-010,Bathing Soap 125g,38,40,31,18,340111,8901234567018,40,PCS,Personal Care,true\r\n";
+            "SKU,Name,UnitPrice,MRP,PurchasePrice,GstPercent,HsnCode,Barcode,ReorderLevel,UnitName,CategoryName,IsActive,OpeningStock,WarehouseName,BatchNumber,ExpiryDate\r\n" +
+            "RICE-001,Basmati Rice 5kg,525,549,480,5,100630,8901234567001,10,PCS,Grocery,true,100,Main Warehouse,RICE-APR26,2026-12-31\r\n" +
+            "SOAP-010,Bathing Soap 125g,38,40,31,18,340111,8901234567018,40,PCS,Personal Care,true,60,Main Warehouse,SOAP-B1,2027-06-30\r\n";
         return Encoding.UTF8.GetBytes(csv);
     }
 
     public byte[] BuildSupplierTemplateCsv()
     {
         const string csv =
-            "SupplierSKU,ProductName,SalePrice,MRP,CostPrice,GST,HSN,EAN,MinStock,UOM,Category,Active\r\n" +
-            "HWR-AXE-01,Steel Axe 1kg,799,850,640,18,820130,8901234577001,5,PCS,Hardware,true\r\n" +
-            "HWR-DRL-02,Electric Drill Machine,3499,3699,2990,18,846721,8901234577018,2,PCS,Hardware,true\r\n";
+            "SupplierSKU,ProductName,SalePrice,MRP,CostPrice,GST,HSN,EAN,MinStock,UOM,Category,Active,OpeningStock,WarehouseName,BatchNumber,ExpiryDate\r\n" +
+            "HWR-AXE-01,Steel Axe 1kg,799,850,640,18,820130,8901234577001,5,PCS,Hardware,true,12,Main Warehouse,AXE-B1,2028-01-31\r\n" +
+            "HWR-DRL-02,Electric Drill Machine,3499,3699,2990,18,846721,8901234577018,2,PCS,Hardware,true,4,Main Warehouse,DRL-B2,2028-12-31\r\n";
         return Encoding.UTF8.GetBytes(csv);
     }
 
@@ -63,6 +63,10 @@ public sealed class ItemOnboardingService
             .Where(g => !string.IsNullOrWhiteSpace(g.Key) && g.Count() > 1);
         foreach (var dup in duplicateSkuRows)
         {
+            var allowBatchWise = dup.All(r => r.OpeningStock.GetValueOrDefault() > 0);
+            if (allowBatchWise)
+                continue;
+
             foreach (var row in dup.Skip(1))
             {
                 result.Errors.Add(new ItemImportError
@@ -102,6 +106,12 @@ public sealed class ItemOnboardingService
             .AsNoTracking()
             .ToDictionaryAsync(c => NormalizeKey(c.Name), c => c.CategoryId);
 
+        var warehouseMap = await _db.Warehouses
+            .AsNoTracking()
+            .ToDictionaryAsync(
+                w => NormalizeKey(w.Name),
+                w => new WarehouseLookup(w.WarehouseId, w.Name, w.StoreId));
+
         foreach (var row in parsedRows.Where(r => !r.Skip))
         {
             if (string.IsNullOrWhiteSpace(row.Sku))
@@ -112,6 +122,11 @@ public sealed class ItemOnboardingService
             if (string.IsNullOrWhiteSpace(row.Name))
             {
                 AddError(result, row, "Name is required.");
+                continue;
+            }
+            if (row.OpeningStock.HasValue && row.OpeningStock.Value < 0)
+            {
+                AddError(result, row, "OpeningStock cannot be negative.");
                 continue;
             }
 
@@ -131,30 +146,34 @@ public sealed class ItemOnboardingService
             var unitId = await ResolveUnitAsync(row.UnitName, createMissingLookups, unitMap, result, row);
             var categoryId = await ResolveCategoryAsync(row.CategoryName, createMissingLookups, categoryMap, result, row);
 
+            Item targetItem;
             if (existingBySku.TryGetValue(skuKey, out var existing))
             {
                 if (!updateExisting)
                 {
+                    targetItem = existing;
                     result.Skipped++;
-                    continue;
                 }
-
-                existing.Name = row.Name!;
-                existing.UnitPrice = row.UnitPrice;
-                existing.MRP = row.MRP;
-                existing.PurchasePrice = row.PurchasePrice;
-                existing.GstPercent = row.GstPercent;
-                existing.HsnCode = row.HsnCode;
-                existing.Barcode = row.Barcode;
-                existing.ReorderLevel = row.ReorderLevel;
-                existing.UnitId = unitId;
-                existing.CategoryId = categoryId;
-                existing.IsActive = row.IsActive;
-                result.Updated++;
+                else
+                {
+                    existing.Name = row.Name!;
+                    existing.UnitPrice = row.UnitPrice;
+                    existing.MRP = row.MRP;
+                    existing.PurchasePrice = row.PurchasePrice;
+                    existing.GstPercent = row.GstPercent;
+                    existing.HsnCode = row.HsnCode;
+                    existing.Barcode = row.Barcode;
+                    existing.ReorderLevel = row.ReorderLevel;
+                    existing.UnitId = unitId;
+                    existing.CategoryId = categoryId;
+                    existing.IsActive = row.IsActive;
+                    targetItem = existing;
+                    result.Updated++;
+                }
             }
             else
             {
-                var item = new Item
+                targetItem = new Item
                 {
                     ItemId = Guid.NewGuid(),
                     SKU = row.Sku!,
@@ -170,11 +189,21 @@ public sealed class ItemOnboardingService
                     CategoryId = categoryId,
                     IsActive = row.IsActive
                 };
-                _db.Items.Add(item);
-                existingBySku[skuKey] = item;
+                _db.Items.Add(targetItem);
+                existingBySku[skuKey] = targetItem;
                 if (barcodeKey is not null)
-                    existingByBarcode[barcodeKey] = item.ItemId;
+                    existingByBarcode[barcodeKey] = targetItem.ItemId;
                 result.Inserted++;
+            }
+
+            if (row.OpeningStock.GetValueOrDefault() > 0)
+            {
+                await ApplyOpeningStockAsync(
+                    targetItem,
+                    row,
+                    createMissingLookups,
+                    warehouseMap,
+                    result);
             }
         }
 
@@ -381,7 +410,11 @@ public sealed class ItemOnboardingService
                 PurchasePrice = ParseNullableDecimal(GetField(fields, map, "purchaseprice")),
                 GstPercent = ParseNullableDecimal(GetField(fields, map, "gst")),
                 ReorderLevel = ParseInt(GetField(fields, map, "reorderlevel"), 0),
-                IsActive = ParseBool(GetField(fields, map, "isactive"), true)
+                IsActive = ParseBool(GetField(fields, map, "isactive"), true),
+                OpeningStock = ParseNullableDecimal(GetField(fields, map, "openingstock")),
+                WarehouseName = NullIfEmpty(GetField(fields, map, "warehouse")),
+                BatchNumber = NullIfEmpty(GetField(fields, map, "batchnumber")),
+                ExpiryDate = ParseNullableDate(GetField(fields, map, "expirydate"))
             };
 
             rows.Add(row);
@@ -405,7 +438,11 @@ public sealed class ItemOnboardingService
             ["reorderlevel"] = new[] { "reorderlevel", "reorder", "minstock", "minimumstock" },
             ["unit"] = new[] { "unit", "unitname", "uom" },
             ["category"] = new[] { "category", "categoryname", "group", "department" },
-            ["isactive"] = new[] { "isactive", "active", "status" }
+            ["isactive"] = new[] { "isactive", "active", "status" },
+            ["openingstock"] = new[] { "openingstock", "openingqty", "openingquantity", "initialstock", "stock" },
+            ["warehouse"] = new[] { "warehouse", "warehousename", "godown", "location" },
+            ["batchnumber"] = new[] { "batchnumber", "batchno", "batch", "lotnumber", "lotno" },
+            ["expirydate"] = new[] { "expirydate", "expdate", "expiry", "exp" }
         };
 
         var normalized = headers
@@ -465,6 +502,38 @@ public sealed class ItemOnboardingService
         if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i)) return i;
         if (int.TryParse(value, NumberStyles.Integer, CultureInfo.CurrentCulture, out i)) return i;
         return fallback;
+    }
+
+    private static DateTime? ParseNullableDate(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        var formats = new[]
+        {
+            "yyyy-MM-dd",
+            "dd-MM-yyyy",
+            "dd/MM/yyyy",
+            "MM/dd/yyyy",
+            "yyyy/MM/dd",
+            "dd-MMM-yyyy"
+        };
+
+        if (DateTime.TryParseExact(
+            value,
+            formats,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AllowWhiteSpaces,
+            out var exact))
+        {
+            return exact.Date;
+        }
+
+        if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var parsedInv))
+            return parsedInv.Date;
+        if (DateTime.TryParse(value, CultureInfo.CurrentCulture, DateTimeStyles.AllowWhiteSpaces, out var parsedCur))
+            return parsedCur.Date;
+
+        return null;
     }
 
     private static bool ParseBool(string? value, bool fallback)
@@ -539,6 +608,136 @@ public sealed class ItemOnboardingService
         return category.CategoryId;
     }
 
+    private async Task ApplyOpeningStockAsync(
+        Item item,
+        ImportCsvRow row,
+        bool createMissingLookups,
+        Dictionary<string, WarehouseLookup> warehouseMap,
+        ItemImportResult result)
+    {
+        var openingQty = row.OpeningStock.GetValueOrDefault();
+        if (openingQty <= 0)
+            return;
+
+        var warehouse = await ResolveWarehouseAsync(
+            row.WarehouseName,
+            createMissingLookups,
+            warehouseMap,
+            result,
+            row);
+
+        if (warehouse is null)
+            return;
+
+        var stock = await _db.Stocks.FirstOrDefaultAsync(s =>
+            s.ItemId == item.ItemId && s.WarehouseId == warehouse.WarehouseId);
+
+        if (stock is null)
+        {
+            stock = new Stock
+            {
+                StockId = Guid.NewGuid(),
+                ItemId = item.ItemId,
+                WarehouseId = warehouse.WarehouseId,
+                Quantity = 0,
+                BatchNumber = row.BatchNumber,
+                ExpiryDate = row.ExpiryDate,
+                CompanyId = item.CompanyId
+            };
+            _db.Stocks.Add(stock);
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(stock.BatchNumber) && !string.IsNullOrWhiteSpace(row.BatchNumber))
+                stock.BatchNumber = row.BatchNumber;
+            if (!stock.ExpiryDate.HasValue && row.ExpiryDate.HasValue)
+                stock.ExpiryDate = row.ExpiryDate;
+        }
+
+        stock.Quantity += openingQty;
+
+        _db.StockTransactions.Add(new StockTransaction
+        {
+            StockTransactionId = Guid.NewGuid(),
+            OccurredAtUtc = DateTime.UtcNow,
+            Type = "OPENING",
+            ItemId = item.ItemId,
+            WarehouseId = warehouse.WarehouseId,
+            StoreId = warehouse.StoreId,
+            Qty = openingQty,
+            RefType = "ItemOnboarding",
+            RefId = item.ItemId.ToString(),
+            Reason = BuildOpeningReason(row),
+            UnitCost = row.PurchasePrice,
+            CompanyId = item.CompanyId
+        });
+    }
+
+    private async Task<WarehouseLookup?> ResolveWarehouseAsync(
+        string? warehouseName,
+        bool createMissing,
+        Dictionary<string, WarehouseLookup> warehouseMap,
+        ItemImportResult? result,
+        ImportCsvRow? row)
+    {
+        if (string.IsNullOrWhiteSpace(warehouseName))
+        {
+            if (warehouseMap.Count > 0)
+                return warehouseMap.Values.OrderBy(x => x.Name).First();
+
+            if (!createMissing)
+            {
+                AddError(result, row, "WarehouseName is required when no warehouse exists.");
+                return null;
+            }
+
+            warehouseName = "Main Warehouse";
+        }
+
+        var key = NormalizeKey(warehouseName);
+        if (warehouseMap.TryGetValue(key, out var existing))
+            return existing;
+
+        if (!createMissing)
+        {
+            AddError(result, row, $"Warehouse not found: {warehouseName}");
+            return null;
+        }
+
+        var fallbackStoreId = await _db.Stores
+            .AsNoTracking()
+            .OrderBy(s => s.Name)
+            .Select(s => (Guid?)s.StoreId)
+            .FirstOrDefaultAsync();
+
+        var warehouse = new Warehouse
+        {
+            WarehouseId = Guid.NewGuid(),
+            Name = warehouseName.Trim(),
+            StoreId = fallbackStoreId
+        };
+
+        _db.Warehouses.Add(warehouse);
+        await _db.SaveChangesAsync();
+
+        var lookup = new WarehouseLookup(warehouse.WarehouseId, warehouse.Name, warehouse.StoreId);
+        warehouseMap[key] = lookup;
+        return lookup;
+    }
+
+    private static string BuildOpeningReason(ImportCsvRow row)
+    {
+        var details = new List<string>();
+        if (!string.IsNullOrWhiteSpace(row.BatchNumber))
+            details.Add($"Batch: {row.BatchNumber}");
+        if (row.ExpiryDate.HasValue)
+            details.Add($"Exp: {row.ExpiryDate.Value:yyyy-MM-dd}");
+
+        return details.Count == 0
+            ? "Opening stock via item onboarding import."
+            : $"Opening stock via item onboarding import ({string.Join(", ", details)}).";
+    }
+
     private static void AddError(ItemImportResult? result, ImportCsvRow? row, string message)
     {
         if (result is null || row is null) return;
@@ -580,8 +779,14 @@ public sealed class ItemOnboardingService
         public string? UnitName { get; set; }
         public string? CategoryName { get; set; }
         public bool IsActive { get; set; } = true;
+        public decimal? OpeningStock { get; set; }
+        public string? WarehouseName { get; set; }
+        public string? BatchNumber { get; set; }
+        public DateTime? ExpiryDate { get; set; }
         public bool Skip { get; set; }
     }
+
+    private sealed record WarehouseLookup(Guid WarehouseId, string Name, Guid? StoreId);
 
     private sealed record StarterItemSeed(
         string SKU,

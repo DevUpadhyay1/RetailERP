@@ -1,4 +1,5 @@
 using System.Text;
+using RetailERP.Data.Entities;
 using RetailERP.Services;
 
 namespace RetailERP.Tests;
@@ -14,6 +15,7 @@ public class ItemOnboardingServiceTests
         var csv = Encoding.UTF8.GetString(svc.BuildStandardTemplateCsv());
 
         Assert.Contains("SKU,Name,UnitPrice,MRP,PurchasePrice,GstPercent,HsnCode,Barcode,ReorderLevel,UnitName,CategoryName,IsActive", csv);
+        Assert.Contains("OpeningStock,WarehouseName,BatchNumber,ExpiryDate", csv);
         Assert.Contains("RICE-001", csv);
     }
 
@@ -64,5 +66,45 @@ public class ItemOnboardingServiceTests
         Assert.Equal(2, result.TotalRows);
         Assert.Equal(1, result.Inserted);
         Assert.Contains(result.Errors, e => e.Message.Contains("Duplicate SKU in file"));
+    }
+
+    [Fact]
+    public async Task ImportCsvAsync_WithOpeningStock_ShouldCreateStockAndOpeningTransaction()
+    {
+        using var db = TestDbFactory.CreateInMemoryDb();
+
+        var warehouseId = Guid.NewGuid();
+        db.Warehouses.Add(new Warehouse
+        {
+            WarehouseId = warehouseId,
+            Name = "Main Warehouse"
+        });
+        await db.SaveChangesAsync();
+
+        var svc = new ItemOnboardingService(db);
+        var csv = string.Join(Environment.NewLine, new[]
+        {
+            "SKU,Name,UnitPrice,MRP,PurchasePrice,GstPercent,HsnCode,Barcode,ReorderLevel,UnitName,CategoryName,IsActive,OpeningStock,WarehouseName,BatchNumber,ExpiryDate",
+            "OPEN-001,Opening Item,100,120,80,5,1234,8900000001234,10,PCS,Grocery,true,25,Main Warehouse,BATCH-A,2027-12-31"
+        });
+
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(csv));
+        var result = await svc.ImportCsvAsync(stream, "opening.csv", updateExisting: true, createMissingLookups: true);
+
+        Assert.Equal(1, result.Inserted);
+        Assert.Empty(result.Errors);
+
+        var item = Assert.Single(db.Items);
+        var stock = Assert.Single(db.Stocks);
+        Assert.Equal(item.ItemId, stock.ItemId);
+        Assert.Equal(warehouseId, stock.WarehouseId);
+        Assert.Equal(25m, stock.Quantity);
+        Assert.Equal("BATCH-A", stock.BatchNumber);
+        Assert.Equal(new DateTime(2027, 12, 31), stock.ExpiryDate);
+
+        var tx = Assert.Single(db.StockTransactions);
+        Assert.Equal("OPENING", tx.Type);
+        Assert.Equal(25m, tx.Qty);
+        Assert.Equal("ItemOnboarding", tx.RefType);
     }
 }

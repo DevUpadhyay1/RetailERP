@@ -1,16 +1,18 @@
 @model RetailERP.Controllers.ItemOnboardingController.OnboardingPageVm
 @{
-    ViewData["Title"] = "Item Onboarding";
+    ViewData["Title"] = "Data Migration Onboarding";
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
-        <h2 class="mb-0">Item Onboarding</h2>
-        <div class="text-muted small">Bulk import, supplier catalog upload, quick setup starter packs</div>
+        <h2 class="mb-0">Data Migration Onboarding</h2>
+        <div class="text-muted small">Switch-ready import for Items, Customers, and Suppliers</div>
     </div>
-    <div class="d-flex gap-2">
-        <a class="btn btn-outline-primary btn-sm" asp-action="DownloadTemplate" asp-route-type="standard">Download Standard CSV</a>
-        <a class="btn btn-outline-secondary btn-sm" asp-action="DownloadTemplate" asp-route-type="supplier">Download Supplier CSV</a>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-primary btn-sm" asp-action="DownloadTemplate" asp-route-type="standard">Item Template</a>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="DownloadTemplate" asp-route-type="supplier">Supplier Item Template</a>
+        <a class="btn btn-outline-success btn-sm" asp-action="DownloadCustomerTemplate">Customer Template</a>
+        <a class="btn btn-outline-dark btn-sm" asp-action="DownloadSupplierTemplate">Supplier Template</a>
     </div>
 </div>
 
@@ -30,7 +32,7 @@
                     <div>
                         <label class="form-label">CSV File</label>
                         <input class="form-control" type="file" name="file" accept=".csv" required />
-                        <div class="form-text">Supports both standard and supplier-style column names.</div>
+                        <div class="form-text">Supports optional columns: OpeningStock, WarehouseName, BatchNumber, ExpiryDate.</div>
                     </div>
 
                     <div class="form-check">
@@ -42,11 +44,11 @@
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="createMissingLookups" name="createMissingLookups" value="true" checked="@Model.CreateMissingLookups" />
                         <input type="hidden" name="createMissingLookups" value="false" />
-                        <label class="form-check-label" for="createMissingLookups">Auto-create missing Units/Categories</label>
+                        <label class="form-check-label" for="createMissingLookups">Auto-create missing Units/Categories/Warehouse</label>
                     </div>
 
                     <div class="d-flex gap-2">
-                        <button class="btn btn-primary" type="submit">Import Now</button>
+                        <button class="btn btn-primary" type="submit">Import Items</button>
                         <a class="btn btn-outline-dark" asp-action="Index">Reset</a>
                     </div>
                 </form>
@@ -57,7 +59,7 @@
         {
             var r = Model.ImportResult;
             <div class="card shadow-sm mt-3">
-                <div class="card-header">Import Result - @r.SourceName</div>
+                <div class="card-header">Item Import Result - @r.SourceName</div>
                 <div class="card-body">
                     <div class="row g-2 mb-3">
                         <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Rows</div><div class="fw-semibold">@r.TotalRows</div></div></div>
@@ -93,7 +95,125 @@
                     }
                     else
                     {
-                        <div class="alert alert-success mb-0">Import completed without row errors.</div>
+                        <div class="alert alert-success mb-0">Item import completed without row errors.</div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="card shadow-sm mt-3">
+            <div class="card-header">Import Customers (CSV)</div>
+            <div class="card-body">
+                @if (!string.IsNullOrWhiteSpace(Model.CustomerError))
+                {
+                    <div class="alert alert-danger">@Model.CustomerError</div>
+                }
+                <form asp-action="ImportCustomers" method="post" enctype="multipart/form-data" class="vstack gap-3">
+                    @Html.AntiForgeryToken()
+
+                    <div>
+                        <label class="form-label">Customer CSV File</label>
+                        <input class="form-control" type="file" name="file" accept=".csv" required />
+                        <div class="form-text">Columns: Name, Phone, Email, Address, GSTIN, OpeningBalance</div>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="updateExistingCustomers" name="updateExistingCustomers" value="true" checked="@Model.CustomerUpdateExisting" />
+                        <input type="hidden" name="updateExistingCustomers" value="false" />
+                        <label class="form-check-label" for="updateExistingCustomers">Update existing customers by name</label>
+                    </div>
+
+                    <div>
+                        <button class="btn btn-success" type="submit">Import Customers</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        @if (Model.CustomerImportResult is not null)
+        {
+            var c = Model.CustomerImportResult;
+            <div class="card shadow-sm mt-3">
+                <div class="card-header">Customer Import Result - @c.SourceName</div>
+                <div class="card-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Rows</div><div class="fw-semibold">@c.TotalRows</div></div></div>
+                        <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Inserted</div><div class="fw-semibold text-success">@c.Inserted</div></div></div>
+                        <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Updated</div><div class="fw-semibold text-primary">@c.Updated</div></div></div>
+                        <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Skipped</div><div class="fw-semibold text-secondary">@c.Skipped</div></div></div>
+                    </div>
+                    @if (c.Errors.Any())
+                    {
+                        <div class="alert alert-warning mb-2">Found @c.Errors.Count row issues. Review below.</div>
+                        <ul class="mb-0">
+                            @foreach (var e in c.Errors.Take(100))
+                            {
+                                <li>Row @e.RowNumber - @e.Message</li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <div class="alert alert-success mb-0">Customer import completed without row errors.</div>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="card shadow-sm mt-3">
+            <div class="card-header">Import Suppliers (CSV)</div>
+            <div class="card-body">
+                @if (!string.IsNullOrWhiteSpace(Model.SupplierError))
+                {
+                    <div class="alert alert-danger">@Model.SupplierError</div>
+                }
+                <form asp-action="ImportSuppliers" method="post" enctype="multipart/form-data" class="vstack gap-3">
+                    @Html.AntiForgeryToken()
+
+                    <div>
+                        <label class="form-label">Supplier CSV File</label>
+                        <input class="form-control" type="file" name="file" accept=".csv" required />
+                        <div class="form-text">Columns: Name, ContactPerson, Phone, Email, GSTIN, Address, OpeningBalance</div>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="updateExistingSuppliers" name="updateExistingSuppliers" value="true" checked="@Model.SupplierUpdateExisting" />
+                        <input type="hidden" name="updateExistingSuppliers" value="false" />
+                        <label class="form-check-label" for="updateExistingSuppliers">Update existing suppliers by name</label>
+                    </div>
+
+                    <div>
+                        <button class="btn btn-dark" type="submit">Import Suppliers</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        @if (Model.SupplierImportResult is not null)
+        {
+            var s = Model.SupplierImportResult;
+            <div class="card shadow-sm mt-3">
+                <div class="card-header">Supplier Import Result - @s.SourceName</div>
+                <div class="card-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Rows</div><div class="fw-semibold">@s.TotalRows</div></div></div>
+                        <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Inserted</div><div class="fw-semibold text-success">@s.Inserted</div></div></div>
+                        <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Updated</div><div class="fw-semibold text-primary">@s.Updated</div></div></div>
+                        <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted small">Skipped</div><div class="fw-semibold text-secondary">@s.Skipped</div></div></div>
+                    </div>
+                    @if (s.Errors.Any())
+                    {
+                        <div class="alert alert-warning mb-2">Found @s.Errors.Count row issues. Review below.</div>
+                        <ul class="mb-0">
+                            @foreach (var e in s.Errors.Take(100))
+                            {
+                                <li>Row @e.RowNumber - @e.Message</li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <div class="alert alert-success mb-0">Supplier import completed without row errors.</div>
                     }
                 </div>
             </div>

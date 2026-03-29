@@ -151,6 +151,7 @@ public sealed class StockTransactionsController : Controller
         {
             new("IN", "IN"),
             new("OUT", "OUT"),
+            new("OPENING", "OPENING"),
             new("ADJUSTMENT", "ADJUSTMENT"),
             new("TRANSFER", "TRANSFER"),
             new("RETURN", "RETURN"),

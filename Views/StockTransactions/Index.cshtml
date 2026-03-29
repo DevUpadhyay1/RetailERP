@@ -120,7 +120,7 @@
                             <tr>
                                 <td class="text-muted">@r.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
                                 <td>
-                                    <span class="badge @(r.Type == "IN" ? "bg-success" : r.Type == "OUT" ? "bg-danger" : "bg-secondary")">@r.Type</span>
+                                    <span class="badge @(r.Type == "IN" ? "bg-success" : r.Type == "OUT" ? "bg-danger" : r.Type == "OPENING" ? "bg-primary" : "bg-secondary")">@r.Type</span>
                                 </td>
                                 <td class="fw-semibold">@itemLabel</td>
                                 <td>@whLabel</td>

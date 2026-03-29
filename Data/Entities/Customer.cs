@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
 using RetailERP.Data.Auditing;
 
 namespace RetailERP.Data.Entities;
@@ -37,6 +38,9 @@ public class Customer : IAuditableEntity, ITenantEntity
     [StringLength(6, MinimumLength = 6, ErrorMessage = "PIN code must be exactly 6 digits")]
     [RegularExpression(@"^\d{6}$", ErrorMessage = "PIN code must be exactly 6 digits")]
     public string? PinCode { get; set; }
+
+    [Precision(18, 2)]
+    public decimal OpeningBalance { get; set; }
 
     // Optional multi-company support
     public Guid? CompanyId { get; set; }
