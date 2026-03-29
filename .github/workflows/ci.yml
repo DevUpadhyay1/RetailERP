@@ -13,11 +13,12 @@ jobs:
     env:
       # Initial baseline gate; raise gradually each sprint (e.g. 2 -> 5 -> 10 -> 20+)
       COVERAGE_THRESHOLD: "2"
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "8.0.x"
 
@@ -49,7 +50,7 @@ jobs:
           COVERAGE_PERCENT="$(awk -v r="$LINE_RATE" 'BEGIN { printf "%.2f", r * 100 }')"
           echo "Line Coverage: ${COVERAGE_PERCENT}% (threshold ${COVERAGE_THRESHOLD}%)"
 
-          awk -v r="$LINE_RATE" -v t="$COVERAGE_THRESHOLD" 'BEGIN { exit (r * 100 < t) ? 1 : 0 }'
+          awk -v r="$LINE_RATE" -v t="$COVERAGE_THRESHOLD" 'BEGIN { if ((r * 100) < t) exit 1; else exit 0 }'
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4

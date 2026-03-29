@@ -133,7 +133,7 @@ public class ReceiptPdfService
 
         var item = col.Item().Height(maxH);
         item = align switch { "left" => item.AlignLeft(), "right" => item.AlignRight(), _ => item.AlignCenter() };
-        item.Image(fullPath, ImageScaling.FitHeight);
+        item.Image(fullPath).FitHeight();
         col.Item().PaddingBottom(2);
     }
 
@@ -164,7 +164,7 @@ public class ReceiptPdfService
                     var fullPath = Path.Combine(_env.WebRootPath, company.LogoPath!.TrimStart('/'));
                     if (File.Exists(fullPath))
                     {
-                        row.RelativeItem().AlignCenter().Height(logoHeight).Image(fullPath, ImageScaling.FitHeight);
+                        row.RelativeItem().AlignCenter().Height(logoHeight).Image(fullPath).FitHeight();
                     }
                     else
                     {
