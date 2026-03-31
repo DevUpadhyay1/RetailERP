@@ -76,7 +76,7 @@
                     }
                 </select>
             </div>
-            <div class="card-body p-0 d-flex justify-content-center" style="background:#e0e0e0;overflow-y:auto;">
+            <div class="card-body p-0 d-flex justify-content-center" style="background:#d0d0d0;overflow-y:auto;">
                 <div id="canvasWrap">
                     <div id="canvas"></div>
                 </div>
@@ -102,17 +102,18 @@
 <style>
 /* ─── Toolbox ─── */
 .tb-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6c757d;padding:4px 6px 2px}
-.tb-item{cursor:grab;padding:5px 8px;margin-bottom:3px;background:#fff;border:1px solid #dee2e6;border-radius:5px;font-size:12px;font-weight:500;transition:all .12s;display:flex;align-items:center;gap:5px}
-.tb-item:hover{border-color:#0d6efd;background:#e7f1ff;transform:translateX(2px)}
+.tb-item{cursor:grab;padding:5px 8px;margin-bottom:3px;background:var(--bs-body-bg,#fff);border:1px solid var(--bs-border-color,#dee2e6);border-radius:5px;font-size:12px;font-weight:500;transition:all .12s;display:flex;align-items:center;gap:5px;color:var(--bs-body-color,#212529)}
+.tb-item:hover{border-color:#0d6efd;background:#e7f1ff;color:#212529;transform:translateX(2px)}
 .tb-item.sortable-chosen{opacity:.5}
 .tb-item i{font-size:13px;color:#6c757d;width:16px;text-align:center}
 
-/* ─── Canvas ─── */
-#canvasWrap{background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.15);margin:16px 0;transition:width .2s}
-#canvas{min-height:200px;padding:0;font-family:'Consolas','Courier New',monospace;font-size:11px}
+/* ─── Canvas: ALWAYS light mode (receipt = white paper) ─── */
+#canvasWrap{background:#fff!important;color:#000!important;color-scheme:light;box-shadow:0 2px 12px rgba(0,0,0,.15);margin:16px 0;transition:width .2s}
+#canvas{min-height:200px;padding:0;font-family:'Consolas','Courier New',monospace;font-size:11px;color:#000!important;background:#fff!important}
+#canvas *{color:inherit}
 
 /* ─── Canvas Items (WYSIWYG) ─── */
-.cv-block{position:relative;border:2px solid transparent;transition:border-color .12s,box-shadow .12s;cursor:pointer;padding:0}
+.cv-block{position:relative;border:2px solid transparent;transition:border-color .12s,box-shadow .12s;cursor:pointer;padding:0;color:#000}
 .cv-block:hover{border-color:#adb5bd50}
 .cv-block.cv-sel{border-color:#0d6efd;box-shadow:0 0 0 2px rgba(13,110,253,.2)}
 .cv-block .cv-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:none;align-items:flex-start;justify-content:space-between;padding:2px 4px;z-index:2}
@@ -123,7 +124,7 @@
 .cv-block.sortable-ghost{opacity:.2;border:2px dashed #0d6efd}
 
 /* ─── Inner content padding ─── */
-.cv-inner{padding:6px 14px}
+.cv-inner{padding:6px 14px;color:#000}
 .cv-inner hr{border-style:dashed;border-color:#ccc;margin:3px 0}
 .cv-inner .r{display:flex;justify-content:space-between;gap:4px}
 .cv-inner .b{font-weight:bold}
@@ -135,11 +136,11 @@
 .cv-inner .hc{display:flex;align-items:center;gap:8px}
 .cv-inner .hc .cell{flex:1;min-width:0}
 
-/* ─── Properties panel ─── */
+/* ─── Properties panel (dark-mode safe) ─── */
 #propPanel .pg{margin-bottom:10px}
-#propPanel .pl{font-size:11px;font-weight:600;color:#495057;margin-bottom:3px}
-.field-badge{display:inline-block;background:#e9ecef;border:1px solid #ced4da;border-radius:3px;padding:0 5px;font-size:10px;color:#495057;font-weight:600;cursor:pointer;margin:1px}
-.field-badge:hover{background:#d3d8de}
+#propPanel .pl{font-size:11px;font-weight:600;color:var(--bs-body-color,#495057);margin-bottom:3px}
+.field-badge{display:inline-block;background:var(--bs-tertiary-bg,#e9ecef);border:1px solid var(--bs-border-color,#ced4da);border-radius:3px;padding:0 5px;font-size:10px;color:var(--bs-body-color,#495057);font-weight:600;cursor:pointer;margin:1px}
+.field-badge:hover{background:var(--bs-secondary-bg,#d3d8de)}
 #propPanel .btn-del-comp{margin-top:12px}
 </style>
 }

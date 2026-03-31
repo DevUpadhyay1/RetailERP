@@ -97,7 +97,8 @@ public static class WebApplicationExtensions
                 "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; " +
                 "img-src 'self' data: https://rzp.io https://lumberjack.razorpay.com; " +
                 connectSrc +
-                "frame-src https://api.razorpay.com https://checkout.razorpay.com; " +
+                "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com; " +
+                "object-src 'self' blob:; " +
                 "frame-ancestors 'none';");
             await next();
         });
