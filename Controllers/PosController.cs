@@ -377,9 +377,9 @@ public class PosController : Controller
 
     /// <summary>Barcode / SKU lookup (AJAX)</summary>
     [HttpGet]
-    public async Task<IActionResult> LookupItem(string code, Guid warehouseId)
+    public async Task<IActionResult> LookupItem(string code, Guid warehouseId, Guid? billId = null)
     {
-        var result = await _pos.LookupItemAsync(code, warehouseId);
+        var result = await _pos.LookupItemAsync(code, warehouseId, billId);
         if (result is null) return Json(new { success = false, message = "Item not found." });
         return Json(new { success = true, item = result });
     }

@@ -464,7 +464,7 @@
         scanFeedback.innerHTML = '<span class="text-muted">Looking up…</span>';
         clearScanFields();
 
-        fetch(`@Url.Action("LookupItem")?code=${encodeURIComponent(code)}&warehouseId=${warehouseId}`)
+        fetch(`@Url.Action("LookupItem")?code=${encodeURIComponent(code)}&warehouseId=${warehouseId}&billId=${billId}`)
             .then(r => r.json())
             .then(data => {
                 if (!data.success) {
@@ -659,9 +659,27 @@
                 if (method === 'Online') { handleRazorpay(); return; }
                 const amtInput = document.getElementById('payAmount');
                 let amount = parseFloat(amtInput.value) || 0;
+                
+                const rem = parseFloat(document.getElementById('valRemaining').textContent.replace(/[^\d.\-]/g,'')) || 0;
+                
                 if (amount <= 0) {
-                    const rem = parseFloat(document.getElementById('valRemaining').textContent.replace(/[^\d.\-]/g,'')) || 0;
-                    if (rem <= 0) return;
+                    if (rem <= 0) {
+                        // User wants to swap payment method if there is exactly 1 payment
+                        const payments = document.querySelectorAll('#paymentsList .pay-row');
+                        if (payments.length === 1) {
+                            const oldPaymentId = payments[0].dataset.paymentId;
+                            postJson('@Url.Action("RemovePayment")', { paymentId: oldPaymentId, billId }, data1 => {
+                                if (data1.success) {
+                                    postJson('@Url.Action("AddPayment")', { billId, method, amount: data1.bill.remaining, reference: '' }, data2 => {
+                                        refreshBill(data2);
+                                        amtInput.value = '';
+                                    });
+                                }
+                            });
+                            return;
+                        }
+                        return;
+                    }
                     amount = rem;
                 }
                 const reference = document.getElementById('payRef').value.trim();
@@ -683,10 +701,23 @@
     document.getElementById('btnComplete').addEventListener('click', () => {
         saveCustomerDraftIfDirty(() => {
             if (!confirm('Complete this bill? Stock will be deducted.')) return;
+            
+            // Bypass pop-up blocker by opening a blank tab synchronously, then setting URL in callback
+            const receiptTab = window.open('', '_blank');
+            if (receiptTab) {
+                receiptTab.document.write('<div style="font-family:sans-serif;padding:20px;">Generating receipt...</div>');
+            }
+            
             postJson('@Url.Action("CompleteBill")', { billId }, data => {
                 if (data.success && data.nextBillUrl) {
-                    if (data.receiptUrl) window.open(data.receiptUrl, '_blank');
+                    if (receiptTab && data.receiptUrl) {
+                        receiptTab.location.href = data.receiptUrl;
+                    } else if (receiptTab) {
+                        receiptTab.close();
+                    }
                     window.location.href = data.nextBillUrl;
+                } else if (receiptTab) {
+                    receiptTab.close();
                 }
             });
         });

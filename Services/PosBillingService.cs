@@ -56,7 +56,7 @@ public class PosBillingService
     }
 
     /// <summary>Lookup an item by barcode or SKU for the scan input.</summary>
-    public async Task<ItemLookupResult?> LookupItemAsync(string code, Guid warehouseId)
+    public async Task<ItemLookupResult?> LookupItemAsync(string code, Guid warehouseId, Guid? billId = null)
     {
         code = code.Trim();
         var item = await _db.Items
@@ -72,6 +72,15 @@ public class PosBillingService
             .AsNoTracking()
             .Where(s => s.ItemId == item.ItemId && s.WarehouseId == warehouseId)
             .SumAsync(s => (decimal?)s.Quantity) ?? 0m;
+
+        if (billId.HasValue)
+        {
+            var alreadyInBill = await _db.PosBillLines
+                .AsNoTracking()
+                .Where(l => l.PosBillId == billId.Value && l.ItemId == item.ItemId)
+                .SumAsync(l => (decimal?)l.Qty) ?? 0m;
+            stockQty -= alreadyInBill;
+        }
 
         return new ItemLookupResult
         {
@@ -516,6 +525,10 @@ public class PosBillingService
         }
         catch { /* don't break billing if audit fails */ }
 
+        // Invalidate Redis cache for relevant dashboard KPIs and charts BEFORE pushing SignalR event
+        // Otherwise the client might fetch new data before the cache is cleared!
+        await InvalidateDashboardCacheAsync();
+
         try
         {
             var companyGroup = $"company-{bill.CompanyId}";
@@ -530,9 +543,6 @@ public class PosBillingService
             });
         }
         catch { /* don't break billing if SignalR fails */ }
-
-        // Invalidate Redis cache for relevant dashboard KPIs and charts
-        await InvalidateDashboardCacheAsync();
     }
 
     private async Task InvalidateDashboardCacheAsync()
