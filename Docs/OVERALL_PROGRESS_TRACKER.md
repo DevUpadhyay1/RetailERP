@@ -17,6 +17,8 @@ This document tracks what is completed, what is partially done, and what remains
 
 **Overall completion: ~87%**
 
+Post-onboarding detail doc: **Docs/POST_ONBOARDING_UPDATE.md**
+
 ---
 
 ## Current status
@@ -36,6 +38,7 @@ Main remaining work is raising coverage targets, adding centralized dashboards/a
 3. Added production error/status pages and status-code re-execution flow.
 4. Added lightweight Prometheus-style `/metrics` endpoint.
 5. Added staging deployment workflow (`deploy-staging.yml`) and updated runbook/deployment docs.
+6. Stabilized CI with Node 24 compatible actions, robust coverage parsing, and integration-test DataProtection fix.
 
 ---
 
@@ -54,3 +57,4 @@ Main remaining work is raising coverage targets, adding centralized dashboards/a
 - Build: `dotnet build RetailERP.sln -c Release` passed.
 - Tests: `dotnet test RetailERP.sln -c Release --no-build` passed (`50 passed, 1 skipped`).
 - Coverage run: `dotnet test ... --collect:\"XPlat Code Coverage\"` generated Cobertura report (current line coverage ~2.3%).
+

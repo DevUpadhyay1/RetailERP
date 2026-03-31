@@ -200,7 +200,10 @@ public class SecurityAuthorizationRegressionTests
         var coupons = new CouponService(db);
         var hub = new Mock<Microsoft.AspNetCore.SignalR.IHubContext<RetailERP.Hubs.RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<Microsoft.AspNetCore.SignalR.IHubClients>().Object);
-        var pos = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var tenant = new Mock<ITenantProvider>();
+        var cache = new Mock<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
+        var cacheService = new CacheService(cache.Object, tenant.Object);
+        var pos = new PosBillingService(db, audit, loyalty, coupons, hub.Object, tenant.Object, cacheService);
 
         var controller = new PaymentGatewayController(
             db,

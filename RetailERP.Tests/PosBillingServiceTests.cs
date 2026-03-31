@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Caching.Distributed;
 using Moq;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
@@ -12,6 +13,20 @@ namespace RetailERP.Tests;
 
 public class PosBillingServiceTests
 {
+    // ── Test helper: creates PosBillingService with all required mocked dependencies ──
+    private static PosBillingService BuildSut(
+        ApplicationDbContext db,
+        Mock<IHubContext<RetailHub>> hub)
+    {
+        var audit = new AuditService(db, new HttpContextAccessor());
+        var loyalty = new LoyaltyService(db, audit);
+        var coupons = new CouponService(db);
+        var tenant = new Mock<ITenantProvider>();
+        var cache = new Mock<IDistributedCache>();
+        var cacheService = new CacheService(cache.Object, tenant.Object);
+        return new PosBillingService(db, audit, loyalty, coupons, hub.Object, tenant.Object, cacheService);
+    }
+
     [Fact]
     public async Task CompleteBillAsync_ShouldDeductStockAndWriteLedger_WhenBillIsPaid()
     {
@@ -104,16 +119,13 @@ public class PosBillingServiceTests
 
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         var clients = new Mock<IHubClients>();
         var groupClient = new Mock<IClientProxy>();
         clients.Setup(x => x.Group(It.IsAny<string>())).Returns(groupClient.Object);
         hub.Setup(x => x.Clients).Returns(clients.Object);
 
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         await sut.CompleteBillAsync(billId);
 
@@ -167,16 +179,13 @@ public class PosBillingServiceTests
         });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         var clients = new Mock<IHubClients>();
         var groupClient = new Mock<IClientProxy>();
         clients.Setup(x => x.Group(It.IsAny<string>())).Returns(groupClient.Object);
         hub.Setup(x => x.Clients).Returns(clients.Object);
 
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var result = await sut.LookupItemAsync("8901234567890", warehouseId);
 
@@ -218,16 +227,13 @@ public class PosBillingServiceTests
         });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         var clients = new Mock<IHubClients>();
         var groupClient = new Mock<IClientProxy>();
         clients.Setup(x => x.Group(It.IsAny<string>())).Returns(groupClient.Object);
         hub.Setup(x => x.Clients).Returns(clients.Object);
 
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var result = await sut.LookupItemAsync("MANUAL-SKU", warehouseId);
 
@@ -245,13 +251,10 @@ public class PosBillingServiceTests
         using var db = new ApplicationDbContext(options);
         db.Database.EnsureCreated();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
 
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var result = await sut.LookupItemAsync("DOES-NOT-EXIST", Guid.NewGuid());
 
@@ -277,12 +280,9 @@ public class PosBillingServiceTests
         db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.CancelBillAsync(billId);
@@ -320,12 +320,9 @@ public class PosBillingServiceTests
         });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 1);
@@ -358,12 +355,9 @@ public class PosBillingServiceTests
         db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-COUPON", Name = "Coupon Item", UnitPrice = 100, CompanyId = companyId });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 1);
@@ -408,12 +402,9 @@ public class PosBillingServiceTests
         });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 1);
@@ -453,12 +444,9 @@ public class PosBillingServiceTests
         db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 1, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 2); // more than available stock
@@ -490,12 +478,9 @@ public class PosBillingServiceTests
         db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 10, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.HoldBillAsync(billId);
@@ -533,12 +518,9 @@ public class PosBillingServiceTests
         db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-DISC", Name = "Disc Item", UnitPrice = 100, CompanyId = companyId });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 2); // subtotal 200
@@ -575,12 +557,9 @@ public class PosBillingServiceTests
         db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-LY", Name = "Loyalty Item", UnitPrice = 100, CompanyId = companyId });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 1);
@@ -625,12 +604,9 @@ public class PosBillingServiceTests
         });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 1);
@@ -673,12 +649,9 @@ public class PosBillingServiceTests
         db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 5, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 1);
@@ -719,12 +692,9 @@ public class PosBillingServiceTests
         });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 2);
@@ -780,12 +750,9 @@ public class PosBillingServiceTests
         db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 5, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 1);
@@ -818,12 +785,9 @@ public class PosBillingServiceTests
         db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 10, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 2);
@@ -870,12 +834,9 @@ public class PosBillingServiceTests
         db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 10, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 1);
@@ -910,12 +871,9 @@ public class PosBillingServiceTests
         db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 10, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 1);
@@ -955,12 +913,9 @@ public class PosBillingServiceTests
         db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 10, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
-        var audit = new AuditService(db, new HttpContextAccessor());
-        var loyalty = new LoyaltyService(db, audit);
-        var coupons = new CouponService(db);
         var hub = new Mock<IHubContext<RetailHub>>();
         hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
-        var sut = new PosBillingService(db, audit, loyalty, coupons, hub.Object);
+        var sut = BuildSut(db, hub);
 
         var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
         await sut.AddLineAsync(billId, itemId, 2);

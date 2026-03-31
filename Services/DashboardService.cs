@@ -9,7 +9,12 @@ namespace RetailERP.Services;
 public sealed class DashboardService
 {
     private readonly ApplicationDbContext _db;
-    public DashboardService(ApplicationDbContext db) => _db = db;
+    private readonly CacheService _cache;
+    public DashboardService(ApplicationDbContext db, CacheService cache)
+    {
+        _db = db;
+        _cache = cache;
+    }
 
     // ═══════════════════════════════════════════════════
     //  Layout CRUD
@@ -17,13 +22,16 @@ public sealed class DashboardService
 
     public async Task<List<WidgetPlacement>> GetLayoutAsync(Guid userId, BusinessType biz, string role)
     {
-        var layout = await _db.UserDashboardLayouts.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.UserId == userId);
+        return await _cache.GetOrSetAsync($"layout:{userId}", async () =>
+        {
+            var layout = await _db.UserDashboardLayouts.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.UserId == userId);
 
-        if (layout is not null)
-            return JsonSerializer.Deserialize<List<WidgetPlacement>>(layout.LayoutJson) ?? new();
+            if (layout is not null)
+                return JsonSerializer.Deserialize<List<WidgetPlacement>>(layout.LayoutJson) ?? new();
 
-        return DashboardWidgetCatalog.GetDefaultLayout(biz, role);
+            return DashboardWidgetCatalog.GetDefaultLayout(biz, role);
+        }, TimeSpan.FromHours(1));
     }
 
     public async Task SaveLayoutAsync(Guid userId, List<WidgetPlacement> placements)
@@ -49,6 +57,7 @@ public sealed class DashboardService
         }
 
         await _db.SaveChangesAsync();
+        await _cache.RemoveAsync($"layout:{userId}");
     }
 
     public async Task ResetLayoutAsync(Guid userId)
@@ -60,23 +69,26 @@ public sealed class DashboardService
         {
             _db.UserDashboardLayouts.Remove(layout);
             await _db.SaveChangesAsync();
+            await _cache.RemoveAsync($"layout:{userId}");
         }
     }
 
     // ═══════════════════════════════════════════════════
-    //  Widget Data — returns anonymous objects serialised to JSON
+    //  Widget Data — cached via Redis
     // ═══════════════════════════════════════════════════
 
     public async Task<object> GetWidgetDataAsync(string widgetId)
     {
-        var today = DateTime.Today;
-        var monthStart = new DateTime(today.Year, today.Month, 1);
-        var monthEnd = monthStart.AddMonths(1);
-        var fromUtc7 = DateTime.UtcNow.Date.AddDays(-7);
-        var daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
-
-        return widgetId switch
+        return await _cache.GetOrSetAsync($"widget:{widgetId}", async () =>
         {
+            var today = DateTime.Today;
+            var monthStart = new DateTime(today.Year, today.Month, 1);
+            var monthEnd = monthStart.AddMonths(1);
+            var fromUtc7 = DateTime.UtcNow.Date.AddDays(-7);
+            var daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
+
+            return widgetId switch
+            {
             "total-sales" => new
             {
                 value = (await _db.Invoices.AsNoTracking()
@@ -280,6 +292,7 @@ public sealed class DashboardService
 
             _ => new { error = "Unknown widget" }
         };
+        }, TimeSpan.FromMinutes(5));
     }
 
     // ── Chart helpers ──

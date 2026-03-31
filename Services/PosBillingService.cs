@@ -17,14 +17,18 @@ public class PosBillingService
     private readonly LoyaltyService _loyalty;
     private readonly CouponService _coupons;
     private readonly IHubContext<RetailHub> _hub;
+    private readonly ITenantProvider _tenant;
+    private readonly CacheService _cache;
 
-    public PosBillingService(ApplicationDbContext db, AuditService audit, LoyaltyService loyalty, CouponService coupons, IHubContext<RetailHub> hub)
+    public PosBillingService(ApplicationDbContext db, AuditService audit, LoyaltyService loyalty, CouponService coupons, IHubContext<RetailHub> hub, ITenantProvider tenant, CacheService cache)
     {
         _db = db;
         _audit = audit;
         _loyalty = loyalty;
         _coupons = coupons;
         _hub = hub;
+        _tenant = tenant;
+        _cache = cache;
     }
 
     // ────────────────────────────────────────────────────────
@@ -512,7 +516,6 @@ public class PosBillingService
         }
         catch { /* don't break billing if audit fails */ }
 
-        // Sprint 9: Broadcast real-time event via SignalR
         try
         {
             var companyGroup = $"company-{bill.CompanyId}";
@@ -527,6 +530,21 @@ public class PosBillingService
             });
         }
         catch { /* don't break billing if SignalR fails */ }
+
+        // Invalidate Redis cache for relevant dashboard KPIs and charts
+        await InvalidateDashboardCacheAsync();
+    }
+
+    private async Task InvalidateDashboardCacheAsync()
+    {
+        var keys = new[]
+        {
+            "widget:total-sales", "widget:pos-sales", "widget:open-pos-bills", "widget:completed-bills-7d",
+            "widget:low-stock-count", "widget:low-stock-list", "widget:recent-pos-bills",
+            "widget:sales-purchases-chart", "widget:pos-hourly-chart", "widget:category-pie",
+            "widget:payment-method-pie", "widget:top-items-bar"
+        };
+        foreach (var k in keys) await _cache.RemoveAsync(k);
     }
 
     // ────────────────────────────────────────────────────────

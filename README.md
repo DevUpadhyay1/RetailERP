@@ -31,8 +31,8 @@ dotnet run --project RetailERP.csproj
 | Setting | Where |
 |--------|--------|
 | `ConnectionStrings:DefaultConnection` | `appsettings.json`, User Secrets, or environment |
-| `Jwt:SecretKey` | **Use User Secrets or env in production** — change from default in repo |
-| `Razorpay`, `Twilio`, `WhatsApp`, `Smtp` | User Secrets / environment — do not commit real keys |
+| `Jwt:SecretKey` | **Use User Secrets or env in production** - change from default in repo |
+| `Razorpay`, `Twilio`, `WhatsApp`, `Smtp` | User Secrets / environment - do not commit real keys |
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "YOUR_CONNECTION_STRING" --project RetailERP.csproj
@@ -71,10 +71,11 @@ Staging deployment workflow: `.github/workflows/deploy-staging.yml` (build image
 See [Docs/IMPROVEMENT_PHASES.md](Docs/IMPROVEMENT_PHASES.md) for what's done next (tests, security, performance).
 Overall tracker: [Docs/OVERALL_PROGRESS_TRACKER.md](Docs/OVERALL_PROGRESS_TRACKER.md).
 Viva / Real-World Demo guide: [Docs/REAL_WORLD_MAPPING.md](Docs/REAL_WORLD_MAPPING.md).
-Architecture overview: [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) · Caching notes: [Docs/CACHING_STRATEGY.md](Docs/CACHING_STRATEGY.md).
+Architecture overview: [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) - Caching notes: [Docs/CACHING_STRATEGY.md](Docs/CACHING_STRATEGY.md).
 Operational runbook: [Docs/RUNBOOK.md](Docs/RUNBOOK.md).
 Security before production: [Docs/SECURITY_CHECKLIST.md](Docs/SECURITY_CHECKLIST.md).
 **Production deploy:** [Docs/PRODUCTION_DEPLOYMENT.md](Docs/PRODUCTION_DEPLOYMENT.md) (env vars, Docker, health, proxy).
+**Post-onboarding summary:** [Docs/POST_ONBOARDING_UPDATE.md](Docs/POST_ONBOARDING_UPDATE.md).
 
 ## Contributing
 
@@ -82,4 +83,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence
 
-Your project / institution — set as appropriate.
+Your project / institution - set as appropriate.
+

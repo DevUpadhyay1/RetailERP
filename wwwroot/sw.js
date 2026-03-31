@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'retailerp-v1';
+const CACHE_VERSION = 'retailerp-v2';
 const APP_SHELL = [
     '/',
     '/css/site.css',
@@ -7,13 +7,13 @@ const APP_SHELL = [
     '/js/site.js',
     '/js/dashboard.js',
     '/js/pwa.js',
+    '/lib/bootstrap/dist/css/bootstrap.min.css',
+    '/lib/bootstrap/dist/js/bootstrap.bundle.min.js',
+    '/lib/jquery/dist/jquery.min.js',
     '/manifest.json',
     '/favicon.ico',
     '/icons/icon-192.png',
     '/icons/icon-512.png',
-    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css',
-    'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js',
-    'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js',
     '/offline.html'
 ];
 
@@ -54,6 +54,22 @@ self.addEventListener('fetch', event => {
         return;
     }
 
+    // Explicit hard-reload requests: prefer fresh network, then fallback to cache.
+    if (request.cache === 'reload') {
+        event.respondWith(
+            fetch(request)
+                .then(response => {
+                    if (response.ok) {
+                        const clone = response.clone();
+                        caches.open(CACHE_VERSION).then(cache => cache.put(request, clone));
+                    }
+                    return response;
+                })
+                .catch(() => caches.match(request).then(r => r || caches.match('/offline.html')))
+        );
+        return;
+    }
+
     // Navigation requests: network-first, fallback to offline page
     if (request.mode === 'navigate') {
         event.respondWith(
@@ -64,6 +80,22 @@ self.addEventListener('fetch', event => {
                     return response;
                 })
                 .catch(() => caches.match(request).then(r => r || caches.match('/offline.html')))
+        );
+        return;
+    }
+
+    // Styles/scripts/fonts: network-first to reduce stale UI after deployments.
+    if (request.destination === 'style' || request.destination === 'script' || request.destination === 'font') {
+        event.respondWith(
+            fetch(request)
+                .then(response => {
+                    if (response.ok) {
+                        const clone = response.clone();
+                        caches.open(CACHE_VERSION).then(cache => cache.put(request, clone));
+                    }
+                    return response;
+                })
+                .catch(() => caches.match(request).then(r => r || new Response('', { status: 503 })))
         );
         return;
     }

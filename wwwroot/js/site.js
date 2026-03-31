@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
++document.addEventListener('DOMContentLoaded', function () {
 	// ── Sidebar toggle ──
 	var shell = document.getElementById('appShell');
 	var toggle = document.getElementById('sidebarToggle');

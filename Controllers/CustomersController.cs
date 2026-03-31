@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -109,22 +109,26 @@ namespace RetailERP.Controllers
         // POST: Customers/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Guid id, [Bind("CustomerId,Name,Phone,Email")] Customer customer)
+        public async Task<IActionResult> Edit(Guid id, [Bind("CustomerId,Name,Phone,Email,Gstin,Address,City,State,PinCode")] Customer customer)
         {
             if (id != customer.CustomerId) return NotFound();
             if (!ModelState.IsValid) return View(customer);
 
-            try
-            {
-                _context.Update(customer);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!CustomerExists(customer.CustomerId)) return NotFound();
-                throw;
-            }
+            var existingCustomer = await _context.Customers.FirstOrDefaultAsync(c => c.CustomerId == id);
+            if (existingCustomer == null) return NotFound();
+
+            // Update only user-editable fields; preserve tenant/audit/system fields.
+            existingCustomer.Name = customer.Name;
+            existingCustomer.Phone = customer.Phone;
+            existingCustomer.Email = customer.Email;
+            existingCustomer.Gstin = customer.Gstin;
+            existingCustomer.Address = customer.Address;
+            existingCustomer.City = customer.City;
+            existingCustomer.State = customer.State;
+            existingCustomer.PinCode = customer.PinCode;
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: Customers/Delete/5

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
+using RetailERP.Services;
 
 namespace RetailERP.Controllers;
 
@@ -9,7 +10,12 @@ namespace RetailERP.Controllers;
 public class ReportsController : Controller
 {
     private readonly ApplicationDbContext _db;
-    public ReportsController(ApplicationDbContext db) => _db = db;
+    private readonly CacheService _cache;
+    public ReportsController(ApplicationDbContext db, CacheService cache)
+    {
+        _db = db;
+        _cache = cache;
+    }
 
     [HttpGet]
     public async Task<IActionResult> Sales(DateTime? from, DateTime? to)
@@ -17,67 +23,72 @@ public class ReportsController : Controller
         var fromDate = (from ?? DateTime.Today.AddDays(-7)).Date;
         var toDateExclusive = ((to ?? DateTime.Today).Date).AddDays(1);
 
-        // ── Invoice Sales ──
-        var postedInvoices = _db.Invoices
-            .AsNoTracking()
-            .Where(x => x.Status == 2 && x.PostedAt != null)
-            .Where(x => x.PostedAt >= fromDate && x.PostedAt < toDateExclusive);
+        var cacheKey = $"report:sales:{fromDate:yyyyMMdd}-{toDateExclusive:yyyyMMdd}";
 
-        var totalInvoices = await postedInvoices.CountAsync();
-        var totalInvoiceSales = await postedInvoices.SumAsync(x => (decimal?)x.TotalAmount) ?? 0m;
-
-        var invoiceRows = await postedInvoices
-            .OrderByDescending(x => x.PostedAt)
-            .Take(500)
-            .Select(x => new SalesRowVm
-            {
-                Id = x.InvoiceId,
-                RefNo = x.InvoiceNo,
-                Date = x.PostedAt!.Value,
-                TotalAmount = x.TotalAmount,
-                Source = "Invoice"
-            })
-            .ToListAsync();
-
-        // ── POS Sales ──
-        var completedPos = _db.PosBills
-            .AsNoTracking()
-            .Where(x => x.Status == 2 && x.CompletedAtUtc != null)
-            .Where(x => x.BillDate >= fromDate && x.BillDate < toDateExclusive);
-
-        var totalPosBills = await completedPos.CountAsync();
-        var totalPosSales = await completedPos.SumAsync(x => (decimal?)x.GrandTotal) ?? 0m;
-
-        var posRows = await completedPos
-            .OrderByDescending(x => x.CompletedAtUtc)
-            .Take(500)
-            .Select(x => new SalesRowVm
-            {
-                Id = x.PosBillId,
-                RefNo = x.BillNo,
-                Date = x.CompletedAtUtc!.Value,
-                TotalAmount = x.GrandTotal,
-                Source = "POS"
-            })
-            .ToListAsync();
-
-        // ── Merge & sort ──
-        var allRows = invoiceRows.Concat(posRows)
-            .OrderByDescending(r => r.Date)
-            .Take(500)
-            .ToList();
-
-        var vm = new SalesReportVm
+        var vm = await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            From = fromDate,
-            To = toDateExclusive.AddDays(-1),
-            TotalInvoices = totalInvoices,
-            TotalPosBills = totalPosBills,
-            TotalInvoiceSales = totalInvoiceSales,
-            TotalPosSales = totalPosSales,
-            TotalSales = totalInvoiceSales + totalPosSales,
-            Rows = allRows
-        };
+            // ── Invoice Sales ──
+            var postedInvoices = _db.Invoices
+                .AsNoTracking()
+                .Where(x => x.Status == 2 && x.PostedAt != null)
+                .Where(x => x.PostedAt >= fromDate && x.PostedAt < toDateExclusive);
+
+            var totalInvoices = await postedInvoices.CountAsync();
+            var totalInvoiceSales = await postedInvoices.SumAsync(x => (decimal?)x.TotalAmount) ?? 0m;
+
+            var invoiceRows = await postedInvoices
+                .OrderByDescending(x => x.PostedAt)
+                .Take(500)
+                .Select(x => new SalesRowVm
+                {
+                    Id = x.InvoiceId,
+                    RefNo = x.InvoiceNo,
+                    Date = x.PostedAt!.Value,
+                    TotalAmount = x.TotalAmount,
+                    Source = "Invoice"
+                })
+                .ToListAsync();
+
+            // ── POS Sales ──
+            var completedPos = _db.PosBills
+                .AsNoTracking()
+                .Where(x => x.Status == 2 && x.CompletedAtUtc != null)
+                .Where(x => x.BillDate >= fromDate && x.BillDate < toDateExclusive);
+
+            var totalPosBills = await completedPos.CountAsync();
+            var totalPosSales = await completedPos.SumAsync(x => (decimal?)x.GrandTotal) ?? 0m;
+
+            var posRows = await completedPos
+                .OrderByDescending(x => x.CompletedAtUtc)
+                .Take(500)
+                .Select(x => new SalesRowVm
+                {
+                    Id = x.PosBillId,
+                    RefNo = x.BillNo,
+                    Date = x.CompletedAtUtc!.Value,
+                    TotalAmount = x.GrandTotal,
+                    Source = "POS"
+                })
+                .ToListAsync();
+
+            // ── Merge & sort ──
+            var allRows = invoiceRows.Concat(posRows)
+                .OrderByDescending(r => r.Date)
+                .Take(500)
+                .ToList();
+
+            return new SalesReportVm
+            {
+                From = fromDate,
+                To = toDateExclusive.AddDays(-1),
+                TotalInvoices = totalInvoices,
+                TotalPosBills = totalPosBills,
+                TotalInvoiceSales = totalInvoiceSales,
+                TotalPosSales = totalPosSales,
+                TotalSales = totalInvoiceSales + totalPosSales,
+                Rows = allRows
+            };
+        }, TimeSpan.FromMinutes(5));
 
         return View(vm);
     }

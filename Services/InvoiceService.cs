@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.SignalR;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
@@ -12,13 +12,15 @@ public class InvoiceService
     private readonly ApplicationDbContext _db;
     private readonly AuditService _audit;
     private readonly IHubContext<RetailHub> _hub;
+    private readonly CacheService _cache;
 
 
-    public InvoiceService(ApplicationDbContext db, AuditService audit, IHubContext<RetailHub> hub)
+    public InvoiceService(ApplicationDbContext db, AuditService audit, IHubContext<RetailHub> hub, CacheService cache)
     {
         _db = db;
         _audit = audit;
         _hub = hub;
+        _cache = cache;
     }
     public async Task<Guid> CreateDraftAsync(Guid customerId, Guid warehouseId, DateTime invoiceDate, Guid? employeeId)
     {
@@ -170,7 +172,6 @@ public class InvoiceService
             // MVP: don't break posting if audit fails
         }
 
-        // Sprint 9: Broadcast real-time event via SignalR
         try
         {
             var companyGroup = $"company-{invoice.CompanyId}";
@@ -184,6 +185,19 @@ public class InvoiceService
             });
         }
         catch { /* don't break posting if SignalR fails */ }
+
+        // Invalidate Redis cache for relevant dashboard KPIs and charts
+        await InvalidateDashboardCacheAsync();
+    }
+
+    private async Task InvalidateDashboardCacheAsync()
+    {
+        var keys = new[]
+        {
+            "widget:total-sales", "widget:sales-7d", "widget:draft-invoices", "widget:recent-invoices",
+            "widget:sales-purchases-chart", "widget:category-pie"
+        };
+        foreach (var k in keys) await _cache.RemoveAsync(k);
     }
 
     private async Task<string> GenerateInvoiceNoAsync(DateTime date)

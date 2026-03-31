@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 namespace RetailERP.Hubs;
 
 /// <summary>
-/// Sprint 9: Central SignalR hub for real-time updates.
+/// Central SignalR hub for real-time updates.
 /// Clients join their company group on connect; server broadcasts events to the group.
 /// </summary>
 [Authorize]

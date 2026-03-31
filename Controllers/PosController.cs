@@ -318,6 +318,61 @@ public class PosController : Controller
         }
     }
 
+    /// <summary>Quick Add Open Item during Billing (AJAX)</summary>
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> QuickAddItem([FromBody] QuickAddItemReq req)
+    {
+        using var tran = await _db.Database.BeginTransactionAsync();
+        try
+        {
+            var sku = $"QA-{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}-{Random.Shared.Next(100, 999)}";
+            var item = new Item
+            {
+                Name = req.Name?.Trim() ?? "New Item",
+                UnitPrice = req.Price,
+                MRP = req.Price,
+                Barcode = string.IsNullOrWhiteSpace(req.Barcode) ? null : req.Barcode.Trim(),
+                SKU = sku,
+                IsActive = true
+            };
+
+            _db.Items.Add(item);
+            await _db.SaveChangesAsync();
+
+            // Add stock so it can be billed immediately
+            var stockTx = new StockTransaction
+            {
+                ItemId = item.ItemId,
+                WarehouseId = req.WarehouseId,
+                Qty = 100, // Enough to sell
+                Type = "ADJUSTMENT",
+                OccurredAtUtc = DateTime.UtcNow
+            };
+            _db.StockTransactions.Add(stockTx);
+
+            var stock = await _db.Stocks.FirstOrDefaultAsync(s => s.ItemId == item.ItemId && s.WarehouseId == req.WarehouseId);
+            if (stock == null)
+            {
+                stock = new Stock { ItemId = item.ItemId, WarehouseId = req.WarehouseId, Quantity = 100 };
+                _db.Stocks.Add(stock);
+            }
+            else
+            {
+                stock.Quantity += 100;
+            }
+
+            await _db.SaveChangesAsync();
+            await tran.CommitAsync();
+
+            return Json(new { success = true, itemId = item.ItemId });
+        }
+        catch (Exception ex)
+        {
+            await tran.RollbackAsync();
+            return Json(new { success = false, message = "Could not create item: " + ex.Message });
+        }
+    }
+
     // ── AJAX endpoints for POS screen ──
 
     /// <summary>Barcode / SKU lookup (AJAX)</summary>
@@ -1026,6 +1081,14 @@ public class PosController : Controller
     {
         public Guid BillId { get; set; }
         public decimal Percent { get; set; }
+    }
+
+    public class QuickAddItemReq
+    {
+        public string Name { get; set; } = "";
+        public decimal Price { get; set; }
+        public string? Barcode { get; set; }
+        public Guid WarehouseId { get; set; }
     }
 
     // ────────────────────────────────────────────────────────

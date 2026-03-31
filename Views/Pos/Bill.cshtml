@@ -12,10 +12,10 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>POS — @Model.BillNo</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <title>POS - @Model.BillNo</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" asp-append-version="true" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
-    <link href="/css/pos.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/pos.css" asp-append-version="true" />
 </head>
 <body class="pos-body">
 <a class="visually-hidden" href="#posMainContent">Skip to main content</a>
@@ -33,10 +33,10 @@
         <div class="tf"><span class="tf-label">Cashier</span><span class="tf-value">@cashierName</span></div>
         <div class="tf">
             <span class="tf-label">Status</span>
-            @if (Model.Status == 1) { <span class="tf-badge tf-open">Open</span> }
-            else if (Model.Status == 2) { <span class="tf-badge tf-completed">Completed</span> }
-            else if (Model.Status == 4) { <span class="tf-badge tf-open" style="background:#f0ad4e">On Hold</span> }
-            else { <span class="tf-badge tf-cancelled">Cancelled</span> }
+            @if (Model.Status == 1) { <span class="tf-badge tf-open status-badge"><i class="bi bi-record-circle"></i>Open</span> }
+            else if (Model.Status == 2) { <span class="tf-badge tf-completed status-badge"><i class="bi bi-check-circle"></i>Completed</span> }
+            else if (Model.Status == 4) { <span class="tf-badge tf-hold status-badge"><i class="bi bi-pause-circle"></i>On Hold</span> }
+            else { <span class="tf-badge tf-cancelled status-badge"><i class="bi bi-x-circle"></i>Cancelled</span> }
         </div>
     </div>
 </header>
@@ -327,25 +327,25 @@
         <!-- Bill-level Discount / Charge -->
         <div class="pos-bill-adj">
             <div class="adj-grid">
-                <div class="adj-field">
+                <div class="adj-field adj-field-disc">
                     <label class="form-label mb-0 small fw-medium">Bill Discount</label>
-                    <div class="input-group input-group-sm">
+                    <div class="input-group input-group-sm adj-input-group">
                         <input id="addDiscPct" type="number" class="form-control" min="0" max="100" step="0.5" value="@Model.AddDiscountPercent" />
                         <span class="input-group-text">%</span>
-                        <button id="btnClearDisc" class="btn btn-outline-secondary" type="button" title="Clear bill discount">
-                            <i class="bi bi-eraser me-1"></i>Clear
-                        </button>
                     </div>
                 </div>
-                <div class="adj-field">
+                <div class="adj-field adj-field-charge">
                     <label class="form-label mb-0 small fw-medium">Bill Charge</label>
-                    <div class="input-group input-group-sm">
+                    <div class="input-group input-group-sm adj-input-group">
                         <input id="addChargePct" type="number" class="form-control" min="0" max="100" step="0.5" value="@Model.AddChargePercent" />
                         <span class="input-group-text">%</span>
                     </div>
                 </div>
-                <div class="adj-actions">
-                    <button id="btnApplyAdj" class="btn btn-sm btn-primary px-3 w-100"><i class="bi bi-check-lg me-1"></i>Apply</button>
+                <div class="adj-actions-row">
+                    <button id="btnClearDisc" class="btn btn-sm btn-outline-secondary adj-clear-btn" type="button" title="Clear bill discount">
+                        <i class="bi bi-eraser me-1"></i>Clear
+                    </button>
+                    <button id="btnApplyAdj" class="btn btn-sm btn-primary px-3 adj-apply-btn"><i class="bi bi-check-lg me-1"></i>Apply</button>
                 </div>
             </div>
         </div>
@@ -373,6 +373,36 @@
             </div>
             <div class="modal-body" id="heldBillsBody">
                 <p class="text-muted text-center">Loading…</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Add Item Modal -->
+<div class="modal fade" id="quickAddItemModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="bi bi-plus-circle me-1"></i>Quick Add Item</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label form-label-sm">Item Name <span class="text-danger">*</span></label>
+                    <input type="text" id="qaItemName" class="form-control form-control-sm" placeholder="e.g. Loose Sugar" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label form-label-sm">Sale Price (Incl. Tax) <span class="text-danger">*</span></label>
+                    <input type="number" id="qaItemPrice" class="form-control form-control-sm" min="0" step="0.01" placeholder="0.00" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label form-label-sm">Barcode (Optional)</label>
+                    <input type="text" id="qaItemBarcode" class="form-control form-control-sm" placeholder="Scan or type..." />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm btn-primary" id="btnSaveQuickItem"><i class="bi bi-check-lg" me-1></i> Add Item & Bill</button>
             </div>
         </div>
     </div>
@@ -470,7 +500,131 @@
 
     barcodeInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doScan(); } });
     document.getElementById('btnScan').addEventListener('click', doScan);
-    document.addEventListener('keydown', e => { if (e.key === 'F10') { e.preventDefault(); document.getElementById('btnComplete').click(); } });
+    
+    // ── Global Keyboard Shortcuts ──
+    let activeRowIndex = -1;
+    function highlightRow(idx) {
+        const rows = document.querySelectorAll('#linesBody tr[data-line-id]');
+        rows.forEach(r => r.classList.remove('table-active'));
+        if (rows.length === 0) return;
+        activeRowIndex = Math.max(0, Math.min(idx, rows.length - 1));
+        const activeRow = rows[activeRowIndex];
+        activeRow.classList.add('table-active');
+        activeRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    document.addEventListener('keydown', e => {
+        // Ignore shortcuts if a modal is open
+        if (document.body.classList.contains('modal-open')) return;
+
+        // F2: Focus Barcode
+        if (e.key === 'F2') {
+            e.preventDefault();
+            barcodeInput.focus();
+        }
+        // F3: Quick Add Item
+        else if (e.key === 'F3') {
+            e.preventDefault();
+            document.getElementById('qaItemName').value = '';
+            document.getElementById('qaItemPrice').value = '';
+            document.getElementById('qaItemBarcode').value = '';
+            if (!window.qaModal) window.qaModal = new bootstrap.Modal(document.getElementById('quickAddItemModal'));
+            window.qaModal.show();
+            setTimeout(() => document.getElementById('qaItemName').focus(), 500);
+        }
+        // F4: Focus Customer Phone
+        else if (e.key === 'F4') {
+            e.preventDefault();
+            customerPhoneInput?.focus();
+        }
+        // F8: Focus Payment Amount
+        else if (e.key === 'F8') {
+            e.preventDefault();
+            document.getElementById('payAmount').focus();
+        }
+        // F9: Exact Cash Checkout
+        else if (e.key === 'F9') {
+            e.preventDefault();
+            const rem = parseFloat(document.getElementById('valRemaining').textContent.replace(/[^\d.\-]/g,'')) || 0;
+            if (rem <= 0) return;
+            document.getElementById('payAmount').value = rem;
+            const cashBtn = document.querySelector('.pbtn[data-method="Cash"]');
+            if (cashBtn) cashBtn.click();
+        }
+        // F10: Checkout (Complete Bill)
+        else if (e.key === 'F10') {
+            e.preventDefault();
+            document.getElementById('btnComplete').click();
+        }
+        
+        // Navigation shortcuts (only if focus is not in an input field)
+        const activeNode = document.activeElement.nodeName;
+        if (activeNode !== 'INPUT' && activeNode !== 'TEXTAREA') {
+            const rows = document.querySelectorAll('#linesBody tr[data-line-id]');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                highlightRow(activeRowIndex + 1);
+            }
+            else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                highlightRow(activeRowIndex - 1);
+            }
+            else if (e.key === 'Delete' && activeRowIndex >= 0 && rows[activeRowIndex]) {
+                e.preventDefault();
+                const btn = rows[activeRowIndex].querySelector('.btn-remove-line');
+                if (btn) btn.click();
+            }
+            else if ((e.key === '+' || e.key === '=') && activeRowIndex >= 0 && rows[activeRowIndex]) {
+                e.preventDefault();
+                const qtyInput = rows[activeRowIndex].querySelector('.qty-input');
+                if (qtyInput) {
+                    qtyInput.value = parseInt(qtyInput.value) + 1;
+                    qtyInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+            else if ((e.key === '-' || e.key === '_') && activeRowIndex >= 0 && rows[activeRowIndex]) {
+                e.preventDefault();
+                const qtyInput = rows[activeRowIndex].querySelector('.qty-input');
+                if (qtyInput && parseInt(qtyInput.value) > 1) {
+                    qtyInput.value = parseInt(qtyInput.value) - 1;
+                    qtyInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        }
+    });
+
+    // Quick Add Item Save
+    document.getElementById('btnSaveQuickItem').addEventListener('click', () => {
+        const name = document.getElementById('qaItemName').value.trim();
+        const price = parseFloat(document.getElementById('qaItemPrice').value) || 0;
+        const barcode = document.getElementById('qaItemBarcode').value.trim();
+
+        if (!name || price <= 0) {
+            alert('Please enter a valid Name and Price.');
+            return;
+        }
+
+        const btn = document.getElementById('btnSaveQuickItem');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Adding...';
+
+        postJson('@Url.Action("QuickAddItem")', { name, price, barcode, warehouseId }, data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg" me-1></i> Add Item & Bill';
+            if (!data.success) {
+                alert(data.message);
+                return;
+            }
+            window.qaModal.hide();
+            // Refocus barcode, then add the line
+            barcodeInput.focus();
+            addLine(data.itemId);
+        });
+    });
+    // Enter key submits the modal
+    document.getElementById('quickAddItemModal').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnSaveQuickItem').click(); }
+    });
 
     function addLine(itemId) {
         postJson('@Url.Action("AddLine")', { billId, itemId, qty: 1 }, data => { scanning = false; refreshBill(data); });
@@ -855,7 +1009,7 @@
     }
 })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js" asp-append-version="true"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </body>
 </html>
