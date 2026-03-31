@@ -69,6 +69,10 @@ public static class WebApplicationExtensions
         app.UseHttpsRedirection();
         app.UseStaticFiles();
 
+        // Development: relax CSP to allow Browser Link / Hot Reload on random localhost ports.
+        // Production: strict CSP that only allows known origins.
+        var isDev = app.Environment.IsDevelopment();
+
         app.Use(async (context, next) =>
         {
             var h = context.Response.Headers;
@@ -77,13 +81,22 @@ public static class WebApplicationExtensions
             h.TryAdd("Referrer-Policy", "strict-origin-when-cross-origin");
             h.TryAdd("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
             h.TryAdd("X-XSS-Protection", "1; mode=block");
+
+            var connectSrc = isDev
+                ? "connect-src 'self' wss: ws: http://localhost:* https://cdn.jsdelivr.net https://api.razorpay.com https://lumberjack.razorpay.com; "
+                : "connect-src 'self' wss: ws: https://cdn.jsdelivr.net https://api.razorpay.com https://lumberjack.razorpay.com; ";
+
+            var scriptSrc = isDev
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* https://cdn.jsdelivr.net https://checkout.razorpay.com https://api.razorpay.com; "
+                : "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://checkout.razorpay.com https://api.razorpay.com; ";
+
             h.TryAdd("Content-Security-Policy",
                 "default-src 'self'; " +
-                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://checkout.razorpay.com https://api.razorpay.com; " +
+                scriptSrc +
                 "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
                 "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; " +
                 "img-src 'self' data: https://rzp.io https://lumberjack.razorpay.com; " +
-                "connect-src 'self' wss: ws: https://cdn.jsdelivr.net https://api.razorpay.com https://lumberjack.razorpay.com; " +
+                connectSrc +
                 "frame-src https://api.razorpay.com https://checkout.razorpay.com; " +
                 "frame-ancestors 'none';");
             await next();
