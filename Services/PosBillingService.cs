@@ -327,6 +327,16 @@ public class PosBillingService
             ?? throw new InvalidOperationException("Bill not found.");
         if (bill.Status != 1) throw new InvalidOperationException("Bill is not open.");
         if (bill.LoyaltyCardId is null) throw new InvalidOperationException("No loyalty card attached.");
+        if (points < LoyaltyService.MinRedeemPoints)
+            throw new InvalidOperationException($"Minimum {LoyaltyService.MinRedeemPoints} points to redeem.");
+
+        var card = await _db.LoyaltyCards
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.LoyaltyCardId == bill.LoyaltyCardId.Value)
+            ?? throw new InvalidOperationException("Loyalty card not found.");
+        if (!card.IsActive) throw new InvalidOperationException("Loyalty card is inactive.");
+        if (points > card.PointsBalance)
+            throw new InvalidOperationException($"Insufficient points. Balance: {card.PointsBalance}");
 
         var discount = points * LoyaltyService.RedeemValuePerPoint;
         bill.LoyaltyPointsRedeemed = points;
@@ -485,27 +495,36 @@ public class PosBillingService
         await tx.CommitAsync();
 
         // Phase 6: Post-completion — earn loyalty points + record coupon usage
-        try
+        if (bill.LoyaltyCardId.HasValue)
         {
-            if (bill.LoyaltyCardId.HasValue)
+            // Keep redemption isolated so earn can still proceed if redeem posting fails.
+            if (bill.LoyaltyPointsRedeemed > 0)
             {
-                // Redeem points (deduct from card) if the bill had loyalty redemption
-                if (bill.LoyaltyPointsRedeemed > 0)
+                try
                 {
                     await _loyalty.RedeemPointsAsync(bill.LoyaltyCardId.Value, bill.PosBillId, bill.LoyaltyPointsRedeemed);
                 }
-
-                // Earn points on the net bill amount (after discounts)
-                var earnableAmount = bill.GrandTotal;
-                await _loyalty.EarnPointsAsync(bill.LoyaltyCardId.Value, bill.PosBillId, earnableAmount);
+                catch { }
             }
 
-            if (bill.CouponId.HasValue && bill.CouponDiscount > 0)
+            // Earn points on the net bill amount (after discounts).
+            // This is isolated so a redemption failure does not block point accrual.
+            var earnableAmount = bill.GrandTotal;
+            try
+            {
+                await _loyalty.EarnPointsAsync(bill.LoyaltyCardId.Value, bill.PosBillId, earnableAmount);
+            }
+            catch { }
+        }
+
+        if (bill.CouponId.HasValue && bill.CouponDiscount > 0)
+        {
+            try
             {
                 await _coupons.RecordUsageAsync(bill.CouponId.Value, bill.PosBillId, bill.CouponDiscount);
             }
+            catch { }
         }
-        catch { /* don't break billing if loyalty/coupon fails */ }
 
         try
         {

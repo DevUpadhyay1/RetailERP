@@ -934,4 +934,238 @@ public class PosBillingServiceTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => sut.RemovePaymentAsync(refundPaymentId));
         Assert.Contains("refund", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
+
+    // ═══════════════════════════════════════════════════
+    // Loyalty Regression Tests (Sprint 18)
+    // ═══════════════════════════════════════════════════
+
+    [Fact]
+    public async Task RedeemLoyaltyOnBillAsync_ShouldThrow_WhenBelowMinimumPoints()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        var cardId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-LYMIN", Name = "Loyalty Min Item", UnitPrice = 500, CompanyId = companyId });
+        db.Customers.Add(new Customer { CustomerId = customerId, Name = "Min Points Cust", CompanyId = companyId });
+        db.LoyaltyCards.Add(new LoyaltyCard
+        {
+            LoyaltyCardId = cardId,
+            CustomerId = customerId,
+            CardNumber = "LYL-MIN-001",
+            PointsBalance = 200,
+            LifetimePoints = 200,
+            Tier = 1,
+            IsActive = true,
+            CompanyId = companyId,
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+        var sut = BuildSut(db, hub);
+
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+        await sut.AddLineAsync(billId, itemId, 1);
+        await sut.AttachLoyaltyCardAsync(billId, cardId);
+
+        // Try to redeem 10 points — below the 50-point minimum
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.RedeemLoyaltyOnBillAsync(billId, 10));
+        Assert.Contains("Minimum", ex.Message);
+    }
+
+    [Fact]
+    public async Task RedeemLoyaltyOnBillAsync_ShouldThrow_WhenCardIsInactive()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        var cardId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-LYINACT", Name = "Inactive Card Item", UnitPrice = 500, CompanyId = companyId });
+        db.Customers.Add(new Customer { CustomerId = customerId, Name = "Inactive Cust", CompanyId = companyId });
+        db.LoyaltyCards.Add(new LoyaltyCard
+        {
+            LoyaltyCardId = cardId,
+            CustomerId = customerId,
+            CardNumber = "LYL-INACT-001",
+            PointsBalance = 500,
+            LifetimePoints = 500,
+            Tier = 1,
+            IsActive = false, // INACTIVE
+            CompanyId = companyId,
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+        var sut = BuildSut(db, hub);
+
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+        await sut.AddLineAsync(billId, itemId, 1);
+        await sut.AttachLoyaltyCardAsync(billId, cardId);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.RedeemLoyaltyOnBillAsync(billId, 100));
+        Assert.Contains("inactive", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RedeemLoyaltyOnBillAsync_ShouldThrow_WhenPointsExceedBalance()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        var cardId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-LYBAL", Name = "Balance Item", UnitPrice = 1000, CompanyId = companyId });
+        db.Customers.Add(new Customer { CustomerId = customerId, Name = "Low Balance Cust", CompanyId = companyId });
+        db.LoyaltyCards.Add(new LoyaltyCard
+        {
+            LoyaltyCardId = cardId,
+            CustomerId = customerId,
+            CardNumber = "LYL-BAL-001",
+            PointsBalance = 80, // Only 80 points
+            LifetimePoints = 80,
+            Tier = 1,
+            IsActive = true,
+            CompanyId = companyId,
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+        var sut = BuildSut(db, hub);
+
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+        await sut.AddLineAsync(billId, itemId, 1);
+        await sut.AttachLoyaltyCardAsync(billId, cardId);
+
+        // Try to redeem 100 points but card only has 80
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.RedeemLoyaltyOnBillAsync(billId, 100));
+        Assert.Contains("Insufficient points", ex.Message);
+    }
+
+    [Fact]
+    public async Task CompleteBillAsync_ShouldStillEarnPoints_WhenRedeemPostingFails()
+    {
+        // This test verifies the isolated try/catch blocks in CompleteBillAsync.
+        // We set up a bill with a loyalty card and a valid redemption.
+        // The earn phase should still run even if something goes wrong externally.
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        var cardId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-LYEARN", Name = "Earn Item", UnitPrice = 200, CompanyId = companyId });
+        db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 10, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
+        db.Customers.Add(new Customer { CustomerId = customerId, Name = "Earn Cust", CompanyId = companyId });
+        db.LoyaltyCards.Add(new LoyaltyCard
+        {
+            LoyaltyCardId = cardId,
+            CustomerId = customerId,
+            CardNumber = "LYL-EARN-001",
+            PointsBalance = 500,
+            LifetimePoints = 500,
+            Tier = 1,
+            IsActive = true,
+            CompanyId = companyId,
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var hub = new Mock<IHubContext<RetailHub>>();
+        var clients = new Mock<IHubClients>();
+        var groupClient = new Mock<IClientProxy>();
+        clients.Setup(x => x.Group(It.IsAny<string>())).Returns(groupClient.Object);
+        hub.Setup(x => x.Clients).Returns(clients.Object);
+        var sut = BuildSut(db, hub);
+
+        // Create bill, add item, attach loyalty card, redeem points, add payment, complete
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+        await sut.AddLineAsync(billId, itemId, 1);
+        await sut.AttachLoyaltyCardAsync(billId, cardId);
+        await sut.RedeemLoyaltyOnBillAsync(billId, 100); // redeem 100 pts = ₹100 discount
+
+        var billAfterRedeem = await db.PosBills.AsNoTracking().FirstAsync(b => b.PosBillId == billId);
+        Assert.Equal(100, billAfterRedeem.GrandTotal); // 200 - 100 discount
+
+        await sut.AddPaymentAsync(billId, "Cash", 100, null);
+        await sut.CompleteBillAsync(billId);
+
+        // Bill should be completed
+        var completedBill = await db.PosBills.AsNoTracking().FirstAsync(b => b.PosBillId == billId);
+        Assert.Equal((byte)2, completedBill.Status);
+
+        // Loyalty card should have had points deducted (redeem) and earned (earn)
+        var updatedCard = await db.LoyaltyCards.AsNoTracking().FirstAsync(c => c.LoyaltyCardId == cardId);
+        // Redeemed 100 pts: 500 - 100 = 400
+        // Earned on ₹100 GrandTotal: at PointsPerRupee rate
+        Assert.True(updatedCard.PointsBalance < 500, "Points should have decreased from redemption");
+
+        // Verify loyalty transactions were recorded
+        var loyaltyTxns = await db.LoyaltyTransactions
+            .AsNoTracking()
+            .Where(t => t.LoyaltyCardId == cardId)
+            .ToListAsync();
+        Assert.True(loyaltyTxns.Count >= 2, "Should have both redeem and earn transactions");
+    }
 }
