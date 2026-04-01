@@ -63,4 +63,29 @@ public class JwtTokenServiceTests
         Assert.NotEmpty(Convert.FromBase64String(t1));
         Assert.NotEmpty(Convert.FromBase64String(t2));
     }
+
+    [Fact]
+    public void GenerateAccessToken_WithoutCompanyId_ShouldNotIncludeCompanyClaim()
+    {
+        var opts = new JwtOptions
+        {
+            SecretKey = "RetailERP_Sprint16_Testing_Secret_Key_Length_AtLeast_32!",
+            Issuer = "RetailERP.Tests",
+            Audience = "RetailERP.Tests.Api",
+            AccessTokenExpiryMinutes = 30
+        };
+        var service = new JwtTokenService(opts);
+
+        var token = service.GenerateAccessToken(
+            Guid.NewGuid(),
+            "nocompany@test.com",
+            "No Company",
+            null,
+            Array.Empty<string>());
+
+        var principal = service.GetPrincipalFromExpiredToken(token);
+
+        Assert.NotNull(principal);
+        Assert.Null(principal!.FindFirst("companyId"));
+    }
 }
