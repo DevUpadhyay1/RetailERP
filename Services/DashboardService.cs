@@ -77,15 +77,18 @@ public sealed class DashboardService
     //  Widget Data — cached via Redis
     // ═══════════════════════════════════════════════════
 
-    public async Task<object> GetWidgetDataAsync(string widgetId)
+    public async Task<object> GetWidgetDataAsync(string widgetId, int monthOffset = 0)
     {
-        return await _cache.GetOrSetAsync($"widget:{widgetId}", async () =>
+        monthOffset = Math.Clamp(monthOffset, -24, 0);
+
+        return await _cache.GetOrSetAsync($"widget:{widgetId}:m:{monthOffset}", async () =>
         {
-            var today = DateTime.Today;
-            var monthStart = new DateTime(today.Year, today.Month, 1);
+            var targetMonth = DateTime.Today.AddMonths(monthOffset);
+            var monthStart = new DateTime(targetMonth.Year, targetMonth.Month, 1);
             var monthEnd = monthStart.AddMonths(1);
             var fromUtc7 = DateTime.UtcNow.Date.AddDays(-7);
-            var daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
+            var daysInMonth = DateTime.DaysInMonth(targetMonth.Year, targetMonth.Month);
+            var monthLabel = monthStart.ToString("MMM yyyy");
 
             return widgetId switch
             {
@@ -97,7 +100,7 @@ public sealed class DashboardService
                       + (await _db.PosBills.AsNoTracking()
                         .Where(x => x.Status == 2 && x.BillDate >= monthStart && x.BillDate < monthEnd)
                         .SumAsync(x => (decimal?)x.GrandTotal) ?? 0m),
-                label = "Total Sales (Month)"
+                                label = $"Total Sales ({monthLabel})"
             },
 
             "pos-sales" => new
@@ -105,7 +108,7 @@ public sealed class DashboardService
                 value = await _db.PosBills.AsNoTracking()
                     .Where(x => x.Status == 2 && x.BillDate >= monthStart && x.BillDate < monthEnd)
                     .SumAsync(x => (decimal?)x.GrandTotal) ?? 0m,
-                label = "POS Sales (Month)"
+                label = $"POS Sales ({monthLabel})"
             },
 
             "purchases-month" => new
@@ -113,7 +116,7 @@ public sealed class DashboardService
                 value = await _db.Purchases.AsNoTracking()
                     .Where(x => x.Status == 2 && x.PurchaseDate >= monthStart && x.PurchaseDate < monthEnd)
                     .SumAsync(x => (decimal?)x.TotalAmount) ?? 0m,
-                label = "Purchases (Month)"
+                label = $"Purchases ({monthLabel})"
             },
 
             "low-stock-count" => new
@@ -198,6 +201,12 @@ public sealed class DashboardService
             // ───── Charts ─────
 
             "sales-purchases-chart" => await GetSalesPurchasesChartAsync(monthStart, monthEnd, daysInMonth),
+
+            "monthly-sales-trend" => await GetMonthlySalesTrendAsync(monthStart),
+
+            "sales-channel-mix" => await GetSalesChannelMixAsync(monthStart, monthEnd),
+
+            "weekday-sales-trend" => await GetWeekdaySalesTrendAsync(monthStart, monthEnd),
 
             "pos-hourly-chart" => await GetPosHourlyChartAsync(),
 
@@ -299,8 +308,12 @@ public sealed class DashboardService
 
     private async Task<object> GetSalesPurchasesChartAsync(DateTime monthStart, DateTime monthEnd, int daysInMonth)
     {
-        var labels = Enumerable.Range(0, daysInMonth)
-            .Select(i => monthStart.AddDays(i).ToString("yyyy-MM-dd")).ToList();
+        var labels = Enumerable.Range(1, daysInMonth)
+            .Select(i => i.ToString("00")).ToList();
+
+        var previousMonthStart = monthStart.AddMonths(-1);
+        var previousMonthEnd = monthStart;
+        var previousDaysInMonth = DateTime.DaysInMonth(previousMonthStart.Year, previousMonthStart.Month);
 
         var salesByDay = await _db.Invoices.AsNoTracking()
             .Where(x => x.Status == 2 && x.InvoiceDate >= monthStart && x.InvoiceDate < monthEnd)
@@ -318,16 +331,52 @@ public sealed class DashboardService
             .Select(g => new { Day = g.Key, Total = g.Sum(x => x.TotalAmount) })
             .ToListAsync();
 
+        var prevInvoiceByDay = await _db.Invoices.AsNoTracking()
+            .Where(x => x.Status == 2 && x.InvoiceDate >= previousMonthStart && x.InvoiceDate < previousMonthEnd)
+            .GroupBy(x => x.InvoiceDate.Day)
+            .Select(g => new { Day = g.Key, Total = g.Sum(x => x.TotalAmount) })
+            .ToListAsync();
+        var prevPosByDay = await _db.PosBills.AsNoTracking()
+            .Where(x => x.Status == 2 && x.BillDate >= previousMonthStart && x.BillDate < previousMonthEnd)
+            .GroupBy(x => x.BillDate.Day)
+            .Select(g => new { Day = g.Key, Total = g.Sum(x => x.GrandTotal) })
+            .ToListAsync();
+
         var sMap = salesByDay.ToDictionary(x => x.Day.ToString("yyyy-MM-dd"), x => x.Total);
         var pMap = posMap.ToDictionary(x => x.Day.ToString("yyyy-MM-dd"), x => x.Total);
         var prMap = purchMap.ToDictionary(x => x.Day.ToString("yyyy-MM-dd"), x => x.Total);
 
+        var prevMap = prevInvoiceByDay
+            .Concat(prevPosByDay)
+            .GroupBy(x => x.Day)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Total));
+
         return new
         {
             labels,
-            invoiceSales = labels.Select(d => sMap.TryGetValue(d, out var v) ? v : 0m).ToList(),
-            posSales = labels.Select(d => pMap.TryGetValue(d, out var v) ? v : 0m).ToList(),
-            purchases = labels.Select(d => prMap.TryGetValue(d, out var v) ? v : 0m).ToList()
+            invoiceSales = labels.Select(d =>
+            {
+                var date = $"{monthStart:yyyy-MM}-{d}";
+                return sMap.TryGetValue(date, out var v) ? v : 0m;
+            }).ToList(),
+            posSales = labels.Select(d =>
+            {
+                var date = $"{monthStart:yyyy-MM}-{d}";
+                return pMap.TryGetValue(date, out var v) ? v : 0m;
+            }).ToList(),
+            purchases = labels.Select(d =>
+            {
+                var date = $"{monthStart:yyyy-MM}-{d}";
+                return prMap.TryGetValue(date, out var v) ? v : 0m;
+            }).ToList(),
+            prevMonthSales = labels.Select(d =>
+            {
+                var day = int.Parse(d);
+                if (day > previousDaysInMonth) return 0m;
+                return prevMap.TryGetValue(day, out var v) ? v : 0m;
+            }).ToList(),
+            currentMonthLabel = monthStart.ToString("MMM yyyy"),
+            previousMonthLabel = previousMonthStart.ToString("MMM yyyy")
         };
     }
 
@@ -382,5 +431,107 @@ public sealed class DashboardService
             .ToListAsync();
 
         return new { labels = data.Select(x => x.item).ToList(), data = data.Select(x => x.qty).ToList() };
+    }
+
+    private async Task<object> GetMonthlySalesTrendAsync(DateTime monthStart)
+    {
+        var trendStart = monthStart.AddMonths(-11);
+        var trendEnd = monthStart.AddMonths(1);
+
+        var labels = Enumerable.Range(0, 12)
+            .Select(i => trendStart.AddMonths(i).ToString("MMM yy"))
+            .ToList();
+        var monthKeys = Enumerable.Range(0, 12)
+            .Select(i => trendStart.AddMonths(i).ToString("yyyy-MM"))
+            .ToList();
+
+        var invoiceMonthly = await _db.Invoices.AsNoTracking()
+            .Where(x => x.Status == 2 && x.InvoiceDate >= trendStart && x.InvoiceDate < trendEnd)
+            .GroupBy(x => new { x.InvoiceDate.Year, x.InvoiceDate.Month })
+            .Select(g => new { Key = $"{g.Key.Year}-{g.Key.Month:00}", Total = g.Sum(x => x.TotalAmount) })
+            .ToListAsync();
+
+        var posMonthly = await _db.PosBills.AsNoTracking()
+            .Where(x => x.Status == 2 && x.BillDate >= trendStart && x.BillDate < trendEnd)
+            .GroupBy(x => new { x.BillDate.Year, x.BillDate.Month })
+            .Select(g => new { Key = $"{g.Key.Year}-{g.Key.Month:00}", Total = g.Sum(x => x.GrandTotal) })
+            .ToListAsync();
+
+        var invMap = invoiceMonthly.ToDictionary(x => x.Key, x => x.Total);
+        var posMap = posMonthly.ToDictionary(x => x.Key, x => x.Total);
+
+        var invoiceSeries = monthKeys.Select(k => invMap.TryGetValue(k, out var v) ? v : 0m).ToList();
+        var posSeries = monthKeys.Select(k => posMap.TryGetValue(k, out var v) ? v : 0m).ToList();
+        var totalSeries = monthKeys
+            .Select(k => (invMap.TryGetValue(k, out var i) ? i : 0m) + (posMap.TryGetValue(k, out var p) ? p : 0m))
+            .ToList();
+
+        return new
+        {
+            labels,
+            invoiceSales = invoiceSeries,
+            posSales = posSeries,
+            totalSales = totalSeries,
+            currentMonthLabel = monthStart.ToString("MMM yyyy")
+        };
+    }
+
+    private async Task<object> GetSalesChannelMixAsync(DateTime monthStart, DateTime monthEnd)
+    {
+        var invoiceTotal = await _db.Invoices.AsNoTracking()
+            .Where(x => x.Status == 2 && x.InvoiceDate >= monthStart && x.InvoiceDate < monthEnd)
+            .SumAsync(x => (decimal?)x.TotalAmount) ?? 0m;
+
+        var posTotal = await _db.PosBills.AsNoTracking()
+            .Where(x => x.Status == 2 && x.BillDate >= monthStart && x.BillDate < monthEnd)
+            .SumAsync(x => (decimal?)x.GrandTotal) ?? 0m;
+
+        var returnTotal = await _db.PosReturns.AsNoTracking()
+            .Where(x => x.Status == 2 && x.ReturnDate >= monthStart && x.ReturnDate < monthEnd)
+            .SumAsync(x => (decimal?)x.TotalRefund) ?? 0m;
+
+        return new
+        {
+            labels = new[] { "Invoice", "POS", "Returns" },
+            data = new[] { invoiceTotal, posTotal, returnTotal },
+            total = invoiceTotal + posTotal,
+            monthLabel = monthStart.ToString("MMM yyyy")
+        };
+    }
+
+    private async Task<object> GetWeekdaySalesTrendAsync(DateTime monthStart, DateTime monthEnd)
+    {
+        var invoiceDaily = await _db.Invoices.AsNoTracking()
+            .Where(x => x.Status == 2 && x.InvoiceDate >= monthStart && x.InvoiceDate < monthEnd)
+            .GroupBy(x => x.InvoiceDate.Date)
+            .Select(g => new { Day = g.Key, Total = g.Sum(x => x.TotalAmount) })
+            .ToListAsync();
+
+        var posDaily = await _db.PosBills.AsNoTracking()
+            .Where(x => x.Status == 2 && x.BillDate >= monthStart && x.BillDate < monthEnd)
+            .GroupBy(x => x.BillDate.Date)
+            .Select(g => new { Day = g.Key, Total = g.Sum(x => x.GrandTotal) })
+            .ToListAsync();
+
+        var map = Enumerable.Range(0, 7).ToDictionary(i => i, _ => 0m);
+
+        foreach (var d in invoiceDaily)
+        {
+            var idx = ((int)d.Day.DayOfWeek + 6) % 7;
+            map[idx] += d.Total;
+        }
+
+        foreach (var d in posDaily)
+        {
+            var idx = ((int)d.Day.DayOfWeek + 6) % 7;
+            map[idx] += d.Total;
+        }
+
+        return new
+        {
+            labels = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" },
+            data = Enumerable.Range(0, 7).Select(i => map[i]).ToList(),
+            monthLabel = monthStart.ToString("MMM yyyy")
+        };
     }
 }

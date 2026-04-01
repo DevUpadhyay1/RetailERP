@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
+using System.Text;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
 using RetailERP.Data.Identity;
@@ -277,11 +279,290 @@ public class HomeController : Controller
 
     [Authorize]
     [HttpGet]
-    public async Task<IActionResult> WidgetData(string id)
+    public async Task<IActionResult> WidgetData(string id, int monthOffset = 0)
     {
         if (string.IsNullOrWhiteSpace(id)) return BadRequest();
-        var data = await _dash.GetWidgetDataAsync(id);
+        monthOffset = Math.Clamp(monthOffset, -24, 0);
+        var data = await _dash.GetWidgetDataAsync(id, monthOffset);
         return Json(data);
+    }
+
+    [Authorize]
+    [HttpGet]
+    public async Task<IActionResult> ExportMonthlyData(int monthOffset = -1, string section = "all")
+    {
+        monthOffset = Math.Clamp(monthOffset, -24, 0);
+        var normalizedSection = NormalizeExportSection(section);
+
+        var targetMonth = DateTime.Today.AddMonths(monthOffset);
+        var monthStart = new DateTime(targetMonth.Year, targetMonth.Month, 1);
+        var monthEnd = monthStart.AddMonths(1);
+
+        var html = await BuildMonthlyExportHtmlAsync(monthStart, monthEnd, normalizedSection);
+        var bytes = Encoding.UTF8.GetBytes(html);
+        var fileName = $"RetailERP_{normalizedSection}_{monthStart:yyyy_MM}.xls";
+
+        return File(bytes, "application/vnd.ms-excel", fileName);
+    }
+
+    private static string NormalizeExportSection(string? section)
+    {
+        var key = (section ?? "all").Trim().ToLowerInvariant();
+        return key switch
+        {
+            "all" => "all",
+            "sales" => "sales",
+            "pos" => "pos",
+            "purchases" => "purchases",
+            "returns" => "returns",
+            "payments" => "payments",
+            "inventory" => "inventory",
+            _ => "all"
+        };
+    }
+
+    private async Task<string> BuildMonthlyExportHtmlAsync(DateTime monthStart, DateTime monthEnd, string section)
+    {
+        var includeAll = section == "all";
+        var sb = new StringBuilder();
+
+        sb.AppendLine("<html><head><meta charset=\"utf-8\" />");
+        sb.AppendLine("<style>");
+        sb.AppendLine("body{font-family:Segoe UI,Arial,sans-serif;font-size:12px;color:#111827;padding:16px;}");
+        sb.AppendLine("h2{margin:0 0 4px 0;} h3{margin:20px 0 6px 0;}");
+        sb.AppendLine("table{border-collapse:collapse;width:100%;margin-bottom:14px;}");
+        sb.AppendLine("th,td{border:1px solid #d1d5db;padding:6px 8px;text-align:left;vertical-align:top;}");
+        sb.AppendLine("th{background:#f3f4f6;font-weight:600;} .meta{color:#4b5563;margin:2px 0;} .empty{color:#6b7280;font-style:italic;}");
+        sb.AppendLine("</style></head><body>");
+
+        sb.AppendLine($"<h2>RetailERP Monthly Export - {WebUtility.HtmlEncode(monthStart.ToString("MMMM yyyy"))}</h2>");
+        sb.AppendLine($"<div class=\"meta\">Period: {WebUtility.HtmlEncode(monthStart.ToString("dd-MMM-yyyy"))} to {WebUtility.HtmlEncode(monthEnd.AddDays(-1).ToString("dd-MMM-yyyy"))}</div>");
+        sb.AppendLine($"<div class=\"meta\">Generated UTC: {WebUtility.HtmlEncode(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"))}</div>");
+
+        if (includeAll || section == "sales")
+        {
+            var invoices = await _db.Invoices.AsNoTracking()
+                .Where(x => x.InvoiceDate >= monthStart && x.InvoiceDate < monthEnd)
+                .OrderBy(x => x.InvoiceDate).ThenBy(x => x.InvoiceNo)
+                .Select(x => new
+                {
+                    x.InvoiceNo,
+                    x.InvoiceDate,
+                    Customer = x.Customer != null ? x.Customer.Name : "-",
+                    Warehouse = x.Warehouse != null ? x.Warehouse.Name : "-",
+                    x.TotalAmount,
+                    x.Status
+                })
+                .ToListAsync();
+
+            AppendTable(
+                sb,
+                "Sales Invoices",
+                new[] { "Invoice No", "Date", "Customer", "Warehouse", "Amount", "Status" },
+                invoices.Select(x => new[]
+                {
+                    x.InvoiceNo,
+                    x.InvoiceDate.ToString("dd-MMM-yyyy"),
+                    x.Customer,
+                    x.Warehouse,
+                    x.TotalAmount.ToString("0.00"),
+                    x.Status == 2 ? "Posted" : "Draft"
+                }).ToList());
+        }
+
+        if (includeAll || section == "pos")
+        {
+            var posBills = await _db.PosBills.AsNoTracking()
+                .Where(x => x.BillDate >= monthStart && x.BillDate < monthEnd)
+                .OrderBy(x => x.BillDate).ThenBy(x => x.BillNo)
+                .Select(x => new
+                {
+                    x.BillNo,
+                    x.BillDate,
+                    Customer = x.Customer != null ? x.Customer.Name : "Walk-in",
+                    Store = x.Store != null ? x.Store.Name : "-",
+                    x.GrandTotal,
+                    x.Status
+                })
+                .ToListAsync();
+
+            AppendTable(
+                sb,
+                "POS Bills",
+                new[] { "Bill No", "Date", "Customer", "Store", "Grand Total", "Status" },
+                posBills.Select(x => new[]
+                {
+                    x.BillNo,
+                    x.BillDate.ToString("dd-MMM-yyyy"),
+                    x.Customer,
+                    x.Store,
+                    x.GrandTotal.ToString("0.00"),
+                    x.Status switch { 1 => "Open", 2 => "Completed", 3 => "Cancelled", 4 => "On Hold", _ => x.Status.ToString() }
+                }).ToList());
+        }
+
+        if (includeAll || section == "purchases")
+        {
+            var purchases = await _db.Purchases.AsNoTracking()
+                .Where(x => x.PurchaseDate >= monthStart && x.PurchaseDate < monthEnd)
+                .OrderBy(x => x.PurchaseDate).ThenBy(x => x.PurchaseNo)
+                .Select(x => new
+                {
+                    x.PurchaseNo,
+                    x.PurchaseDate,
+                    Supplier = x.Supplier != null ? x.Supplier.Name : "-",
+                    Warehouse = x.Warehouse != null ? x.Warehouse.Name : "-",
+                    x.TotalAmount,
+                    x.Status
+                })
+                .ToListAsync();
+
+            AppendTable(
+                sb,
+                "Purchases",
+                new[] { "Purchase No", "Date", "Supplier", "Warehouse", "Amount", "Status" },
+                purchases.Select(x => new[]
+                {
+                    x.PurchaseNo,
+                    x.PurchaseDate.ToString("dd-MMM-yyyy"),
+                    x.Supplier,
+                    x.Warehouse,
+                    x.TotalAmount.ToString("0.00"),
+                    x.Status == 2 ? "Received" : "Draft"
+                }).ToList());
+        }
+
+        if (includeAll || section == "returns")
+        {
+            var returns = await _db.PosReturns.AsNoTracking()
+                .Where(x => x.ReturnDate >= monthStart && x.ReturnDate < monthEnd)
+                .OrderBy(x => x.ReturnDate).ThenBy(x => x.ReturnNo)
+                .Select(x => new
+                {
+                    x.ReturnNo,
+                    x.ReturnDate,
+                    Customer = x.Customer != null ? x.Customer.Name : "Walk-in",
+                    OriginalBill = x.OriginalBill != null ? x.OriginalBill.BillNo : "-",
+                    x.TotalRefund,
+                    x.Status
+                })
+                .ToListAsync();
+
+            AppendTable(
+                sb,
+                "Returns",
+                new[] { "Return No", "Date", "Customer", "Original Bill", "Refund", "Status" },
+                returns.Select(x => new[]
+                {
+                    x.ReturnNo,
+                    x.ReturnDate.ToString("dd-MMM-yyyy"),
+                    x.Customer,
+                    x.OriginalBill,
+                    x.TotalRefund.ToString("0.00"),
+                    x.Status == 2 ? "Processed" : "Pending"
+                }).ToList());
+        }
+
+        if (includeAll || section == "payments")
+        {
+            var fromUtc = DateTime.SpecifyKind(monthStart, DateTimeKind.Utc);
+            var toUtc = DateTime.SpecifyKind(monthEnd, DateTimeKind.Utc);
+
+            var payments = await _db.Payments.AsNoTracking()
+                .Where(x => x.PaidAtUtc >= fromUtc && x.PaidAtUtc < toUtc)
+                .OrderBy(x => x.PaidAtUtc)
+                .Select(x => new
+                {
+                    x.PaidAtUtc,
+                    x.Method,
+                    x.Amount,
+                    x.IsRefund,
+                    x.Reference,
+                    BillNo = x.PosBill != null ? x.PosBill.BillNo : "-",
+                    InvoiceNo = x.Invoice != null ? x.Invoice.InvoiceNo : "-"
+                })
+                .ToListAsync();
+
+            AppendTable(
+                sb,
+                "Payments",
+                new[] { "Paid At (UTC)", "Method", "Amount", "Refund", "Reference", "POS Bill", "Invoice" },
+                payments.Select(x => new[]
+                {
+                    x.PaidAtUtc.ToString("yyyy-MM-dd HH:mm:ss"),
+                    x.Method,
+                    x.Amount.ToString("0.00"),
+                    x.IsRefund ? "Yes" : "No",
+                    x.Reference ?? "-",
+                    x.BillNo,
+                    x.InvoiceNo
+                }).ToList());
+        }
+
+        if (includeAll || section == "inventory")
+        {
+            var fromUtc = DateTime.SpecifyKind(monthStart, DateTimeKind.Utc);
+            var toUtc = DateTime.SpecifyKind(monthEnd, DateTimeKind.Utc);
+
+            var stockTx = await _db.StockTransactions.AsNoTracking()
+                .Where(x => x.OccurredAtUtc >= fromUtc && x.OccurredAtUtc < toUtc)
+                .OrderBy(x => x.OccurredAtUtc)
+                .Select(x => new
+                {
+                    x.OccurredAtUtc,
+                    x.Type,
+                    Item = x.Item != null ? x.Item.Name : "-",
+                    Warehouse = x.Warehouse != null ? x.Warehouse.Name : "-",
+                    x.Qty,
+                    x.RefType,
+                    x.RefId
+                })
+                .ToListAsync();
+
+            AppendTable(
+                sb,
+                "Inventory Transactions",
+                new[] { "Occurred At (UTC)", "Type", "Item", "Warehouse", "Qty", "Ref Type", "Ref Id" },
+                stockTx.Select(x => new[]
+                {
+                    x.OccurredAtUtc.ToString("yyyy-MM-dd HH:mm:ss"),
+                    x.Type,
+                    x.Item,
+                    x.Warehouse,
+                    x.Qty.ToString("0.##"),
+                    x.RefType ?? "-",
+                    x.RefId ?? "-"
+                }).ToList());
+        }
+
+        sb.AppendLine("</body></html>");
+        return sb.ToString();
+    }
+
+    private static void AppendTable(StringBuilder sb, string title, string[] headers, List<string[]> rows)
+    {
+        sb.AppendLine($"<h3>{WebUtility.HtmlEncode(title)}</h3>");
+
+        if (rows.Count == 0)
+        {
+            sb.AppendLine("<div class=\"empty\">No data for this section in the selected month.</div>");
+            return;
+        }
+
+        sb.AppendLine("<table><thead><tr>");
+        foreach (var header in headers)
+            sb.AppendLine($"<th>{WebUtility.HtmlEncode(header)}</th>");
+        sb.AppendLine("</tr></thead><tbody>");
+
+        foreach (var row in rows)
+        {
+            sb.AppendLine("<tr>");
+            foreach (var cell in row)
+                sb.AppendLine($"<td>{WebUtility.HtmlEncode(cell)}</td>");
+            sb.AppendLine("</tr>");
+        }
+
+        sb.AppendLine("</tbody></table>");
     }
 
     [AllowAnonymous]

@@ -1,0 +1,135 @@
+@model IEnumerable<RetailERP.Data.Entities.StockAdjustmentRequest>
+
+@{
+    ViewData["Title"] = "Stock Adjustment Requests";
+    var statusFilter = (ViewData["status"] as byte?);
+    var canApprove = (ViewData["canApprove"] as bool?) ?? false;
+
+    string StatusText(byte s) => s switch
+    {
+        1 => "Pending",
+        2 => "Approved",
+        3 => "Rejected",
+        4 => "Cancelled",
+        _ => "Unknown"
+    };
+
+    string StatusClass(byte s) => s switch
+    {
+        1 => "warning",
+        2 => "success",
+        3 => "danger",
+        4 => "secondary",
+        _ => "secondary"
+    };
+}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+        <h2 class="mb-0">@ViewData["Title"]</h2>
+        <div class="text-muted small">Approval queue for stock-on-hand changes</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-action="Index">Back to Stock On Hand</a>
+</div>
+
+@if (TempData["Ok"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["Err"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-auto">
+                <label class="form-label mb-0 text-muted small">Status</label>
+            </div>
+            <div class="col-auto">
+                <select class="form-select form-select-sm" name="status" onchange="this.form.submit()">
+                    <option value="" selected="@(statusFilter is null)">All</option>
+                    <option value="1" selected="@(statusFilter == 1)">Pending</option>
+                    <option value="2" selected="@(statusFilter == 2)">Approved</option>
+                    <option value="3" selected="@(statusFilter == 3)">Rejected</option>
+                    <option value="4" selected="@(statusFilter == 4)">Cancelled</option>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="p-4 text-muted">No requests found for this filter.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Requested</th>
+                            <th>Item</th>
+                            <th>Warehouse</th>
+                            <th class="text-end">Current Qty</th>
+                            <th class="text-end">Delta</th>
+                            <th>Reason</th>
+                            <th>Requested By</th>
+                            <th>Status</th>
+                            <th style="width:300px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model)
+                        {
+                            <tr>
+                                <td>@r.RequestedAtUtc.ToLocalTime().ToString("dd-MMM-yyyy HH:mm")</td>
+                                <td>@(r.Stock?.Item?.SKU ?? "-") - @(r.Stock?.Item?.Name ?? "-")</td>
+                                <td>@(r.Stock?.Warehouse?.Name ?? "-")</td>
+                                <td class="text-end">@((r.Stock?.Quantity ?? 0).ToString("0.##"))</td>
+                                <td class="text-end @(r.DeltaQty > 0 ? "text-success" : "text-danger")">@r.DeltaQty.ToString("+0.##;-0.##;0")</td>
+                                <td>
+                                    <div>@r.Reason</div>
+                                    @if (!string.IsNullOrWhiteSpace(r.ReviewNote))
+                                    {
+                                        <div class="small text-muted mt-1">Review: @r.ReviewNote</div>
+                                    }
+                                </td>
+                                <td>@(r.RequestedByUser?.Email ?? "-")</td>
+                                <td><span class="badge bg-@StatusClass(r.Status)">@StatusText(r.Status)</span></td>
+                                <td>
+                                    @if (canApprove && r.Status == 1)
+                                    {
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <form asp-action="ApproveRequest" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@r.StockAdjustmentRequestId" />
+                                                <input type="hidden" name="returnUrl" value="@($"{Context.Request.Path}{Context.Request.QueryString}")" />
+                                                <button type="submit" class="btn btn-sm btn-outline-success">Approve</button>
+                                            </form>
+                                            <form asp-action="RejectRequest" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@r.StockAdjustmentRequestId" />
+                                                <input type="hidden" name="reviewNote" value="Rejected by admin" />
+                                                <input type="hidden" name="returnUrl" value="@($"{Context.Request.Path}{Context.Request.QueryString}")" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Reject</button>
+                                            </form>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">No action</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

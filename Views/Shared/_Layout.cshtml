@@ -155,6 +155,10 @@
                             </button>
                             <div class="collapse @GroupOpen("Stocks","StockTransactions","StockTransfers","Purchases","Items","ItemOnboarding","Warehouses","Stores","Units","Categories","Suppliers","PortalAdmin")" id="nav-inventory">
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Stocks", "Index")" asp-controller="Stocks" asp-action="Index"><i class="bi bi-boxes sidebar-icon"></i><span>Stock On Hand</span></a>
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Stocks", "AdjustmentRequests")" asp-controller="Stocks" asp-action="AdjustmentRequests"><i class="bi bi-list-check sidebar-icon"></i><span>Stock Requests</span></a>
+                                }
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("StockTransactions", "Index")" asp-controller="StockTransactions" asp-action="Index"><i class="bi bi-journal-text sidebar-icon"></i><span>Stock Ledger</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("StockTransfers", "Create")" asp-controller="StockTransfers" asp-action="Create"><i class="bi bi-arrow-left-right sidebar-icon"></i><span>Stock Transfer</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Purchases", "Index")" asp-controller="Purchases" asp-action="Index"><i class="bi bi-bag-check sidebar-icon"></i><span>Purchases</span></a>

@@ -6,6 +6,7 @@
     let currentLayout = [];
     let saveTimer = null;
     let isLocked = true;
+    let selectedMonthOffset = 0;
     const chartInstances = {};
 
     document.addEventListener('DOMContentLoaded', init);
@@ -121,7 +122,7 @@
         container.innerHTML = skeletonHtml(def ? def.type : 'Table');
 
         try {
-            const resp = await fetch('/Home/WidgetData?id=' + encodeURIComponent(widgetId));
+            const resp = await fetch('/Home/WidgetData?id=' + encodeURIComponent(widgetId) + '&monthOffset=' + encodeURIComponent(String(selectedMonthOffset)));
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             const data = await resp.json();
             if (!def) return;
@@ -204,26 +205,50 @@
         if (widgetId === 'sales-purchases-chart') {
             options = {
                 chart: {
-                    type: 'area', height: '100%',
+                    type: 'line', height: '100%',
                     background: bgColor,
                     toolbar: { show: true, tools: { download: true, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true } },
                     zoom: { enabled: true, type: 'x' },
                     animations: { enabled: true, easing: 'easeinout', speed: 600 }
                 },
                 series: [
-                    { name: 'Invoice Sales', data: data.invoiceSales || [] },
-                    { name: 'POS Sales', data: data.posSales || [] },
-                    { name: 'Purchases', data: data.purchases || [] }
+                    { name: 'Invoice Sales', type: 'area', data: data.invoiceSales || [] },
+                    { name: 'POS Sales', type: 'area', data: data.posSales || [] },
+                    { name: 'Purchases', type: 'column', data: data.purchases || [] },
+                    {
+                        name: data.previousMonthLabel ? ('Previous Month Sales (' + data.previousMonthLabel + ')') : 'Previous Month Sales',
+                        type: 'line',
+                        data: data.prevMonthSales || []
+                    }
                 ],
-                xaxis: { categories: data.labels || [], labels: { style: { colors: textColor, fontSize: '11px' }, rotateAlways: false, rotate: -45 } },
-                yaxis: { labels: { style: { colors: textColor }, formatter: v => '\u20B9' + Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 }) } },
-                colors: ['#3b82f6', '#10b981', '#ef4444'],
-                fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 95, 100] } },
-                stroke: { curve: 'smooth', width: 2.5 },
+                xaxis: {
+                    categories: data.labels || [],
+                    tickAmount: 10,
+                    labels: {
+                        style: { colors: textColor, fontSize: '11px' },
+                        rotateAlways: false,
+                        rotate: 0,
+                        hideOverlappingLabels: true
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        style: { colors: textColor },
+                        formatter: v => formatCurrencyCompact(v)
+                    }
+                },
+                colors: ['#3b82f6', '#10b981', '#ef4444', '#6366f1'],
+                fill: {
+                    type: ['gradient', 'gradient', 'solid', 'solid'],
+                    gradient: { shadeIntensity: 1, opacityFrom: 0.28, opacityTo: 0.04, stops: [0, 95, 100] },
+                    opacity: [1, 1, 0.85, 1]
+                },
+                stroke: { curve: ['smooth', 'smooth', 'straight', 'smooth'], width: [2.4, 2.4, 0, 2], dashArray: [0, 0, 0, 6] },
+                plotOptions: { bar: { columnWidth: '52%', borderRadius: 3 } },
                 dataLabels: { enabled: false },
-                grid: { borderColor: gridColor, strokeDashArray: 3 },
+                grid: { borderColor: gridColor, strokeDashArray: 3, padding: { top: 10, right: 8, bottom: 0, left: 6 } },
                 tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => '\u20B9' + Number(v || 0).toLocaleString('en-IN') } },
-                legend: { labels: { colors: textColor }, fontSize: '12px' },
+                legend: { labels: { colors: textColor }, fontSize: '12px', position: 'top', horizontalAlign: 'left' },
                 theme: { mode: isDark ? 'dark' : 'light' }
             };
         } else if (widgetId === 'pos-hourly-chart') {
@@ -284,6 +309,72 @@
                 tooltip: { theme: isDark ? 'dark' : 'light' },
                 theme: { mode: isDark ? 'dark' : 'light' }
             };
+        } else if (widgetId === 'monthly-sales-trend') {
+            options = {
+                chart: {
+                    type: 'line', height: '100%', background: bgColor,
+                    toolbar: { show: true, tools: { download: true, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true } },
+                    animations: { enabled: true, speed: 550 }
+                },
+                series: [
+                    { name: 'Invoice Sales', data: data.invoiceSales || [] },
+                    { name: 'POS Sales', data: data.posSales || [] },
+                    { name: 'Total Sales', data: data.totalSales || [] }
+                ],
+                xaxis: { categories: data.labels || [], labels: { style: { colors: textColor, fontSize: '11px' } } },
+                yaxis: { labels: { style: { colors: textColor }, formatter: v => formatCurrencyCompact(v) } },
+                colors: ['#3b82f6', '#10b981', '#8b5cf6'],
+                stroke: { curve: 'smooth', width: [2.2, 2.2, 3], dashArray: [0, 0, 2] },
+                markers: { size: [2, 2, 3], hover: { size: 5 } },
+                fill: { type: 'solid', opacity: [0.8, 0.8, 1] },
+                dataLabels: { enabled: false },
+                legend: { position: 'top', horizontalAlign: 'left', labels: { colors: textColor }, fontSize: '12px' },
+                grid: { borderColor: gridColor, strokeDashArray: 3 },
+                tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => '\u20B9' + Number(v || 0).toLocaleString('en-IN') } },
+                theme: { mode: isDark ? 'dark' : 'light' }
+            };
+        } else if (widgetId === 'sales-channel-mix') {
+            options = {
+                chart: { type: 'donut', height: '100%', background: bgColor, animations: { enabled: true, speed: 500 } },
+                series: data.data || [],
+                labels: data.labels || [],
+                colors: ['#3b82f6', '#10b981', '#ef4444'],
+                legend: { position: 'bottom', labels: { colors: textColor }, fontSize: '11px' },
+                stroke: { show: true, width: 2, colors: [isDark ? '#1e293b' : '#fff'] },
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '58%',
+                            labels: {
+                                show: true,
+                                total: {
+                                    show: true,
+                                    label: 'Gross Sales',
+                                    color: textColor,
+                                    formatter: () => '\u20B9' + Number(data.total || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })
+                                }
+                            }
+                        }
+                    }
+                },
+                dataLabels: { enabled: false },
+                tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => '\u20B9' + Number(v || 0).toLocaleString('en-IN') } },
+                theme: { mode: isDark ? 'dark' : 'light' }
+            };
+        } else if (widgetId === 'weekday-sales-trend') {
+            options = {
+                chart: { type: 'bar', height: '100%', background: bgColor, toolbar: { show: false }, animations: { enabled: true, speed: 500 } },
+                series: [{ name: 'Sales', data: data.data || [] }],
+                xaxis: { categories: data.labels || [], labels: { style: { colors: textColor, fontSize: '11px' } } },
+                yaxis: { labels: { style: { colors: textColor }, formatter: v => formatCurrencyCompact(v) } },
+                colors: ['#0ea5e9'],
+                plotOptions: { bar: { borderRadius: 4, columnWidth: '58%' } },
+                fill: { type: 'gradient', gradient: { shade: 'light', type: 'vertical', shadeIntensity: 0.15, opacityFrom: 0.95, opacityTo: 0.7 } },
+                dataLabels: { enabled: false },
+                grid: { borderColor: gridColor, strokeDashArray: 3 },
+                tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => '\u20B9' + Number(v || 0).toLocaleString('en-IN') } },
+                theme: { mode: isDark ? 'dark' : 'light' }
+            };
         } else {
             container.innerHTML = '<span class="text-muted small">Chart not configured</span>';
             return;
@@ -296,6 +387,16 @@
 
     function apexPalette() {
         return ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#f97316', '#14b8a6', '#06b6d4', '#ec4899', '#64748b'];
+    }
+
+    function formatCurrencyCompact(value) {
+        const n = Number(value || 0);
+        if (!Number.isFinite(n)) return '\u20B90';
+
+        return '\u20B9' + n.toLocaleString('en-IN', {
+            notation: 'compact',
+            maximumFractionDigits: 1
+        });
     }
 
     // ── Table renderer ──
@@ -455,13 +556,25 @@
 
         const refreshBtn = document.getElementById('btn-refresh-all');
         if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => {
-                grid.getGridItems().forEach(el => {
-                    const id = el.getAttribute('gs-id');
-                    if (id) loadWidgetData(id);
-                });
+            refreshBtn.addEventListener('click', refreshAllWidgets);
+        }
+
+        const monthFilter = document.getElementById('dashboard-month-filter');
+        if (monthFilter) {
+            selectedMonthOffset = parseInt(monthFilter.value || '0', 10) || 0;
+            monthFilter.addEventListener('change', () => {
+                selectedMonthOffset = parseInt(monthFilter.value || '0', 10) || 0;
+                updateExportHref();
+                refreshAllWidgets();
             });
         }
+
+        const exportSection = document.getElementById('dashboard-export-section');
+        if (exportSection) {
+            exportSection.addEventListener('change', updateExportHref);
+        }
+
+        updateExportHref();
 
         const lockBtn = document.getElementById('btn-lock-toggle');
         if (lockBtn) {
@@ -470,6 +583,23 @@
                 applyLockState();
             });
         }
+    }
+
+    function refreshAllWidgets() {
+        if (!grid) return;
+        grid.getGridItems().forEach(el => {
+            const id = el.getAttribute('gs-id');
+            if (id) loadWidgetData(id);
+        });
+    }
+
+    function updateExportHref() {
+        const exportBtn = document.getElementById('btn-export-monthly');
+        if (!exportBtn) return;
+
+        const exportSection = document.getElementById('dashboard-export-section');
+        const section = exportSection ? exportSection.value : 'all';
+        exportBtn.setAttribute('href', '/Home/ExportMonthlyData?monthOffset=' + encodeURIComponent(String(selectedMonthOffset)) + '&section=' + encodeURIComponent(section));
     }
 
     function applyLockState() {

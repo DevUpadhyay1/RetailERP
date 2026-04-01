@@ -70,7 +70,26 @@
         <i class="bi bi-unlock me-1"></i><span>Lock</span>
     </button>
     <button id="btn-add-widget" class="btn btn-sm btn-outline-primary edit-mode-btn"><i class="bi bi-plus-circle me-1"></i>Add Widget</button>
+    <select id="dashboard-month-filter" class="form-select form-select-sm" style="width:auto;min-width:180px;">
+        <option value="0">Current Month</option>
+        <option value="-1">Previous Month</option>
+        <option value="-2">2 Months Ago</option>
+        <option value="-3">3 Months Ago</option>
+        <option value="-6">6 Months Ago</option>
+    </select>
     <button id="btn-refresh-all" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-clockwise me-1"></i>Refresh All</button>
+    <select id="dashboard-export-section" class="form-select form-select-sm" style="width:auto;min-width:170px;">
+        <option value="all">Export: All Sections</option>
+        <option value="sales">Sales</option>
+        <option value="pos">POS</option>
+        <option value="purchases">Purchases</option>
+        <option value="returns">Returns</option>
+        <option value="payments">Payments</option>
+        <option value="inventory">Inventory</option>
+    </select>
+    <a id="btn-export-monthly" class="btn btn-sm btn-outline-success" href="/Home/ExportMonthlyData?monthOffset=-1&amp;section=all">
+        <i class="bi bi-file-earmark-excel me-1"></i>Download Month Excel
+    </a>
     <button id="btn-reset-layout" class="btn btn-sm btn-outline-danger edit-mode-btn"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset Layout</button>
     <span class="text-muted small ms-2 edit-mode-hint"><i class="bi bi-arrows-move me-1"></i>Drag headers to rearrange &middot; Resize from corners</span>
 </div>

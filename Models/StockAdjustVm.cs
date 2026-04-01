@@ -14,8 +14,9 @@ public class StockAdjustVm
     [Required]
     public decimal DeltaQty { get; set; } // + add, - remove
 
+    [Required]
     [MaxLength(200)]
-    public string? Reason { get; set; }
+    public string Reason { get; set; } = "";
 
     public string? ReturnUrl { get; set; }
 }

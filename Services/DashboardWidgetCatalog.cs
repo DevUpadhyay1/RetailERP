@@ -59,6 +59,15 @@ public static class DashboardWidgetCatalog
         new("sales-purchases-chart", "Sales vs Purchases (Daily)", "bi-bar-chart-line", WidgetType.Chart, 6, 4,
             AllBiz(), new[]{"Admin","Manager","Finance"}),
 
+        new("monthly-sales-trend", "Monthly Sales Trend (12M)", "bi-graph-up-arrow", WidgetType.Chart, 6, 4,
+            AllBiz(), new[]{"Admin","Manager","Finance"}),
+
+        new("sales-channel-mix", "Sales Mix: Invoice vs POS", "bi-pie-chart-fill", WidgetType.Chart, 4, 4,
+            AllBiz(), new[]{"Admin","Manager","Finance"}),
+
+        new("weekday-sales-trend", "Sales by Weekday", "bi-calendar-week", WidgetType.Chart, 4, 4,
+            AllBiz(), new[]{"Admin","Manager","Cashier","Finance"}),
+
         new("pos-hourly-chart",  "POS Sales by Hour",        "bi-clock-history",  WidgetType.Chart, 6, 4,
             new[]{BT.Kirana, BT.Supermarket, BT.Restaurant, BT.ChainStore, BT.Franchise},
             new[]{"Admin","Manager","Cashier"}),
@@ -100,7 +109,7 @@ public static class DashboardWidgetCatalog
 
         // Lay out top KPI cards in a row of 4, then charts, then tables
         var kpis = available.Where(w => w.Type == WidgetType.Kpi).Take(4).ToList();
-        var charts = available.Where(w => w.Type == WidgetType.Chart).Take(2).ToList();
+        var charts = available.Where(w => w.Type == WidgetType.Chart).Take(3).ToList();
         var tables = available.Where(w => w.Type == WidgetType.Table).Take(2).ToList();
 
         var placements = new List<WidgetPlacement>();

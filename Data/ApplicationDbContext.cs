@@ -28,6 +28,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<Store> Stores => Set<Store>();
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<Stock> Stocks => Set<Stock>();
+    public DbSet<StockAdjustmentRequest> StockAdjustmentRequests => Set<StockAdjustmentRequest>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
 
@@ -235,6 +236,33 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .HasOne(x => x.Warehouse)
             .WithMany()
             .HasForeignKey(x => x.WarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<StockAdjustmentRequest>()
+            .HasIndex(x => new { x.StockId, x.Status, x.RequestedAtUtc });
+
+        builder.Entity<StockAdjustmentRequest>()
+            .ToTable(t => t.HasCheckConstraint("CK_StockAdjustmentRequests_Status", "[Status] IN (1,2,3,4)"));
+
+        builder.Entity<StockAdjustmentRequest>()
+            .ToTable(t => t.HasCheckConstraint("CK_StockAdjustmentRequests_QtyNonZero", "[DeltaQty] <> 0"));
+
+        builder.Entity<StockAdjustmentRequest>()
+            .HasOne(x => x.Stock)
+            .WithMany()
+            .HasForeignKey(x => x.StockId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<StockAdjustmentRequest>()
+            .HasOne(x => x.RequestedByUser)
+            .WithMany()
+            .HasForeignKey(x => x.RequestedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<StockAdjustmentRequest>()
+            .HasOne(x => x.ReviewedByUser)
+            .WithMany()
+            .HasForeignKey(x => x.ReviewedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<Invoice>()
@@ -671,6 +699,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureAuditUserFks<Store>(builder);
         ConfigureAuditUserFks<Warehouse>(builder);
         ConfigureAuditUserFks<Stock>(builder);
+        ConfigureAuditUserFks<StockAdjustmentRequest>(builder);
         ConfigureAuditUserFks<Customer>(builder);
         ConfigureAuditUserFks<Supplier>(builder);
         ConfigureAuditUserFks<Purchase>(builder);
@@ -700,6 +729,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureAuditDefaults<Store>(builder);
         ConfigureAuditDefaults<Warehouse>(builder);
         ConfigureAuditDefaults<Stock>(builder);
+        ConfigureAuditDefaults<StockAdjustmentRequest>(builder);
         ConfigureAuditDefaults<Customer>(builder);
         ConfigureAuditDefaults<Supplier>(builder);
         ConfigureAuditDefaults<Purchase>(builder);
@@ -730,6 +760,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureCompanyFk<Store>(builder);
         ConfigureCompanyFk<Warehouse>(builder);
         ConfigureCompanyFk<Stock>(builder);
+        ConfigureCompanyFk<StockAdjustmentRequest>(builder);
         ConfigureCompanyFk<Customer>(builder);
         ConfigureCompanyFk<Supplier>(builder);
         ConfigureCompanyFk<Purchase>(builder);

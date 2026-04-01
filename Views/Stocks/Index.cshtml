@@ -25,10 +25,12 @@
             <h2 class="mb-0">@ViewData["Title"]</h2>
             <div class="text-muted small">Showing @from-@to of @total</div>
         </div>
-
-        <a class="btn btn-primary" asp-action="Create">
-            + Add Stock Row
-        </a>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" asp-action="AdjustmentRequests">Adjustment Requests</a>
+            <a class="btn btn-primary" asp-action="Create">
+                + Add Stock Row
+            </a>
+        </div>
     </div>
 
     @if (TempData["Ok"] is string ok)
@@ -115,12 +117,15 @@
                                                asp-action="Adjust"
                                                asp-route-id="@s.StockId"
                                                asp-route-returnUrl="@($"{Context.Request.Path}{Context.Request.QueryString}")">
-                                                Adjust
+                                                @(User.IsInRole("Admin") ? "Adjust" : "Request")
                                             </a>
                                             <a class="btn btn-sm btn-outline-secondary"
                                                asp-action="Details" asp-route-id="@s.StockId">View</a>
-                                            <a class="btn btn-sm btn-outline-danger"
-                                               asp-action="Delete" asp-route-id="@s.StockId">Delete</a>
+                                            @if (User.IsInRole("Admin"))
+                                            {
+                                                <a class="btn btn-sm btn-outline-danger"
+                                                   asp-action="Delete" asp-route-id="@s.StockId">Delete</a>
+                                            }
                                         </div>
                                     </td>
                                 </tr>
