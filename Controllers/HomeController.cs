@@ -228,6 +228,7 @@ public class HomeController : Controller
 
     [Authorize]
     [HttpGet]
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> GetLayout()
     {
         var user = await _userMgr.GetUserAsync(User);
@@ -335,6 +336,7 @@ public class HomeController : Controller
 
     [Authorize]
     [HttpGet]
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> WidgetData(string id, int monthOffset = 0)
     {
         if (string.IsNullOrWhiteSpace(id)) return BadRequest();

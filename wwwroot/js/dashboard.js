@@ -191,7 +191,14 @@
         container.innerHTML = skeletonHtml(def ? def.type : 'Table');
 
         try {
-            const resp = await fetch('/Home/WidgetData?id=' + encodeURIComponent(widgetId) + '&monthOffset=' + encodeURIComponent(String(selectedMonthOffset)));
+            const resp = await fetch('/Home/WidgetData?id=' + encodeURIComponent(widgetId)
+                + '&monthOffset=' + encodeURIComponent(String(selectedMonthOffset))
+                + '&_ts=' + Date.now(), {
+                cache: 'no-store',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             const data = await resp.json();
             if (!def) return;
@@ -541,8 +548,6 @@
         const n = Number(value || 0);
         if (!Number.isFinite(n)) return '\u20B90';
 
-        const digits = Number.isFinite(maxFractionDigits) ? maxFractionDigits : 1;
-
         const scaleMap = {
             exact: { divisor: 1, suffix: '' },
             hundred: { divisor: 100, suffix: 'x100' },
@@ -553,6 +558,17 @@
 
         const cfg = scaleMap[scale] || scaleMap.exact;
         const scaled = n / cfg.divisor;
+        let digits;
+
+        if (Number.isFinite(maxFractionDigits)) {
+            digits = maxFractionDigits;
+        } else if (cfg.divisor === 1) {
+            digits = 0;
+        } else {
+            const absScaled = Math.abs(scaled);
+            digits = absScaled < 1 ? 3 : absScaled < 10 ? 2 : 1;
+        }
+
         const text = scaled.toLocaleString('en-IN', {
             minimumFractionDigits: 0,
             maximumFractionDigits: digits
@@ -718,6 +734,7 @@
         }
 
         catalog = nextCatalog;
+        refreshAllWidgets();
     }
 
     // ── Toolbar ──
