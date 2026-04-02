@@ -233,24 +233,77 @@ public class HomeController : Controller
         var user = await _userMgr.GetUserAsync(User);
         if (user is null) return Unauthorized();
 
-        var roles = await _userMgr.GetRolesAsync(user);
-        var role = roles.FirstOrDefault() ?? "Admin";
+        var roles = (await _userMgr.GetRolesAsync(user))
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (roles.Count == 0)
+            roles.Add("Admin");
 
-        // Determine business type from first active store, or default
-        var biz = await _db.Stores.AsNoTracking()
-            .Where(s => s.IsActive)
-            .Select(s => s.BusinessType)
-            .FirstOrDefaultAsync();
+        // Use deterministic role priority so default-layout selection is stable.
+        var primaryRole = GetPrimaryDashboardRole(roles);
+        var roleSet = new HashSet<string>(roles, StringComparer.OrdinalIgnoreCase);
 
-        var layout = await _dash.GetLayoutAsync(user.Id, biz, role);
+        // Resolve business type deterministically and company-aware.
+        var biz = await ResolveDashboardBusinessTypeAsync(user);
 
-        // Build catalog of widgets available to this user
+        var layout = await _dash.GetLayoutAsync(user.Id, biz, primaryRole);
+
+        // Build catalog across all assigned roles to avoid random widget drops.
         var catalog = DashboardWidgetCatalog.All
-            .Where(w => w.BusinessTypes.Contains(biz) && w.Roles.Contains(role))
+            .Where(w => w.BusinessTypes.Contains(biz) && w.Roles.Any(r => roleSet.Contains(r)))
             .Select(w => new { w.Id, w.Title, w.Icon, type = w.Type.ToString(), w.DefaultW, w.DefaultH })
             .ToList();
 
         return Json(new { layout, catalog });
+    }
+
+    private static string GetPrimaryDashboardRole(IEnumerable<string> roles)
+    {
+        string[] priority = { "SuperAdmin", "Admin", "Manager", "Finance", "Inventory", "Cashier", "User" };
+        var roleSet = new HashSet<string>(roles, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var role in priority)
+        {
+            if (roleSet.Contains(role))
+                return role;
+        }
+
+        return roles.FirstOrDefault() ?? "Admin";
+    }
+
+    private async Task<BusinessType> ResolveDashboardBusinessTypeAsync(ApplicationUser user)
+    {
+        if (user.CompanyId.HasValue)
+        {
+            var companyBiz = await _db.Companies
+                .AsNoTracking()
+                .Where(c => c.CompanyId == user.CompanyId.Value)
+                .Select(c => (BusinessType?)c.BusinessType)
+                .FirstOrDefaultAsync();
+
+            if (companyBiz.HasValue)
+                return companyBiz.Value;
+
+            var storeBiz = await _db.Stores
+                .AsNoTracking()
+                .Where(s => s.IsActive && s.CompanyId == user.CompanyId.Value)
+                .OrderBy(s => s.CreatedAtUtc)
+                .Select(s => (BusinessType?)s.BusinessType)
+                .FirstOrDefaultAsync();
+
+            if (storeBiz.HasValue)
+                return storeBiz.Value;
+        }
+
+        var fallbackBiz = await _db.Stores
+            .AsNoTracking()
+            .Where(s => s.IsActive)
+            .OrderBy(s => s.CreatedAtUtc)
+            .Select(s => (BusinessType?)s.BusinessType)
+            .FirstOrDefaultAsync();
+
+        return fallbackBiz ?? BusinessType.Other;
     }
 
     [Authorize]
