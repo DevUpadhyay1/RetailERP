@@ -7,6 +7,7 @@
     let saveTimer = null;
     let isLocked = true;
     let selectedMonthOffset = 0;
+    let chartValueScale = 'auto';
     let suppressAutoSave = false;
     let lastLayoutHash = '';
     let lastResyncAt = 0;
@@ -24,6 +25,7 @@
             catalog = data.catalog || [];
             currentLayout = normalizeLayout(data.layout || []);
             lastLayoutHash = layoutHash(currentLayout);
+            chartValueScale = getStoredScalePreference();
 
             initGrid();
             renderWidgets(currentLayout);
@@ -270,6 +272,13 @@
         let options;
 
         if (widgetId === 'sales-purchases-chart') {
+            const salesAxisScale = resolveScaleForSeries([
+                data.invoiceSales || [],
+                data.posSales || [],
+                data.purchases || [],
+                data.prevMonthSales || []
+            ]);
+
             options = {
                 chart: {
                     type: 'line', height: '100%',
@@ -299,9 +308,13 @@
                     }
                 },
                 yaxis: {
+                    title: {
+                        text: axisTitleForScale(salesAxisScale),
+                        style: { color: textColor, fontSize: '11px' }
+                    },
                     labels: {
                         style: { colors: textColor },
-                        formatter: v => formatCurrencyCompact(v)
+                        formatter: v => formatCurrencyByScale(v, salesAxisScale)
                     }
                 },
                 colors: ['#3b82f6', '#10b981', '#ef4444', '#6366f1'],
@@ -314,11 +327,13 @@
                 plotOptions: { bar: { columnWidth: '52%', borderRadius: 3 } },
                 dataLabels: { enabled: false },
                 grid: { borderColor: gridColor, strokeDashArray: 3, padding: { top: 10, right: 8, bottom: 0, left: 6 } },
-                tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => '\u20B9' + Number(v || 0).toLocaleString('en-IN') } },
+                tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => formatCurrencyTooltip(v, salesAxisScale) } },
                 legend: { labels: { colors: textColor }, fontSize: '12px', position: 'top', horizontalAlign: 'left' },
                 theme: { mode: isDark ? 'dark' : 'light' }
             };
         } else if (widgetId === 'pos-hourly-chart') {
+            const hourlyAxisScale = resolveScaleForSeries([data.data || []]);
+
             options = {
                 chart: {
                     type: 'bar', height: '100%', background: bgColor,
@@ -328,13 +343,19 @@
                 },
                 series: [{ name: 'POS Sales', data: data.data || [] }],
                 xaxis: { categories: data.labels || [], labels: { style: { colors: textColor, fontSize: '11px' } } },
-                yaxis: { labels: { style: { colors: textColor }, formatter: v => '\u20B9' + Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 }) } },
+                yaxis: {
+                    title: {
+                        text: axisTitleForScale(hourlyAxisScale),
+                        style: { color: textColor, fontSize: '11px' }
+                    },
+                    labels: { style: { colors: textColor }, formatter: v => formatCurrencyByScale(v, hourlyAxisScale) }
+                },
                 colors: ['#3b82f6'],
                 fill: { type: 'gradient', gradient: { shade: 'light', type: 'vertical', shadeIntensity: 0.2, opacityFrom: 0.9, opacityTo: 0.7 } },
                 plotOptions: { bar: { borderRadius: 4, columnWidth: '60%' } },
                 dataLabels: { enabled: false },
                 grid: { borderColor: gridColor, strokeDashArray: 3 },
-                tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => '\u20B9' + Number(v || 0).toLocaleString('en-IN') } },
+                tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => formatCurrencyTooltip(v, hourlyAxisScale) } },
                 theme: { mode: isDark ? 'dark' : 'light' }
             };
         } else if (widgetId === 'category-pie') {
@@ -377,6 +398,12 @@
                 theme: { mode: isDark ? 'dark' : 'light' }
             };
         } else if (widgetId === 'monthly-sales-trend') {
+            const monthlyAxisScale = resolveScaleForSeries([
+                data.invoiceSales || [],
+                data.posSales || [],
+                data.totalSales || []
+            ]);
+
             options = {
                 chart: {
                     type: 'line', height: '100%', background: bgColor,
@@ -389,7 +416,13 @@
                     { name: 'Total Sales', data: data.totalSales || [] }
                 ],
                 xaxis: { categories: data.labels || [], labels: { style: { colors: textColor, fontSize: '11px' } } },
-                yaxis: { labels: { style: { colors: textColor }, formatter: v => formatCurrencyCompact(v) } },
+                yaxis: {
+                    title: {
+                        text: axisTitleForScale(monthlyAxisScale),
+                        style: { color: textColor, fontSize: '11px' }
+                    },
+                    labels: { style: { colors: textColor }, formatter: v => formatCurrencyByScale(v, monthlyAxisScale) }
+                },
                 colors: ['#3b82f6', '#10b981', '#8b5cf6'],
                 stroke: { curve: 'smooth', width: [2.2, 2.2, 3], dashArray: [0, 0, 2] },
                 markers: { size: [2, 2, 3], hover: { size: 5 } },
@@ -397,7 +430,7 @@
                 dataLabels: { enabled: false },
                 legend: { position: 'top', horizontalAlign: 'left', labels: { colors: textColor }, fontSize: '12px' },
                 grid: { borderColor: gridColor, strokeDashArray: 3 },
-                tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => '\u20B9' + Number(v || 0).toLocaleString('en-IN') } },
+                tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => formatCurrencyTooltip(v, monthlyAxisScale) } },
                 theme: { mode: isDark ? 'dark' : 'light' }
             };
         } else if (widgetId === 'sales-channel-mix') {
@@ -429,17 +462,25 @@
                 theme: { mode: isDark ? 'dark' : 'light' }
             };
         } else if (widgetId === 'weekday-sales-trend') {
+            const weekdayAxisScale = resolveScaleForSeries([data.data || []]);
+
             options = {
                 chart: { type: 'bar', height: '100%', background: bgColor, toolbar: { show: false }, animations: { enabled: true, speed: 500 } },
                 series: [{ name: 'Sales', data: data.data || [] }],
                 xaxis: { categories: data.labels || [], labels: { style: { colors: textColor, fontSize: '11px' } } },
-                yaxis: { labels: { style: { colors: textColor }, formatter: v => formatCurrencyCompact(v) } },
+                yaxis: {
+                    title: {
+                        text: axisTitleForScale(weekdayAxisScale),
+                        style: { color: textColor, fontSize: '11px' }
+                    },
+                    labels: { style: { colors: textColor }, formatter: v => formatCurrencyByScale(v, weekdayAxisScale) }
+                },
                 colors: ['#0ea5e9'],
                 plotOptions: { bar: { borderRadius: 4, columnWidth: '58%' } },
                 fill: { type: 'gradient', gradient: { shade: 'light', type: 'vertical', shadeIntensity: 0.15, opacityFrom: 0.95, opacityTo: 0.7 } },
                 dataLabels: { enabled: false },
                 grid: { borderColor: gridColor, strokeDashArray: 3 },
-                tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => '\u20B9' + Number(v || 0).toLocaleString('en-IN') } },
+                tooltip: { theme: isDark ? 'dark' : 'light', y: { formatter: v => formatCurrencyTooltip(v, weekdayAxisScale) } },
                 theme: { mode: isDark ? 'dark' : 'light' }
             };
         } else {
@@ -456,14 +497,78 @@
         return ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#f97316', '#14b8a6', '#06b6d4', '#ec4899', '#64748b'];
     }
 
-    function formatCurrencyCompact(value) {
+    function getStoredScalePreference() {
+        try {
+            return sanitizeScale(localStorage.getItem('dashboard.valueScale') || 'auto');
+        } catch {
+            return 'auto';
+        }
+    }
+
+    function sanitizeScale(value) {
+        const valid = ['auto', 'exact', 'hundred', 'thousand', 'lakh', 'crore'];
+        return valid.includes(value) ? value : 'auto';
+    }
+
+    function resolveScaleForSeries(seriesGroups) {
+        if (chartValueScale !== 'auto') return chartValueScale;
+
+        const max = (seriesGroups || [])
+            .flatMap(group => Array.isArray(group) ? group : [])
+            .map(v => Math.abs(Number(v || 0)))
+            .filter(v => Number.isFinite(v))
+            .reduce((acc, n) => Math.max(acc, n), 0);
+
+        if (max >= 10000000) return 'crore';
+        if (max >= 100000) return 'lakh';
+        if (max >= 1000) return 'thousand';
+        return 'exact';
+    }
+
+    function axisTitleForScale(scale) {
+        return scale === 'exact'
+            ? 'Amount'
+            : scale === 'hundred'
+                ? 'Amount (x100)'
+                : scale === 'thousand'
+                    ? 'Amount (K)'
+                    : scale === 'lakh'
+                        ? 'Amount (L)'
+                        : 'Amount (Cr)';
+    }
+
+    function formatCurrencyByScale(value, scale, maxFractionDigits) {
         const n = Number(value || 0);
         if (!Number.isFinite(n)) return '\u20B90';
 
-        return '\u20B9' + n.toLocaleString('en-IN', {
-            notation: 'compact',
-            maximumFractionDigits: 1
+        const digits = Number.isFinite(maxFractionDigits) ? maxFractionDigits : 1;
+
+        const scaleMap = {
+            exact: { divisor: 1, suffix: '' },
+            hundred: { divisor: 100, suffix: 'x100' },
+            thousand: { divisor: 1000, suffix: 'K' },
+            lakh: { divisor: 100000, suffix: 'L' },
+            crore: { divisor: 10000000, suffix: 'Cr' }
+        };
+
+        const cfg = scaleMap[scale] || scaleMap.exact;
+        const scaled = n / cfg.divisor;
+        const text = scaled.toLocaleString('en-IN', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: digits
         });
+
+        return cfg.suffix ? ('\u20B9' + text + ' ' + cfg.suffix) : ('\u20B9' + text);
+    }
+
+    function formatCurrencyTooltip(value, scale) {
+        const n = Number(value || 0);
+        if (!Number.isFinite(n)) return '\u20B90';
+
+        const full = '\u20B9' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+        if (scale === 'exact') return full;
+
+        return formatCurrencyByScale(n, scale, 2) + ' (' + full + ')';
     }
 
     // ── Table renderer ──
@@ -703,6 +808,21 @@
             monthFilter.addEventListener('change', () => {
                 selectedMonthOffset = parseInt(monthFilter.value || '0', 10) || 0;
                 updateExportHref();
+                refreshAllWidgets();
+            });
+        }
+
+        const valueScaleFilter = document.getElementById('dashboard-value-scale');
+        if (valueScaleFilter) {
+            valueScaleFilter.value = chartValueScale;
+            valueScaleFilter.addEventListener('change', () => {
+                chartValueScale = sanitizeScale(valueScaleFilter.value || 'auto');
+                valueScaleFilter.value = chartValueScale;
+
+                try {
+                    localStorage.setItem('dashboard.valueScale', chartValueScale);
+                } catch { }
+
                 refreshAllWidgets();
             });
         }
