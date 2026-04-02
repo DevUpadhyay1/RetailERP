@@ -7,6 +7,7 @@
     let saveTimer = null;
     let isLocked = true;
     let selectedMonthOffset = 0;
+    let suppressAutoSave = false;
     const chartInstances = {};
 
     document.addEventListener('DOMContentLoaded', init);
@@ -34,6 +35,7 @@
             wireToolbar();
             applyLockState();
             initSignalR();
+            wireLeaveHandlers();
         } catch (err) {
             console.error('Dashboard initialization failed:', err);
         }
@@ -51,12 +53,17 @@
             resizable: { handles: 'se,sw' }
         }, '#dashboard-grid');
 
-        grid.on('change', () => scheduleSave());
+        grid.on('change', () => {
+            if (suppressAutoSave) return;
+            scheduleSave();
+        });
     }
 
     function renderWidgets(placements) {
+        suppressAutoSave = true;
         grid.removeAll();
         placements.forEach(p => addWidgetToGrid(p));
+        suppressAutoSave = false;
     }
 
     function addWidgetToGrid(p) {
@@ -454,10 +461,16 @@
     // ── Auto-save layout ──
     function scheduleSave() {
         clearTimeout(saveTimer);
-        saveTimer = setTimeout(saveLayout, 1500);
+        saveTimer = setTimeout(() => {
+            saveTimer = null;
+            saveLayout();
+        }, 700);
     }
 
-    async function saveLayout() {
+    async function saveLayout(options) {
+        const opts = options || {};
+        if (!grid) return;
+
         const items = grid.getGridItems();
         const placements = items.map(el => {
             const node = el.gridstackNode;
@@ -465,16 +478,47 @@
                 widgetId: node.id || el.getAttribute('gs-id'),
                 x: node.x, y: node.y, w: node.w, h: node.h, visible: true
             };
-        });
+        }).filter(p => !!p.widgetId);
 
         const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value
             || document.cookie.split('; ').find(r => r.startsWith('XSRF-TOKEN='))?.split('=')[1];
 
-        await fetch('/Home/SaveLayout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': token || '', 'RequestVerificationToken': token || '' },
-            body: JSON.stringify(placements)
-        });
+        if (!token) {
+            console.warn('Dashboard layout not saved: anti-forgery token missing.');
+            return;
+        }
+
+        try {
+            const resp = await fetch('/Home/SaveLayout', {
+                method: 'POST',
+                keepalive: !!opts.keepalive,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': token,
+                    'RequestVerificationToken': token
+                },
+                body: JSON.stringify(placements)
+            });
+
+            if (!resp.ok) {
+                console.warn('Dashboard save failed. HTTP:', resp.status);
+            }
+        } catch (e) {
+            console.warn('Dashboard save failed:', e);
+        }
+    }
+
+    function wireLeaveHandlers() {
+        const flushPendingSave = () => {
+            if (!saveTimer) return;
+            clearTimeout(saveTimer);
+            saveTimer = null;
+            saveLayout({ keepalive: true });
+        };
+
+        window.addEventListener('pagehide', flushPendingSave);
+        window.addEventListener('beforeunload', flushPendingSave);
     }
 
     // ── Toolbar ──
