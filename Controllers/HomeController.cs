@@ -309,10 +309,13 @@ public class HomeController : Controller
     [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SaveLayout([FromBody] List<WidgetPlacement> placements)
+    public async Task<IActionResult> SaveLayout([FromBody] List<WidgetPlacement>? placements)
     {
         var user = await _userMgr.GetUserAsync(User);
         if (user is null) return Unauthorized();
+
+        if (placements is null)
+            return BadRequest("Invalid dashboard layout payload.");
 
         await _dash.SaveLayoutAsync(user.Id, placements);
         return Ok();

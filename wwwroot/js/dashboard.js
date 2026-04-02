@@ -8,27 +8,22 @@
     let isLocked = true;
     let selectedMonthOffset = 0;
     let suppressAutoSave = false;
+    let lastLayoutHash = '';
+    let lastResyncAt = 0;
     const chartInstances = {};
 
     document.addEventListener('DOMContentLoaded', init);
 
     async function init() {
         try {
-            const resp = await fetch('/Home/GetLayout', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-            if (!resp.ok) {
-                console.error('Failed to load dashboard layout. HTTP:', resp.status);
+            const data = await fetchLayoutModel();
+            if (!data) {
                 return;
             }
 
-            const contentType = resp.headers.get('content-type') || '';
-            if (!contentType.includes('application/json')) {
-                console.warn('Dashboard layout endpoint returned non-JSON content. Skipping widget bootstrap.');
-                return;
-            }
-
-            const data = await resp.json();
             catalog = data.catalog || [];
-            currentLayout = data.layout || [];
+            currentLayout = normalizeLayout(data.layout || []);
+            lastLayoutHash = layoutHash(currentLayout);
 
             initGrid();
             renderWidgets(currentLayout);
@@ -36,8 +31,36 @@
             applyLockState();
             initSignalR();
             wireLeaveHandlers();
+            wireAutoResync();
         } catch (err) {
             console.error('Dashboard initialization failed:', err);
+        }
+    }
+
+    async function fetchLayoutModel() {
+        try {
+            const resp = await fetch('/Home/GetLayout?_ts=' + Date.now(), {
+                cache: 'no-store',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!resp.ok) {
+                console.error('Failed to load dashboard layout. HTTP:', resp.status);
+                return null;
+            }
+
+            const contentType = resp.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                console.warn('Dashboard layout endpoint returned non-JSON content. Skipping widget bootstrap.');
+                return null;
+            }
+
+            return await resp.json();
+        } catch (err) {
+            console.error('Failed to fetch dashboard layout:', err);
+            return null;
         }
     }
 
@@ -60,10 +83,47 @@
     }
 
     function renderWidgets(placements) {
+        currentLayout = normalizeLayout(placements || []);
+        lastLayoutHash = layoutHash(currentLayout);
+
         suppressAutoSave = true;
         grid.removeAll();
-        placements.forEach(p => addWidgetToGrid(p));
+        currentLayout.forEach(p => addWidgetToGrid(p));
         suppressAutoSave = false;
+    }
+
+    function collectPlacementsFromGrid() {
+        if (!grid) return [];
+
+        return grid.getGridItems().map(el => {
+            const node = el.gridstackNode;
+            return {
+                widgetId: node.id || el.getAttribute('gs-id'),
+                x: node.x,
+                y: node.y,
+                w: node.w,
+                h: node.h,
+                visible: true
+            };
+        }).filter(p => !!p.widgetId);
+    }
+
+    function normalizeLayout(placements) {
+        return (placements || [])
+            .filter(p => p && p.widgetId)
+            .map(p => ({
+                widgetId: String(p.widgetId),
+                x: Number.isFinite(Number(p.x)) ? Number(p.x) : 0,
+                y: Number.isFinite(Number(p.y)) ? Number(p.y) : 0,
+                w: Number.isFinite(Number(p.w)) ? Number(p.w) : 4,
+                h: Number.isFinite(Number(p.h)) ? Number(p.h) : 3,
+                visible: p.visible !== false
+            }))
+            .sort((a, b) => a.widgetId.localeCompare(b.widgetId));
+    }
+
+    function layoutHash(placements) {
+        return JSON.stringify(normalizeLayout(placements));
     }
 
     function addWidgetToGrid(p) {
@@ -471,14 +531,7 @@
         const opts = options || {};
         if (!grid) return;
 
-        const items = grid.getGridItems();
-        const placements = items.map(el => {
-            const node = el.gridstackNode;
-            return {
-                widgetId: node.id || el.getAttribute('gs-id'),
-                x: node.x, y: node.y, w: node.w, h: node.h, visible: true
-            };
-        }).filter(p => !!p.widgetId);
+        const placements = collectPlacementsFromGrid();
 
         const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value
             || document.cookie.split('; ').find(r => r.startsWith('XSRF-TOKEN='))?.split('=')[1];
@@ -503,7 +556,11 @@
 
             if (!resp.ok) {
                 console.warn('Dashboard save failed. HTTP:', resp.status);
+                return;
             }
+
+            currentLayout = normalizeLayout(placements);
+            lastLayoutHash = layoutHash(currentLayout);
         } catch (e) {
             console.warn('Dashboard save failed:', e);
         }
@@ -519,6 +576,43 @@
 
         window.addEventListener('pagehide', flushPendingSave);
         window.addEventListener('beforeunload', flushPendingSave);
+    }
+
+    function wireAutoResync() {
+        const triggerResync = () => {
+            const now = Date.now();
+            if (now - lastResyncAt < 1500) return;
+            lastResyncAt = now;
+            resyncLayoutFromServer();
+        };
+
+        window.addEventListener('focus', triggerResync);
+        window.addEventListener('pageshow', triggerResync);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                triggerResync();
+            }
+        });
+    }
+
+    async function resyncLayoutFromServer() {
+        if (!grid) return;
+        if (saveTimer) return;
+
+        const data = await fetchLayoutModel();
+        if (!data) return;
+
+        const nextCatalog = data.catalog || [];
+        const nextLayout = normalizeLayout(data.layout || []);
+        const nextHash = layoutHash(nextLayout);
+
+        if (nextHash !== lastLayoutHash) {
+            catalog = nextCatalog;
+            renderWidgets(nextLayout);
+            return;
+        }
+
+        catalog = nextCatalog;
     }
 
     // ── Toolbar ──
