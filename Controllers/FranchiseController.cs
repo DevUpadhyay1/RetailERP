@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
 using RetailERP.Services;
+using System.Security.Claims;
 using System.ComponentModel.DataAnnotations;
 
 namespace RetailERP.Controllers;
@@ -29,8 +30,12 @@ public class FranchiseController : Controller
         ViewData["q"] = q;
         ViewData["status"] = status;
 
-        var total = await _svc.CountAgreementsAsync(q, status);
-        var rows = await _svc.GetAgreementsAsync(q, status, page, pageSize);
+        var scopeCompanyId = ResolveScopeCompanyId();
+        if (!IsSuperAdmin() && !scopeCompanyId.HasValue)
+            return Forbid();
+
+        var total = await _svc.CountAgreementsAsync(q, status, scopeCompanyId);
+        var rows = await _svc.GetAgreementsAsync(q, status, page, pageSize, scopeCompanyId);
         var totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
 
         ViewData["total"] = total;
@@ -45,7 +50,12 @@ public class FranchiseController : Controller
     public async Task<IActionResult> Details(Guid? id)
     {
         if (id is null) return NotFound();
-        var agreement = await _svc.GetByIdAsync(id.Value);
+
+        var scopeCompanyId = ResolveScopeCompanyId();
+        if (!IsSuperAdmin() && !scopeCompanyId.HasValue)
+            return Forbid();
+
+        var agreement = await _svc.GetByIdAsync(id.Value, scopeCompanyId);
         if (agreement is null) return NotFound();
         return View(agreement);
     }
@@ -53,16 +63,82 @@ public class FranchiseController : Controller
     // ── Create ──
     public async Task<IActionResult> Create()
     {
-        await PopulateCompanyListsAsync();
-        return View(new CreateFranchiseAgreementVm());
+        Guid? lockedFranchisorId = null;
+        var vm = new CreateFranchiseAgreementVm();
+
+        if (!IsSuperAdmin())
+        {
+            var scopeCompanyId = ResolveScopeCompanyId();
+            if (!scopeCompanyId.HasValue)
+                return Forbid();
+
+            var ownCompany = await _db.Companies
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.CompanyId == scopeCompanyId.Value && c.IsActive);
+            if (ownCompany is null)
+                return Forbid();
+
+            if (ownCompany.ParentCompanyId.HasValue)
+            {
+                TempData["Err"] = "Only brand-owner company admins can create franchise agreements.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            lockedFranchisorId = ownCompany.CompanyId;
+            vm.FranchisorCompanyId = ownCompany.CompanyId;
+        }
+
+        await PopulateCompanyListsAsync(lockedFranchisorId);
+        return View(vm);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CreateFranchiseAgreementVm vm)
     {
+        Guid? lockedFranchisorId = null;
+
+        if (!IsSuperAdmin())
+        {
+            var scopeCompanyId = ResolveScopeCompanyId();
+            if (!scopeCompanyId.HasValue)
+                return Forbid();
+
+            var ownCompany = await _db.Companies
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.CompanyId == scopeCompanyId.Value && c.IsActive);
+            if (ownCompany is null)
+                return Forbid();
+
+            if (ownCompany.ParentCompanyId.HasValue)
+            {
+                TempData["Err"] = "Only brand-owner company admins can create franchise agreements.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            lockedFranchisorId = ownCompany.CompanyId;
+            vm.FranchisorCompanyId = ownCompany.CompanyId; // server-side lock against tampered posts
+        }
+
+        var franchisee = await _db.Companies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.CompanyId == vm.FranchiseeCompanyId && c.IsActive);
+
+        if (franchisee is null)
+            ModelState.AddModelError(nameof(vm.FranchiseeCompanyId), "Select a valid active operator company.");
+        else if (franchisee.CompanyId == vm.FranchisorCompanyId)
+            ModelState.AddModelError(nameof(vm.FranchiseeCompanyId), "Franchisee must be different from franchisor.");
+        else if (franchisee.ParentCompanyId.HasValue && franchisee.ParentCompanyId.Value != vm.FranchisorCompanyId)
+            ModelState.AddModelError(nameof(vm.FranchiseeCompanyId), "This operator is already linked to another brand owner.");
+
+        var franchisor = await _db.Companies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.CompanyId == vm.FranchisorCompanyId && c.IsActive);
+        if (franchisor is null)
+            ModelState.AddModelError(nameof(vm.FranchisorCompanyId), "Select a valid active brand-owner company.");
+
         if (!ModelState.IsValid)
         {
-            await PopulateCompanyListsAsync();
+            await PopulateCompanyListsAsync(lockedFranchisorId);
             return View(vm);
         }
 
@@ -85,7 +161,7 @@ public class FranchiseController : Controller
         if (!ok)
         {
             ModelState.AddModelError("", error!);
-            await PopulateCompanyListsAsync();
+            await PopulateCompanyListsAsync(lockedFranchisorId);
             return View(vm);
         }
 
@@ -97,7 +173,12 @@ public class FranchiseController : Controller
     public async Task<IActionResult> Edit(Guid? id)
     {
         if (id is null) return NotFound();
-        var agreement = await _svc.GetByIdAsync(id.Value);
+
+        var scopeCompanyId = ResolveScopeCompanyId();
+        if (!IsSuperAdmin() && !scopeCompanyId.HasValue)
+            return Forbid();
+
+        var agreement = await _svc.GetByIdAsync(id.Value, scopeCompanyId);
         if (agreement is null) return NotFound();
 
         var vm = new EditFranchiseAgreementVm
@@ -124,7 +205,11 @@ public class FranchiseController : Controller
     {
         if (!ModelState.IsValid) return View(vm);
 
-        var agreement = await _db.FranchiseAgreements.FindAsync(vm.FranchiseAgreementId);
+        var scopeCompanyId = ResolveScopeCompanyId();
+        if (!IsSuperAdmin() && !scopeCompanyId.HasValue)
+            return Forbid();
+
+        var agreement = await _svc.GetByIdAsync(vm.FranchiseAgreementId, scopeCompanyId);
         if (agreement is null) return NotFound();
 
         agreement.AgreementCode = vm.AgreementCode;
@@ -145,7 +230,11 @@ public class FranchiseController : Controller
     // ── Royalty Dashboard ──
     public async Task<IActionResult> RoyaltyDashboard()
     {
-        var dashboard = await _svc.GetDashboardAsync();
+        var scopeCompanyId = ResolveScopeCompanyId();
+        if (!IsSuperAdmin() && !scopeCompanyId.HasValue)
+            return Forbid();
+
+        var dashboard = await _svc.GetDashboardAsync(scopeCompanyId);
         return View(dashboard);
     }
 
@@ -153,7 +242,12 @@ public class FranchiseController : Controller
     public async Task<IActionResult> CalculateRoyalty(Guid? agreementId)
     {
         if (agreementId is null) return NotFound();
-        var agreement = await _svc.GetByIdAsync(agreementId.Value);
+
+        var scopeCompanyId = ResolveScopeCompanyId();
+        if (!IsSuperAdmin() && !scopeCompanyId.HasValue)
+            return Forbid();
+
+        var agreement = await _svc.GetByIdAsync(agreementId.Value, scopeCompanyId);
         if (agreement is null) return NotFound();
 
         var now = DateTime.UtcNow;
@@ -167,8 +261,12 @@ public class FranchiseController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> CalculateRoyalty(Guid agreementId, int year, int month)
     {
-        var calc = await _svc.CalculateRoyaltyAsync(agreementId, year, month);
-        var agreement = await _svc.GetByIdAsync(agreementId);
+        var scopeCompanyId = ResolveScopeCompanyId();
+        if (!IsSuperAdmin() && !scopeCompanyId.HasValue)
+            return Forbid();
+
+        var calc = await _svc.CalculateRoyaltyAsync(agreementId, year, month, scopeCompanyId);
+        var agreement = await _svc.GetByIdAsync(agreementId, scopeCompanyId);
 
         ViewData["Year"] = year;
         ViewData["Month"] = month;
@@ -182,7 +280,11 @@ public class FranchiseController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> GeneratePayment(Guid agreementId, int year, int month)
     {
-        var (ok, error, payment) = await _svc.GenerateRoyaltyPaymentAsync(agreementId, year, month);
+        var scopeCompanyId = ResolveScopeCompanyId();
+        if (!IsSuperAdmin() && !scopeCompanyId.HasValue)
+            return Forbid();
+
+        var (ok, error, payment) = await _svc.GenerateRoyaltyPaymentAsync(agreementId, year, month, scopeCompanyId);
 
         if (!ok)
         {
@@ -198,7 +300,11 @@ public class FranchiseController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> RecordPayment(Guid paymentId, decimal amountPaid, string? remarks, Guid agreementId)
     {
-        var (ok, error) = await _svc.RecordPaymentAsync(paymentId, amountPaid, remarks);
+        var scopeCompanyId = ResolveScopeCompanyId();
+        if (!IsSuperAdmin() && !scopeCompanyId.HasValue)
+            return Forbid();
+
+        var (ok, error) = await _svc.RecordPaymentAsync(paymentId, amountPaid, remarks, scopeCompanyId);
 
         if (!ok)
             TempData["Err"] = error;
@@ -209,7 +315,7 @@ public class FranchiseController : Controller
     }
 
     // ── Helpers ──
-    private async Task PopulateCompanyListsAsync()
+    private async Task PopulateCompanyListsAsync(Guid? lockedFranchisorCompanyId = null)
     {
         var companies = await _db.Companies.AsNoTracking()
             .Where(c => c.IsActive)
@@ -217,9 +323,37 @@ public class FranchiseController : Controller
             .Select(c => new { c.CompanyId, c.Name, c.Code })
             .ToListAsync();
 
-        ViewBag.Companies = companies
+        var franchisorCompanies = lockedFranchisorCompanyId.HasValue
+            ? companies.Where(c => c.CompanyId == lockedFranchisorCompanyId.Value).ToList()
+            : companies;
+
+        var franchiseeCompanies = lockedFranchisorCompanyId.HasValue
+            ? companies.Where(c => c.CompanyId != lockedFranchisorCompanyId.Value).ToList()
+            : companies;
+
+        ViewBag.FranchisorCompanies = franchisorCompanies
             .Select(c => new SelectListItem($"{c.Code} — {c.Name}", c.CompanyId.ToString()))
             .ToList();
+
+        ViewBag.FranchiseeCompanies = franchiseeCompanies
+            .Select(c => new SelectListItem($"{c.Code} — {c.Name}", c.CompanyId.ToString()))
+            .ToList();
+
+        ViewBag.LockFranchisor = lockedFranchisorCompanyId.HasValue;
+        ViewBag.LockedFranchisorName = lockedFranchisorCompanyId.HasValue
+            ? companies.FirstOrDefault(c => c.CompanyId == lockedFranchisorCompanyId.Value)?.Name
+            : null;
+    }
+
+    private bool IsSuperAdmin() => User.IsInRole("SuperAdmin");
+
+    private Guid? ResolveScopeCompanyId()
+    {
+        if (IsSuperAdmin())
+            return null;
+
+        var raw = User.FindFirstValue("CompanyId");
+        return Guid.TryParse(raw, out var companyId) ? companyId : null;
     }
 
     // ── ViewModels ──

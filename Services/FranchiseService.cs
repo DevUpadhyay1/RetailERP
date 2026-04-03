@@ -17,13 +17,15 @@ public sealed class FranchiseService
     // ── Agreement CRUD helpers ──
 
     public async Task<List<FranchiseAgreement>> GetAgreementsAsync(
-        string? q = null, byte? status = null, int page = 1, int pageSize = 25)
+        string? q = null, byte? status = null, int page = 1, int pageSize = 25, Guid? scopeCompanyId = null)
     {
         var query = _db.FranchiseAgreements
             .AsNoTracking()
             .Include(a => a.FranchisorCompany)
             .Include(a => a.FranchiseeCompany)
             .AsQueryable();
+
+        query = ApplyScope(query, scopeCompanyId);
 
         if (status.HasValue)
             query = query.Where(a => a.Status == status.Value);
@@ -42,9 +44,11 @@ public sealed class FranchiseService
             .ToListAsync();
     }
 
-    public async Task<int> CountAgreementsAsync(string? q = null, byte? status = null)
+    public async Task<int> CountAgreementsAsync(string? q = null, byte? status = null, Guid? scopeCompanyId = null)
     {
         var query = _db.FranchiseAgreements.AsNoTracking().AsQueryable();
+
+        query = ApplyScope(query, scopeCompanyId);
 
         if (status.HasValue)
             query = query.Where(a => a.Status == status.Value);
@@ -59,13 +63,25 @@ public sealed class FranchiseService
         return await query.CountAsync();
     }
 
-    public async Task<FranchiseAgreement?> GetByIdAsync(Guid id)
+    public async Task<FranchiseAgreement?> GetByIdAsync(Guid id, Guid? scopeCompanyId = null)
     {
-        return await _db.FranchiseAgreements
+        var query = _db.FranchiseAgreements
             .Include(a => a.FranchisorCompany)
             .Include(a => a.FranchiseeCompany)
             .Include(a => a.RoyaltyPayments.OrderByDescending(r => r.PeriodYear).ThenByDescending(r => r.PeriodMonth))
-            .FirstOrDefaultAsync(a => a.FranchiseAgreementId == id);
+            .AsQueryable();
+
+        query = ApplyScope(query, scopeCompanyId);
+        return await query.FirstOrDefaultAsync(a => a.FranchiseAgreementId == id);
+    }
+
+    private static IQueryable<FranchiseAgreement> ApplyScope(IQueryable<FranchiseAgreement> query, Guid? scopeCompanyId)
+    {
+        if (!scopeCompanyId.HasValue)
+            return query;
+
+        var companyId = scopeCompanyId.Value;
+        return query.Where(a => a.FranchisorCompanyId == companyId || a.FranchiseeCompanyId == companyId);
     }
 
     public async Task<(bool Ok, string? Error)> CreateAgreementAsync(FranchiseAgreement agreement)
@@ -108,11 +124,14 @@ public sealed class FranchiseService
     /// Calculate royalty for a given agreement and period.
     /// Pulls gross sales from POS bills of the franchisee company during the period.
     /// </summary>
-    public async Task<RoyaltyCalculation> CalculateRoyaltyAsync(Guid agreementId, int year, int month)
+    public async Task<RoyaltyCalculation> CalculateRoyaltyAsync(Guid agreementId, int year, int month, Guid? scopeCompanyId = null)
     {
-        var agreement = await _db.FranchiseAgreements
-            .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.FranchiseAgreementId == agreementId);
+        var agreement = await _db.FranchiseAgreements.AsNoTracking()
+            .Where(a => a.FranchiseAgreementId == agreementId)
+            .Where(a => !scopeCompanyId.HasValue
+                || a.FranchisorCompanyId == scopeCompanyId.Value
+                || a.FranchiseeCompanyId == scopeCompanyId.Value)
+            .FirstOrDefaultAsync();
 
         if (agreement is null)
             return new RoyaltyCalculation { Error = "Agreement not found." };
@@ -144,8 +163,19 @@ public sealed class FranchiseService
 
     /// <summary>Generate or update a royalty payment record for a period.</summary>
     public async Task<(bool Ok, string? Error, RoyaltyPayment? Payment)> GenerateRoyaltyPaymentAsync(
-        Guid agreementId, int year, int month)
+        Guid agreementId, int year, int month, Guid? scopeCompanyId = null)
     {
+        var accessibleAgreement = await _db.FranchiseAgreements.AsNoTracking()
+            .Where(a => a.FranchiseAgreementId == agreementId)
+            .Where(a => !scopeCompanyId.HasValue
+                || a.FranchisorCompanyId == scopeCompanyId.Value
+                || a.FranchiseeCompanyId == scopeCompanyId.Value)
+            .Select(a => a.FranchiseAgreementId)
+            .FirstOrDefaultAsync();
+
+        if (accessibleAgreement == Guid.Empty)
+            return (false, "Agreement not found or not accessible.", null);
+
         var existing = await _db.RoyaltyPayments
             .FirstOrDefaultAsync(r => r.FranchiseAgreementId == agreementId
                                    && r.PeriodYear == year
@@ -154,7 +184,7 @@ public sealed class FranchiseService
         if (existing is not null && existing.Status == 2)
             return (false, "Payment already recorded for this period.", null);
 
-        var calc = await CalculateRoyaltyAsync(agreementId, year, month);
+        var calc = await CalculateRoyaltyAsync(agreementId, year, month, scopeCompanyId);
         if (calc.Error is not null)
             return (false, calc.Error, null);
 
@@ -187,9 +217,20 @@ public sealed class FranchiseService
     }
 
     /// <summary>Mark a royalty payment as paid.</summary>
-    public async Task<(bool Ok, string? Error)> RecordPaymentAsync(Guid paymentId, decimal amountPaid, string? remarks)
+    public async Task<(bool Ok, string? Error)> RecordPaymentAsync(Guid paymentId, decimal amountPaid, string? remarks, Guid? scopeCompanyId = null)
     {
-        var payment = await _db.RoyaltyPayments.FindAsync(paymentId);
+        var paymentQuery = _db.RoyaltyPayments
+            .Include(r => r.Agreement)
+            .AsQueryable();
+
+        if (scopeCompanyId.HasValue)
+        {
+            var companyId = scopeCompanyId.Value;
+            paymentQuery = paymentQuery.Where(r => r.Agreement != null
+                && (r.Agreement.FranchisorCompanyId == companyId || r.Agreement.FranchiseeCompanyId == companyId));
+        }
+
+        var payment = await paymentQuery.FirstOrDefaultAsync(r => r.RoyaltyPaymentId == paymentId);
         if (payment is null) return (false, "Payment record not found.");
 
         payment.AmountPaid = amountPaid;
@@ -203,18 +244,33 @@ public sealed class FranchiseService
 
     // ── Dashboard aggregates ──
 
-    public async Task<FranchiseDashboard> GetDashboardAsync()
+    public async Task<FranchiseDashboard> GetDashboardAsync(Guid? scopeCompanyId = null)
     {
-        var totalAgreements = await _db.FranchiseAgreements.CountAsync();
-        var activeAgreements = await _db.FranchiseAgreements.CountAsync(a => a.Status == 1);
-        var totalPending = await _db.RoyaltyPayments
+        var agreementsQuery = _db.FranchiseAgreements.AsQueryable();
+        agreementsQuery = ApplyScope(agreementsQuery, scopeCompanyId);
+
+        var totalAgreements = await agreementsQuery.CountAsync();
+        var activeAgreements = await agreementsQuery.CountAsync(a => a.Status == 1);
+
+        var paymentsQuery = _db.RoyaltyPayments
+            .Include(r => r.Agreement)
+            .AsQueryable();
+
+        if (scopeCompanyId.HasValue)
+        {
+            var companyId = scopeCompanyId.Value;
+            paymentsQuery = paymentsQuery.Where(r => r.Agreement != null
+                && (r.Agreement.FranchisorCompanyId == companyId || r.Agreement.FranchiseeCompanyId == companyId));
+        }
+
+        var totalPending = await paymentsQuery
             .Where(r => r.Status == 1)
             .SumAsync(r => (decimal?)r.TotalDue) ?? 0;
-        var totalCollected = await _db.RoyaltyPayments
+        var totalCollected = await paymentsQuery
             .Where(r => r.Status == 2)
             .SumAsync(r => (decimal?)r.AmountPaid) ?? 0;
 
-        var recentPayments = await _db.RoyaltyPayments
+        var recentPayments = await paymentsQuery
             .AsNoTracking()
             .Include(r => r.Agreement).ThenInclude(a => a!.FranchiseeCompany)
             .OrderByDescending(r => r.PeriodYear).ThenByDescending(r => r.PeriodMonth)

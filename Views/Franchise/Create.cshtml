@@ -1,7 +1,10 @@
 @model RetailERP.Controllers.FranchiseController.CreateFranchiseAgreementVm
 @{
     ViewData["Title"] = "New Franchise Agreement";
-    var companies = ViewBag.Companies as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new();
+    var franchisors = ViewBag.FranchisorCompanies as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new();
+    var franchisees = ViewBag.FranchiseeCompanies as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new();
+    var lockFranchisor = (ViewBag.LockFranchisor as bool?) ?? false;
+    var lockedFranchisorName = ViewBag.LockedFranchisorName as string ?? "";
 }
 
 <h2 class="mb-3">New Franchise Agreement</h2>
@@ -20,15 +23,24 @@
 
                 <div class="col-md-4">
                     <label asp-for="FranchisorCompanyId" class="form-label">Franchisor (Brand Owner)</label>
-                    <select asp-for="FranchisorCompanyId" class="form-select" asp-items="companies">
-                        <option value="">— Select —</option>
-                    </select>
+                    @if (lockFranchisor)
+                    {
+                        <input type="hidden" asp-for="FranchisorCompanyId" />
+                        <input type="text" class="form-control" value="@lockedFranchisorName" readonly />
+                        <div class="form-text">Brand owner is fixed to your company.</div>
+                    }
+                    else
+                    {
+                        <select asp-for="FranchisorCompanyId" class="form-select" asp-items="franchisors">
+                            <option value="">— Select —</option>
+                        </select>
+                    }
                     <span asp-validation-for="FranchisorCompanyId" class="text-danger small"></span>
                 </div>
 
                 <div class="col-md-4">
                     <label asp-for="FranchiseeCompanyId" class="form-label">Franchisee (Operator)</label>
-                    <select asp-for="FranchiseeCompanyId" class="form-select" asp-items="companies">
+                    <select asp-for="FranchiseeCompanyId" class="form-select" asp-items="franchisees">
                         <option value="">— Select —</option>
                     </select>
                     <span asp-validation-for="FranchiseeCompanyId" class="text-danger small"></span>
