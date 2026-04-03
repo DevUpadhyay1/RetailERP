@@ -5,6 +5,7 @@
     var franchisees = ViewBag.FranchiseeCompanies as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new();
     var lockFranchisor = (ViewBag.LockFranchisor as bool?) ?? false;
     var lockedFranchisorName = ViewBag.LockedFranchisorName as string ?? "";
+    var noOperatorAvailable = (ViewBag.NoOperatorAvailable as bool?) ?? false;
 }
 
 <h2 class="mb-3">New Franchise Agreement</h2>
@@ -13,6 +14,13 @@
     <div class="card-body">
         <form asp-action="Create" method="post">
             <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+            @if (lockFranchisor && noOperatorAvailable)
+            {
+                <div class="alert alert-warning">
+                    No operator company is mapped to your brand yet. Please request SuperAdmin to create and map franchise operator first.
+                </div>
+            }
 
             <div class="row g-3">
                 <div class="col-md-4">
@@ -43,6 +51,10 @@
                     <select asp-for="FranchiseeCompanyId" class="form-select" asp-items="franchisees">
                         <option value="">— Select —</option>
                     </select>
+                    @if (lockFranchisor)
+                    {
+                        <div class="form-text">Only operators mapped by SuperAdmin under your brand are listed.</div>
+                    }
                     <span asp-validation-for="FranchiseeCompanyId" class="text-danger small"></span>
                 </div>
 
@@ -83,7 +95,7 @@
             </div>
 
             <div class="mt-4 d-flex gap-2">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Create Agreement</button>
+                <button type="submit" class="btn btn-primary" disabled="@(lockFranchisor && noOperatorAvailable)"><i class="bi bi-check-lg me-1"></i>Create Agreement</button>
                 <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
             </div>
         </form>

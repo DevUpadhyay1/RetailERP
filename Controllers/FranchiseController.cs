@@ -65,6 +65,7 @@ public class FranchiseController : Controller
     {
         Guid? lockedFranchisorId = null;
         var vm = new CreateFranchiseAgreementVm();
+        var noOperatorAvailable = false;
 
         if (!IsSuperAdmin())
         {
@@ -86,9 +87,13 @@ public class FranchiseController : Controller
 
             lockedFranchisorId = ownCompany.CompanyId;
             vm.FranchisorCompanyId = ownCompany.CompanyId;
+
+            noOperatorAvailable = !await _db.Companies.AsNoTracking()
+                .AnyAsync(c => c.IsActive && c.ParentCompanyId == ownCompany.CompanyId);
         }
 
         await PopulateCompanyListsAsync(lockedFranchisorId);
+        ViewBag.NoOperatorAvailable = noOperatorAvailable;
         return View(vm);
     }
 
@@ -96,6 +101,7 @@ public class FranchiseController : Controller
     public async Task<IActionResult> Create(CreateFranchiseAgreementVm vm)
     {
         Guid? lockedFranchisorId = null;
+        var noOperatorAvailable = false;
 
         if (!IsSuperAdmin())
         {
@@ -117,14 +123,35 @@ public class FranchiseController : Controller
 
             lockedFranchisorId = ownCompany.CompanyId;
             vm.FranchisorCompanyId = ownCompany.CompanyId; // server-side lock against tampered posts
+
+            noOperatorAvailable = !await _db.Companies.AsNoTracking()
+                .AnyAsync(c => c.IsActive && c.ParentCompanyId == ownCompany.CompanyId);
+
+            if (noOperatorAvailable)
+            {
+                ModelState.AddModelError(nameof(vm.FranchiseeCompanyId),
+                    "No operator company is mapped to your brand yet. Please request SuperAdmin to create/map franchise operator first.");
+            }
         }
 
-        var franchisee = await _db.Companies
+        var franchiseeQuery = _db.Companies
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.CompanyId == vm.FranchiseeCompanyId && c.IsActive);
+            .Where(c => c.CompanyId == vm.FranchiseeCompanyId && c.IsActive);
+
+        if (lockedFranchisorId.HasValue)
+        {
+            // Tenant admin can only choose operator companies already mapped under their brand owner company.
+            franchiseeQuery = franchiseeQuery.Where(c => c.ParentCompanyId == lockedFranchisorId.Value);
+        }
+
+        var franchisee = await franchiseeQuery.FirstOrDefaultAsync();
 
         if (franchisee is null)
-            ModelState.AddModelError(nameof(vm.FranchiseeCompanyId), "Select a valid active operator company.");
+        {
+            ModelState.AddModelError(nameof(vm.FranchiseeCompanyId), lockedFranchisorId.HasValue
+                ? "Select a valid operator company already mapped to your brand."
+                : "Select a valid active operator company.");
+        }
         else if (franchisee.CompanyId == vm.FranchisorCompanyId)
             ModelState.AddModelError(nameof(vm.FranchiseeCompanyId), "Franchisee must be different from franchisor.");
         else if (franchisee.ParentCompanyId.HasValue && franchisee.ParentCompanyId.Value != vm.FranchisorCompanyId)
@@ -139,6 +166,7 @@ public class FranchiseController : Controller
         if (!ModelState.IsValid)
         {
             await PopulateCompanyListsAsync(lockedFranchisorId);
+            ViewBag.NoOperatorAvailable = noOperatorAvailable;
             return View(vm);
         }
 
@@ -162,6 +190,7 @@ public class FranchiseController : Controller
         {
             ModelState.AddModelError("", error!);
             await PopulateCompanyListsAsync(lockedFranchisorId);
+            ViewBag.NoOperatorAvailable = noOperatorAvailable;
             return View(vm);
         }
 
@@ -320,7 +349,7 @@ public class FranchiseController : Controller
         var companies = await _db.Companies.AsNoTracking()
             .Where(c => c.IsActive)
             .OrderBy(c => c.Name)
-            .Select(c => new { c.CompanyId, c.Name, c.Code })
+            .Select(c => new { c.CompanyId, c.Name, c.Code, c.ParentCompanyId })
             .ToListAsync();
 
         var franchisorCompanies = lockedFranchisorCompanyId.HasValue
@@ -328,7 +357,7 @@ public class FranchiseController : Controller
             : companies;
 
         var franchiseeCompanies = lockedFranchisorCompanyId.HasValue
-            ? companies.Where(c => c.CompanyId != lockedFranchisorCompanyId.Value).ToList()
+            ? companies.Where(c => c.ParentCompanyId == lockedFranchisorCompanyId.Value).ToList()
             : companies;
 
         ViewBag.FranchisorCompanies = franchisorCompanies
