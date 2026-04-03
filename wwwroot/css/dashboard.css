@@ -2,6 +2,22 @@
    Dashboard — Professional Widget Styling
    ═══════════════════════════════════════════════════ */
 
+.page-header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #fff;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: var(--erp-shadow-lg);
+    position: relative;
+    overflow: hidden;
+}
+.page-header::before {
+    content: ''; position: absolute; right: -50px; top: -50px;
+    width: 250px; height: 250px; background: rgba(79, 70, 229, 0.15);
+    border-radius: 50%; filter: blur(40px); z-index: 0;
+}
+.header-content { position: relative; z-index: 1; }
+
 .grid-stack { min-height: 300px; }
 
 /* ── Widget containers ──────────────────────────────── */

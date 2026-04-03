@@ -283,6 +283,7 @@ main.container-fluid > *:nth-child(4) { animation-delay: .15s; }
 
 .app-shell.sidebar-collapsed .app-sidebar .sidebar-section,
 .app-shell.sidebar-collapsed .app-sidebar .sidebar-link span,
+.app-shell.sidebar-collapsed .app-sidebar .sidebar-brand-text,
 .app-shell.sidebar-collapsed .app-sidebar .px-3.py-3.border-bottom span,
 .app-shell.sidebar-collapsed .app-sidebar .small span { display: none; }
 
