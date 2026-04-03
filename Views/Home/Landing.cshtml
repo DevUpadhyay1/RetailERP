@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "Welcome";
+    ViewData["Title"] = "The All-in-One Retail Management Platform";
     Layout = null;
 }
 <!DOCTYPE html>
@@ -7,47 +7,257 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RetailERP — Modern Retail Management</title>
+    <title>RetailERP — Multi-Tenant Retail Hub</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
-        .landing-header { background: #fff; border-bottom: 1px solid #e2e8f0; }
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #3730A3;
+            --secondary: #0ea5e9;
+            --dark: #0f172a;
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.15);
+        }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            color: #334155;
+            background: #f8fafc;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3, h4, h5, h6, .brand-font {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Navbar */
+        .landing-header { 
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0,0,0,0.05); 
+            transition: all 0.3s;
+        }
+        
+        /* Hero Section */
         .hero-section {
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            position: relative;
+            background: #0f172a;
             color: #fff;
-            padding: 80px 0 60px;
+            padding: 120px 0 100px;
+            overflow: hidden;
         }
-        .hero-section h1 { font-weight: 700; letter-spacing: -.02em; }
-        .hero-section .lead { color: rgba(255,255,255,.7); font-size: 1.15rem; }
-        .feature-icon {
-            width: 52px; height: 52px; border-radius: 12px;
+
+        /* Abstract Gradient Orbs */
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -10%; left: -5%;
+            width: 400px; height: 400px;
+            background: var(--primary);
+            filter: blur(120px);
+            border-radius: 50%;
+            opacity: 0.4;
+            z-index: 0;
+            animation: float 8s ease-in-out infinite;
+        }
+        .hero-section::after {
+            content: '';
+            position: absolute;
+            bottom: -20%; right: -5%;
+            width: 500px; height: 500px;
+            background: var(--secondary);
+            filter: blur(140px);
+            border-radius: 50%;
+            opacity: 0.3;
+            z-index: 0;
+            animation: float 10s ease-in-out infinite reverse;
+        }
+
+        @@keyframes float {
+            0% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(20px) scale(1.05); }
+            100% { transform: translateY(0px) scale(1); }
+        }
+
+        .hero-content { position: relative; z-index: 1; }
+        
+        .hero-section h1 { 
+            font-weight: 800; 
+            font-size: 3.5rem;
+            line-height: 1.1; 
+            letter-spacing: -0.03em; 
+            background: linear-gradient(135deg, #fff 30%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero-section .lead { 
+            color: #94a3b8; 
+            font-size: 1.25rem; 
+            font-family: 'Outfit', sans-serif;
+            font-weight: 300;
+        }
+
+        /* Buttons */
+        .btn-premium {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+            transition: all 0.3s;
+        }
+        .btn-premium:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.5);
+            color: #fff;
+        }
+        .btn-glass {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .btn-glass:hover {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            transform: translateY(-2px);
+        }
+
+        /* Glass Widget (Right col) */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+            transform: perspective(1000px) rotateY(-5deg) translateY(-10px);
+            transition: transform 0.5s ease;
+        }
+        .glass-panel:hover {
+            transform: perspective(1000px) rotateY(0deg) translateY(-15px);
+        }
+
+        .glass-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .glass-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateX(5px);
+        }
+
+        .glass-icon {
+            width: 48px; height: 48px; 
+            border-radius: 10px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.3rem; flex-shrink: 0;
+            font-size: 1.4rem; flex-shrink: 0;
+            background: rgba(255,255,255,0.1);
+            color: #38bdf8;
         }
-        .features-section { padding: 64px 0; background: #f8fafc; }
-        .cta-section { padding: 56px 0; background: #fff; }
-        .landing-footer { background: #1e293b; color: rgba(255,255,255,.6); padding: 32px 0; font-size: .85rem; }
-        .landing-footer a { color: rgba(255,255,255,.8); text-decoration: none; }
+
+        /* Features Section */
+        .features-section { padding: 100px 0; }
+        .section-sub { color: var(--primary); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.85rem;}
+        
+        .feature-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 32px;
+            height: 100%;
+            border: 1px solid #f1f5f9;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05);
+            border-color: #e2e8f0;
+        }
+        .feature-card::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .feature-card:hover::before { opacity: 1; }
+
+        .feature-icon-lg {
+            width: 60px; height: 60px;
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.75rem;
+            margin-bottom: 20px;
+        }
+
+        /* Analytics Preview */
+        .analytics-preview {
+            background: #fff;
+            border-radius: 24px;
+            padding: 80px 0;
+            margin: 40px 0;
+        }
+        .dash-mockup {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .dash-header { height: 12px; background: #cbd5e1; width: 100%; display: flex; align-items: center; padding: 0 16px; gap: 6px; }
+        .dash-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; }
+        .dash-dot:nth-child(2) { background: #f59e0b; }
+        .dash-dot:nth-child(3) { background: #10b981; }
+
+        /* CTA */
+        .cta-section { 
+            padding: 100px 0; 
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff;
+            text-align: center;
+        }
+
+        .landing-footer { background: #0f172a; color: #94a3b8; padding: 40px 0; font-size: 0.9rem; }
+        .landing-footer a { color: #94a3b8; text-decoration: none; transition: 0.2s; }
         .landing-footer a:hover { color: #fff; }
     </style>
 </head>
 <body>
     <!-- ═══ HEADER ═══ -->
-    <header class="landing-header sticky-top">
-        <div class="container-xxl d-flex align-items-center justify-content-between py-3">
+    <header class="landing-header sticky-top py-3">
+        <div class="container-xxl d-flex align-items-center justify-content-between">
             <a class="text-decoration-none d-flex align-items-center gap-2" href="/">
-                <div class="d-flex align-items-center justify-content-center rounded-2"
-                     style="width:36px;height:36px;background:#3b82f6;color:#fff;font-size:1rem;">
-                    <i class="bi bi-box-seam"></i>
+                <div class="d-flex align-items-center justify-content-center rounded-3 shadow-sm"
+                     style="width:40px;height:40px;background:var(--primary);color:#fff;font-size:1.1rem;">
+                    <i class="bi bi-layers-half"></i>
                 </div>
-                <span class="fw-bold fs-5 text-dark">RetailERP</span>
+                <span class="fs-4 brand-font font-weight-bold" style="color:var(--dark); font-weight:800;">RetailERP</span>
             </a>
-            <div class="d-flex align-items-center gap-2">
-                <a class="btn btn-outline-secondary btn-sm" asp-area="Identity" asp-page="/Account/Login">Sign in</a>
+            <div class="d-flex align-items-center gap-3">
+                <a class="text-decoration-none text-dark fw-medium d-none d-md-block" href="#features">Features</a>
+                <a class="text-decoration-none text-dark fw-medium d-none d-md-block" href="#benefits">Benefits</a>
+                <a class="btn btn-outline-dark px-4 fw-medium" asp-area="Identity" asp-page="/Account/Login" style="border-radius:8px;">Sign In</a>
                 @if (ViewBag.RegistrationOpen == true)
                 {
-                    <a class="btn btn-primary btn-sm" asp-area="Identity" asp-page="/Account/Register">Create account</a>
+                    <a class="btn btn-premium px-4" asp-area="Identity" asp-page="/Account/Register">Get Started</a>
                 }
             </div>
         </div>
@@ -55,54 +265,61 @@
 
     <!-- ═══ HERO ═══ -->
     <section class="hero-section">
-        <div class="container-xxl">
+        <div class="container-xxl hero-content">
             <div class="row align-items-center g-5">
-                <div class="col-lg-7">
-                    <div class="badge bg-primary bg-opacity-25 text-white mb-3 px-3 py-2" style="font-size:.78rem;">Open-source ERP for Retail & Grocery</div>
-                    <h1 class="display-5 mb-3">Run your retail store<br>with confidence</h1>
-                    <p class="lead mb-4">Manage inventory, sales, purchases, stock transfers and audit logs — all from one clean dashboard. Built with ASP.NET Core &amp; Bootstrap.</p>
+                <div class="col-lg-6 pe-lg-5">
+                    <div class="d-inline-flex align-items-center gap-2 mb-4 px-3 py-2 rounded-pill" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+                        <span class="badge text-bg-primary rounded-pill">v2.0</span>
+                        <span class="text-white-50 small fw-medium">The ultimate multi-tenant platform</span>
+                    </div>
+                    <h1 class="mb-4">Scale your retail business with precision.</h1>
+                    <p class="lead mb-5">Unify your Point of Sale, multi-warehouse inventory, suppliers, and actionable analytics in one seamless cloud platform designed for modern retailers.</p>
                     <div class="d-flex flex-wrap gap-3">
-                        <a class="btn btn-primary btn-lg px-4" asp-area="Identity" asp-page="/Account/Login">
-                            <i class="bi bi-box-arrow-in-right me-2"></i>Sign in to Dashboard
+                        <a class="btn btn-premium btn-lg px-5 py-3 fs-6" asp-area="Identity" asp-page="/Account/Login">
+                            Access Workspace <i class="bi bi-arrow-right ms-2 opacity-75"></i>
                         </a>
                         @if (ViewBag.RegistrationOpen == true)
                         {
-                            <a class="btn btn-outline-light btn-lg px-4" asp-area="Identity" asp-page="/Account/Register">Create account</a>
+                            <a class="btn btn-glass btn-lg px-5 py-3 fs-6" asp-area="Identity" asp-page="/Account/Register">Register Now</a>
                         }
                     </div>
+
                 </div>
-                <div class="col-lg-5">
-                    <div class="card border-0 shadow-lg" style="background:rgba(255,255,255,.06);backdrop-filter:blur(12px);">
-                        <div class="card-body p-4">
-                            <h6 class="text-white-50 mb-3 text-uppercase" style="font-size:.7rem;letter-spacing:.08em;">Quick Overview</h6>
-                            <div class="vstack gap-3">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="feature-icon" style="background:rgba(59,130,246,.2);color:#60a5fa;"><i class="bi bi-boxes"></i></div>
-                                    <div>
-                                        <div class="fw-semibold">Inventory</div>
-                                        <div class="text-white-50 small">Stock on hand, ledger, transfers, low stock alerts</div>
-                                    </div>
+                
+                <div class="col-lg-6 d-none d-lg-block">
+                    <div class="glass-panel">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="m-0 fw-semibold text-white">System Capabilities</h5>
+                            <i class="bi bi-stars text-warning"></i>
+                        </div>
+                        
+                        <div class="vstack gap-3">
+                            <div class="glass-item">
+                                <div class="glass-icon"><i class="bi bi-display"></i></div>
+                                <div>
+                                    <div class="fw-semibold text-white">Lightning-Fast POS</div>
+                                    <div class="text-white-50 small">Offline-ready billing with barcode scanning</div>
                                 </div>
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="feature-icon" style="background:rgba(16,185,129,.2);color:#34d399;"><i class="bi bi-receipt"></i></div>
-                                    <div>
-                                        <div class="fw-semibold">Sales & Invoicing</div>
-                                        <div class="text-white-50 small">Create invoices, auto-deduct stock on post</div>
-                                    </div>
+                            </div>
+                            <div class="glass-item">
+                                <div class="glass-icon" style="color: #a78bfa;"><i class="bi bi-box-seam"></i></div>
+                                <div>
+                                    <div class="fw-semibold text-white">Live Inventory Ledger</div>
+                                    <div class="text-white-50 small">Multi-warehouse stock tracking in real-time</div>
                                 </div>
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="feature-icon" style="background:rgba(245,158,11,.2);color:#fbbf24;"><i class="bi bi-people"></i></div>
-                                    <div>
-                                        <div class="fw-semibold">CRM & Suppliers</div>
-                                        <div class="text-white-50 small">Customers, suppliers, employees</div>
-                                    </div>
+                            </div>
+                            <div class="glass-item">
+                                <div class="glass-icon" style="color: #f472b6;"><i class="bi bi-graph-up-arrow"></i></div>
+                                <div>
+                                    <div class="fw-semibold text-white">Predictive Analytics</div>
+                                    <div class="text-white-50 small">Automated EOD reports and sales forecasting</div>
                                 </div>
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="feature-icon" style="background:rgba(139,92,246,.2);color:#a78bfa;"><i class="bi bi-shield-check"></i></div>
-                                    <div>
-                                        <div class="fw-semibold">Audit & Reports</div>
-                                        <div class="text-white-50 small">Full action log, sales reports, role-based access</div>
-                                    </div>
+                            </div>
+                            <div class="glass-item">
+                                <div class="glass-icon" style="color: #34d399;"><i class="bi bi-award"></i></div>
+                                <div>
+                                    <div class="fw-semibold text-white">Loyalty & CRM</div>
+                                    <div class="text-white-50 small">Card management, tier progression and coupons</div>
                                 </div>
                             </div>
                         </div>
@@ -113,65 +330,57 @@
     </section>
 
     <!-- ═══ FEATURES ═══ -->
-    <section class="features-section">
+    <section id="features" class="features-section">
         <div class="container-xxl">
-            <div class="text-center mb-5">
-                <h2 class="fw-bold">Everything you need to run a retail store</h2>
-                <p class="text-muted">From purchase orders to sales invoices — one integrated system.</p>
+            <div class="row mb-5 justify-content-center">
+                <div class="col-lg-6 text-center">
+                    <div class="section-sub mb-2">Platform Features</div>
+                    <h2 class="display-6 fw-bold mb-4">Everything you need to run your empire</h2>
+                    <p class="text-muted lead fs-6">Replace 5 different software tools with a single, synchronized hub that connects your storefront to your warehouse.</p>
+                </div>
             </div>
+            
             <div class="row g-4">
                 <div class="col-md-6 col-lg-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-body p-4">
-                            <div class="feature-icon mb-3" style="background:#dbeafe;color:#3b82f6;"><i class="bi bi-bag-check"></i></div>
-                            <h6 class="fw-semibold">Purchases &amp; Receiving</h6>
-                            <p class="text-muted small mb-0">Create purchase orders, receive stock, and automatically update inventory with full ledger tracking.</p>
-                        </div>
+                    <div class="feature-card">
+                        <div class="feature-icon-lg" style="background:#e0e7ff;color:var(--primary);"><i class="bi bi-cart4"></i></div>
+                        <h4 class="fw-semibold mb-3 fs-5">Dynamic POS Billing</h4>
+                        <p class="text-muted mb-0">Experience sub-second checkout speeds. Auto-swap payments, redeem loyalty points dynamically, and handle hold/unhook seamlessly.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-body p-4">
-                            <div class="feature-icon mb-3" style="background:#dcfce7;color:#16a34a;"><i class="bi bi-receipt-cutoff"></i></div>
-                            <h6 class="fw-semibold">Invoice &amp; Billing</h6>
-                            <p class="text-muted small mb-0">Draft and post invoices with GST support. Stock is deducted automatically when posted.</p>
-                        </div>
+                    <div class="feature-card">
+                        <div class="feature-icon-lg" style="background:#dcfce7;color:#059669;"><i class="bi bi-receipt"></i></div>
+                        <h4 class="fw-semibold mb-3 fs-5">B2B Invoicing</h4>
+                        <p class="text-muted mb-0">Generate GST-compliant tax invoices. Automated stock deduction prevents overselling. Multi-tax class support built-in.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-body p-4">
-                            <div class="feature-icon mb-3" style="background:#fef3c7;color:#d97706;"><i class="bi bi-arrow-left-right"></i></div>
-                            <h6 class="fw-semibold">Stock Transfers</h6>
-                            <p class="text-muted small mb-0">Move stock between warehouses with two-entry ledger tracking and reason logging.</p>
-                        </div>
+                    <div class="feature-card">
+                        <div class="feature-icon-lg" style="background:#fef3c7;color:#d97706;"><i class="bi bi-arrow-left-right"></i></div>
+                        <h4 class="fw-semibold mb-3 fs-5">Multi-Warehouse Transfers</h4>
+                        <p class="text-muted mb-0">Command your supply chain. Transfer inventory seamlessly across unlimited locations with strict dual-entry audit logging.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-body p-4">
-                            <div class="feature-icon mb-3" style="background:#e0e7ff;color:#4f46e5;"><i class="bi bi-person-gear"></i></div>
-                            <h6 class="fw-semibold">Role-based Access</h6>
-                            <p class="text-muted small mb-0">Admin, Manager, Cashier, Inventory — each sees only their permitted modules.</p>
-                        </div>
+                    <div class="feature-card">
+                        <div class="feature-icon-lg" style="background:#fce7f3;color:#db2777;"><i class="bi bi-shield-lock"></i></div>
+                        <h4 class="fw-semibold mb-3 fs-5">Enterprise Role Control</h4>
+                        <p class="text-muted mb-0">Assign strict boundaries. Cashiers can't void old bills, Inventory staff can't see revenues. Full security via JWT claims.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-body p-4">
-                            <div class="feature-icon mb-3" style="background:#fce7f3;color:#db2777;"><i class="bi bi-graph-up-arrow"></i></div>
-                            <h6 class="fw-semibold">Sales Reports</h6>
-                            <p class="text-muted small mb-0">View sales by date range with charts and totals. Track revenue over time.</p>
-                        </div>
+                    <div class="feature-card">
+                        <div class="feature-icon-lg" style="background:#f3e8ff;color:#7c3aed;"><i class="bi bi-star"></i></div>
+                        <h4 class="fw-semibold mb-3 fs-5">Tiered Loyalty Engine</h4>
+                        <p class="text-muted mb-0">Retain customers effortlessly. Automatic tier upgrades, point calculation schemas, and targeted coupon code generation.</p>
                     </div>
                 </div>
                 <div class="col-md-6 col-lg-4">
-                    <div class="card border-0 shadow-sm h-100">
-                        <div class="card-body p-4">
-                            <div class="feature-icon mb-3" style="background:#f3e8ff;color:#7c3aed;"><i class="bi bi-journal-text"></i></div>
-                            <h6 class="fw-semibold">Audit Log</h6>
-                            <p class="text-muted small mb-0">Every invoice post, purchase receive, and transfer is logged with timestamp and actor.</p>
-                        </div>
+                    <div class="feature-card">
+                        <div class="feature-icon-lg" style="background:#e0f2fe;color:#0284c7;"><i class="bi bi-pie-chart"></i></div>
+                        <h4 class="fw-semibold mb-3 fs-5">Real-time Analytics</h4>
+                        <p class="text-muted mb-0">Make decisions with live data. Configurable dashboards powered by Redis caching and SignalR websockets.</p>
                     </div>
                 </div>
             </div>
@@ -179,13 +388,15 @@
     </section>
 
     <!-- ═══ CTA ═══ -->
-    <section class="cta-section text-center">
+    <section class="cta-section">
         <div class="container-xxl">
-            <h3 class="fw-bold mb-3">Ready to get started?</h3>
-            <p class="text-muted mb-4">Sign in now and start managing your retail operations today.</p>
-            <a class="btn btn-primary btn-lg px-5" asp-area="Identity" asp-page="/Account/Login">
-                <i class="bi bi-box-arrow-in-right me-2"></i>Sign in
-            </a>
+            <h2 class="display-5 fw-bold mb-4">Elevate your retail operations today</h2>
+            <p class="lead mb-5 opacity-75" style="max-width: 600px; margin: 0 auto;">Join forward-thinking businesses powered by RetailERP. Experience a platform built for speed, accuracy, and scaling.</p>
+            <div class="d-flex justify-content-center gap-3">
+                <a class="btn btn-light btn-lg px-5 py-3 fw-bold text-primary" asp-area="Identity" asp-page="/Account/Login" style="border-radius: 8px;">
+                    Enter Dashboard
+                </a>
+            </div>
         </div>
     </section>
 
@@ -193,21 +404,25 @@
     <footer class="landing-footer">
         <div class="container-xxl">
             <div class="row align-items-center">
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center gap-2 mb-2 mb-md-0">
-                        <i class="bi bi-box-seam" style="color:#60a5fa;"></i>
-                        <span class="fw-semibold" style="color:rgba(255,255,255,.9);">RetailERP</span>
+                <div class="col-md-4 mb-4 mb-md-0">
+                    <div class="d-flex align-items-center gap-2 mb-2 brand-font fs-5 text-white">
+                        <i class="bi bi-layers-half text-primary"></i>
+                        RetailERP
                     </div>
-                    <div>&copy; @DateTime.Now.Year RetailERP. Built with ASP.NET Core &amp; Bootstrap.</div>
+                    <div>Modern retail architecture for ambitious growth.</div>
                 </div>
-                <div class="col-md-6 text-md-end">
-                    <a asp-controller="Home" asp-action="Privacy" class="me-3">Privacy Policy</a>
-                    <a asp-area="Identity" asp-page="/Account/Login">Sign in</a>
+                <div class="col-md-8 text-md-end">
+                    <a asp-controller="Home" asp-action="Privacy" class="me-4 text-decoration-none">Privacy Policy</a>
+                    <a href="#" class="me-4 text-decoration-none">Terms of Service</a>
+                    <a asp-area="Identity" asp-page="/Account/Login" class="text-decoration-none">Sign in to Platform</a>
                 </div>
+            </div>
+            <div class="mt-4 pt-4 border-top border-secondary text-center" style="opacity: 0.5;">
+                &copy; @DateTime.Now.Year RetailERP. All rights reserved.
             </div>
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmxc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
