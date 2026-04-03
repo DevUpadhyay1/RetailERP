@@ -142,6 +142,7 @@ public class StockTransfersController : Controller
                 entityId: $"{vm.FromWarehouseId}->{vm.ToWarehouseId}:{vm.ItemId}",
                 data: new
                 {
+                    CompanyId = itemCompanyId,
                     vm.ItemId,
                     vm.FromWarehouseId,
                     vm.ToWarehouseId,

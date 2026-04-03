@@ -1,7 +1,9 @@
 @model RetailERP.Controllers.CompaniesController.CreateCompanyVm
 @using RetailERP.Data.Entities
+@using Microsoft.AspNetCore.Mvc.Rendering
 @{
     ViewData["Title"] = "New Company";
+    var mainCompanyOptions = ViewBag.MainCompanyOptions as List<SelectListItem> ?? new List<SelectListItem>();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -35,6 +37,12 @@
                     <select asp-for="BusinessType" class="form-select"
                             asp-items="@(new SelectList(Enum.GetValues<BusinessType>().Select(b => new { Value = (int)b, Text = b.ToString() }), "Value", "Text"))">
                     </select>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="MainCompanyId" class="form-label"></label>
+                    <select asp-for="MainCompanyId" class="form-select" asp-items="mainCompanyOptions"></select>
+                    <span asp-validation-for="MainCompanyId" class="text-danger"></span>
+                    <div class="form-text">For franchise onboarding, select the requested main company.</div>
                 </div>
             </div>
 

@@ -24,6 +24,7 @@ public sealed class TenantProvider : ITenantProvider
         {
             var user = _http.HttpContext?.User;
             if (user?.Identity?.IsAuthenticated != true) return null;
+            if (user.IsInRole("SuperAdmin")) return null;
             var raw = user.FindFirstValue("CompanyId");
             return Guid.TryParse(raw, out var id) ? id : null;
         }

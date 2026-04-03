@@ -7,6 +7,8 @@
     var requestBlockReason = ViewBag.RequestBlockReason as string;
     var requestingCompanyName = ViewBag.RequestingCompanyName as string;
     var operatorOptions = ViewBag.OperatorCompanyOptions as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new();
+    var createCompanyUrl = (ViewBag.CreateCompanyUrl as string) ?? Url.Action("Create", "Companies");
+    var companyIndexUrl = (ViewBag.CompanyIndexUrl as string) ?? Url.Action("Index", "Companies");
 
     string StatusText(byte status) => status switch
     {
@@ -30,9 +32,12 @@
 <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
         <h2 class="mb-0">@ViewData["Title"]</h2>
-        <div class="text-muted small">Submit and review company-to-operator franchise mapping requests</div>
+        <div class="text-muted small">Submit and review company-to-franchise mapping requests</div>
     </div>
-    <a asp-action="Create" class="btn btn-outline-primary">New Agreement</a>
+    @if (!isSuperAdmin)
+    {
+        <a asp-action="Create" class="btn btn-outline-primary">New Agreement</a>
+    }
 </div>
 
 @if (TempData["Ok"] is string ok)
@@ -89,6 +94,19 @@
                     </div>
                 </form>
             }
+        </div>
+    </div>
+}
+
+@if (isSuperAdmin)
+{
+    <div class="alert alert-info d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+        <div>
+            <strong>SuperAdmin Flow:</strong> 1) Create franchise company in Companies, assign admin credentials, and select main company if needed. 2) Return here and approve the pending mapping request by selecting that franchise company.
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="@companyIndexUrl">Open Companies</a>
+            <a class="btn btn-sm btn-primary" href="@createCompanyUrl">Create Company</a>
         </div>
     </div>
 }
@@ -154,19 +172,30 @@
                                 <td>
                                     @if (isSuperAdmin && r.Status == 1)
                                     {
-                                        <form asp-action="ApproveMappingRequest" method="post" class="vstack gap-2 mb-2">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="id" value="@r.FranchiseMappingRequestId" />
-                                            <select name="mappedOperatorCompanyId" class="form-select form-select-sm" required>
-                                                <option value="">Select operator company to map</option>
-                                                @foreach (var opt in operatorOptions.Where(o => o.Value != r.RequestingCompanyId.ToString()))
-                                                {
-                                                    <option value="@opt.Value">@opt.Text</option>
-                                                }
-                                            </select>
-                                            <input name="reviewNote" class="form-control form-control-sm" maxlength="500" placeholder="Optional approval note" />
-                                            <button type="submit" class="btn btn-sm btn-outline-success">Approve &amp; Map</button>
-                                        </form>
+                                        var rowOperatorOptions = operatorOptions.Where(o => o.Value != r.RequestingCompanyId.ToString()).ToList();
+
+                                        @if (!rowOperatorOptions.Any())
+                                        {
+                                            <div class="small text-warning mb-2">No eligible franchise company found. Create franchise company in Companies module first.</div>
+                                            <a class="btn btn-sm btn-outline-primary mb-2" href="@createCompanyUrl">Create Company</a>
+                                        }
+                                        else
+                                        {
+                                            <form asp-action="ApproveMappingRequest" method="post" class="vstack gap-2 mb-2">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@r.FranchiseMappingRequestId" />
+                                                <select name="mappedOperatorCompanyId" class="form-select form-select-sm" required>
+                                                    <option value="">Select franchise company to map</option>
+                                                    @foreach (var opt in rowOperatorOptions)
+                                                    {
+                                                        <option value="@opt.Value">@opt.Text</option>
+                                                    }
+                                                </select>
+                                                <input name="reviewNote" class="form-control form-control-sm" maxlength="500" placeholder="Optional approval note" />
+                                                <button type="submit" class="btn btn-sm btn-outline-success">Approve &amp; Map</button>
+                                            </form>
+                                        }
+
                                         <form asp-action="RejectMappingRequest" method="post">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@r.FranchiseMappingRequestId" />

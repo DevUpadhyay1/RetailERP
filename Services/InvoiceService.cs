@@ -159,6 +159,7 @@ public class InvoiceService
                 entityId: invoice.InvoiceId.ToString(),
                 data: new
                 {
+                    CompanyId = invoice.CompanyId,
                     invoice.InvoiceNo,
                     invoice.WarehouseId,
                     invoice.CustomerId,

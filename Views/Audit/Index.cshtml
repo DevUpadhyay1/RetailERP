@@ -1,26 +1,117 @@
-﻿@model List<RetailERP.Data.Entities.AuditLog>
+﻿@model RetailERP.Controllers.AuditController.AuditIndexVm
 @{
     ViewData["Title"] = "Audit Log";
 
-    static string ToShortName(string? email)
+    static string ModuleBadgeClass(string module) => module switch
     {
-        if (string.IsNullOrWhiteSpace(email)) return "—";
-        var at = email.IndexOf('@');
-        var s = at > 0 ? email[..at] : email;
-        return System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo
-            .ToTitleCase(s.Replace('.', ' ').Replace('_', ' ').Trim());
-    }
+        "POS" => "bg-success",
+        "Invoice" => "bg-primary",
+        "Purchase" => "bg-info text-dark",
+        "Stock" => "bg-warning text-dark",
+        "Franchise" => "bg-dark",
+        "Company" => "bg-secondary",
+        "Search" => "bg-light text-dark border",
+        "EOD" => "bg-danger",
+        "Sync" => "bg-secondary",
+        _ => "bg-secondary"
+    };
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h2 class="mb-0">Audit Log</h2>
-        <div class="text-muted small">Last @Model.Count recorded actions (most recent first)</div>
+        <div class="text-muted small">Filter by module, company, franchise, month, user, and search text</div>
     </div>
     <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Dashboard">
         <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
     </a>
 </div>
+
+<div class="card shadow-sm border-0 mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-2">
+                <label class="form-label">Month</label>
+                <input type="month" name="Month" class="form-control" value="@Model.Filter.Month" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">From Date</label>
+                <input type="date" name="FromDate" class="form-control" value="@(Model.Filter.FromDate?.ToString("yyyy-MM-dd"))" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">To Date</label>
+                <input type="date" name="ToDate" class="form-control" value="@(Model.Filter.ToDate?.ToString("yyyy-MM-dd"))" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Module</label>
+                <select name="Module" class="form-select" asp-items="Model.ModuleOptions"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Action</label>
+                <select name="Action" class="form-select" asp-items="Model.ActionOptions"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Entity Type</label>
+                <select name="EntityType" class="form-select" asp-items="Model.EntityTypeOptions"></select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Company</label>
+                @if (Model.CompanyFilterLocked)
+                {
+                    <input type="hidden" name="CompanyId" value="@Model.Filter.CompanyId" />
+                    <input class="form-control" value="@(Model.LockedCompanyLabel ?? "My Company")" readonly />
+                }
+                else
+                {
+                    <select name="CompanyId" class="form-select" asp-items="Model.CompanyOptions"></select>
+                }
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Franchise Company</label>
+                <select name="FranchiseCompanyId" class="form-select" asp-items="Model.FranchiseCompanyOptions"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Actor (Email)</label>
+                <input name="Actor" class="form-control" value="@Model.Filter.Actor" placeholder="owner email" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Search</label>
+                <input name="Search" class="form-control" value="@Model.Filter.Search" placeholder="Action, entity ID, JSON data, user" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Rows</label>
+                <select name="ShowAll" class="form-select">
+                    <option value="false" selected="@(!Model.Filter.ShowAll)">Top 500</option>
+                    <option value="true" selected="@(Model.Filter.ShowAll)">See All (up to 5000)</option>
+                </select>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Apply Filters</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="mb-2 text-muted small">
+    Showing <strong>@Model.Rows.Count</strong> of <strong>@Model.TotalFilteredCount</strong> filtered entries, scanned latest <strong>@Model.ScannedCount</strong> events.
+</div>
+
+@if (Model.IsScanLimitHit)
+{
+    <div class="alert alert-warning py-2">
+        Scan limit reached. Refine month/date/module filters for deeper investigations.
+    </div>
+}
+
+@if (Model.IsDisplayLimitHit)
+{
+    <div class="alert alert-info py-2">
+        Display is capped at @Model.DisplayLimit rows to keep the page responsive. Use tighter filters for focused auditing.
+    </div>
+}
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">
@@ -28,44 +119,37 @@
             <table class="table table-hover mb-0 align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th style="width:170px;">Time (UTC)</th>
-                        <th style="width:160px;">Action</th>
+                        <th style="width:150px;">Time (UTC)</th>
+                        <th style="width:100px;">Module</th>
+                        <th style="width:190px;">Action</th>
                         <th style="width:140px;">Entity</th>
-                        <th>Entity ID</th>
-                        <th style="width:220px;">User</th>
+                        <th style="width:170px;">Company</th>
+                        <th style="width:170px;">Franchise</th>
+                        <th style="width:190px;">User</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @if (!Model.Any())
+                    @if (!Model.Rows.Any())
                     {
-                        <tr><td colspan="5" class="p-4 text-muted">No audit log entries yet. Actions like posting invoices, receiving purchases, and transfers are recorded here.</td></tr>
+                        <tr><td colspan="7" class="p-4 text-muted">No audit entries match current filters.</td></tr>
                     }
                     else
                     {
-                        foreach (var x in Model)
+                        foreach (var row in Model.Rows)
                         {
                             <tr>
-                                <td class="text-muted">@x.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="text-muted">@row.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td><span class="badge @ModuleBadgeClass(row.Module)">@row.Module</span></td>
                                 <td>
-                                    @{
-                                        var badgeClass = x.Action?.ToLowerInvariant() switch
-                                        {
-                                            var a when a != null && a.Contains("post") => "bg-success",
-                                            var a when a != null && a.Contains("receiv") => "bg-primary",
-                                            var a when a != null && a.Contains("transfer") => "bg-info text-dark",
-                                            var a when a != null && a.Contains("delete") => "bg-danger",
-                                            var a when a != null && a.Contains("creat") => "bg-secondary",
-                                            _ => "bg-secondary"
-                                        };
-                                    }
-                                    <span class="badge @badgeClass">@x.Action</span>
+                                    <div class="fw-semibold">@row.Action</div>
                                 </td>
-                                <td class="fw-semibold">@x.EntityType</td>
-                                <td class="text-muted font-monospace small">@x.EntityId</td>
                                 <td>
-                                    <div class="fw-semibold">@ToShortName(x.ActorEmail)</div>
-                                    <div class="text-muted small">@x.ActorEmail</div>
+                                    <div class="fw-semibold">@row.EntityType</div>
+                                    <div class="text-muted small font-monospace">@row.EntityId</div>
                                 </td>
+                                <td class="small">@row.CompanyDisplay</td>
+                                <td class="small">@row.FranchiseDisplay</td>
+                                <td class="small text-break">@row.ActorEmail</td>
                             </tr>
                         }
                     }

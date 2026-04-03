@@ -155,6 +155,7 @@ public sealed class PurchaseService
                 entityId: purchase.PurchaseId.ToString(),
                 data: new
                 {
+                    CompanyId = purchase.CompanyId,
                     purchase.PurchaseNo,
                     purchase.SupplierId,
                     purchase.WarehouseId,

@@ -9,7 +9,7 @@ using System.Security.Claims;
 
 namespace RetailERP.Controllers;
 
-[Authorize(Roles = "Admin,SuperAdmin")]
+[Authorize(Roles = "Admin")]
 public class AdminUsersController : Controller
 {
     private readonly UserManager<ApplicationUser> _userManager;

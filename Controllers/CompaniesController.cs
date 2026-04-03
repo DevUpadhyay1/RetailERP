@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
@@ -81,19 +82,48 @@ public class CompaniesController : Controller
     }
 
     [HttpGet]
-    public IActionResult Create() => View(new CreateCompanyVm());
+    public async Task<IActionResult> Create(Guid? mainCompanyId = null, BusinessType? businessType = null)
+    {
+        var vm = new CreateCompanyVm();
+        if (mainCompanyId.HasValue)
+            vm.MainCompanyId = mainCompanyId;
+        if (businessType.HasValue)
+            vm.BusinessType = businessType.Value;
+
+        await PopulateMainCompanyOptionsAsync(vm.MainCompanyId);
+        return View(vm);
+    }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CreateCompanyVm vm)
     {
-        if (!ModelState.IsValid) return View(vm);
+        if (vm.MainCompanyId.HasValue)
+        {
+            var mainCompanyExists = await _db.Companies
+                .AsNoTracking()
+                .IgnoreQueryFilters()
+                .AnyAsync(c => c.CompanyId == vm.MainCompanyId.Value && c.IsActive && !c.ParentCompanyId.HasValue);
+
+            if (!mainCompanyExists)
+                ModelState.AddModelError(nameof(vm.MainCompanyId), "Select a valid active main company.");
+
+            if (vm.BusinessType != BusinessType.Franchise)
+                ModelState.AddModelError(nameof(vm.BusinessType), "When main company is selected, Business Type must be Franchise.");
+        }
+
+        if (!ModelState.IsValid)
+        {
+            await PopulateMainCompanyOptionsAsync(vm.MainCompanyId);
+            return View(vm);
+        }
 
         // Check if admin email already exists
         var existingUser = await _userManager.FindByEmailAsync(vm.AdminEmail);
         if (existingUser is not null)
         {
             ModelState.AddModelError(nameof(vm.AdminEmail), "A user with this email already exists.");
+            await PopulateMainCompanyOptionsAsync(vm.MainCompanyId);
             return View(vm);
         }
 
@@ -113,6 +143,7 @@ public class CompaniesController : Controller
             GstNo = vm.GstNo,
             PanNo = vm.PanNo,
             CinNo = vm.CinNo,
+            ParentCompanyId = vm.MainCompanyId,
             MaxUsers = vm.MaxUsers,
             MaxStores = vm.MaxStores,
             IsActive = vm.IsActive,
@@ -128,6 +159,7 @@ public class CompaniesController : Controller
         catch (DbUpdateException)
         {
             ModelState.AddModelError(nameof(vm.Code), "Company code must be unique.");
+            await PopulateMainCompanyOptionsAsync(vm.MainCompanyId);
             return View(vm);
         }
 
@@ -153,6 +185,7 @@ public class CompaniesController : Controller
             await _db.SaveChangesAsync();
             foreach (var e in createResult.Errors)
                 ModelState.AddModelError(nameof(vm.AdminPassword), e.Description);
+            await PopulateMainCompanyOptionsAsync(vm.MainCompanyId);
             return View(vm);
         }
 
@@ -160,6 +193,20 @@ public class CompaniesController : Controller
 
         TempData["Ok"] = $"Company '{company.Name}' created with admin account {adminUser.Email}.";
         return RedirectToAction(nameof(Index));
+    }
+
+    private async Task PopulateMainCompanyOptionsAsync(Guid? selectedMainCompanyId)
+    {
+        var options = await _db.Companies
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(c => c.IsActive && !c.ParentCompanyId.HasValue)
+            .OrderBy(c => c.Name)
+            .Select(c => new SelectListItem($"{c.Code} - {c.Name}", c.CompanyId.ToString(), selectedMainCompanyId.HasValue && c.CompanyId == selectedMainCompanyId.Value))
+            .ToListAsync();
+
+        options.Insert(0, new SelectListItem("None (Independent Company)", string.Empty, !selectedMainCompanyId.HasValue));
+        ViewBag.MainCompanyOptions = options;
     }
 
     [HttpGet]
@@ -223,6 +270,9 @@ public class CompaniesController : Controller
         public string Name { get; set; } = "";
 
         public BusinessType BusinessType { get; set; }
+
+        [Display(Name = "Main Company (Franchisor)")]
+        public Guid? MainCompanyId { get; set; }
 
         [StringLength(500)]
         public string? Address { get; set; }

@@ -122,13 +122,13 @@
                         </div>
 
                         <div class="sidebar-group">
-                            <button class="sidebar-group-toggle @GroupToggleClass("AdminUsers")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-sa-users" aria-expanded="@(IsInGroup("AdminUsers") ? "true" : "false")">
-                                <i class="bi bi-people-fill sidebar-icon"></i>
-                                <span>Platform Users</span>
+                            <button class="sidebar-group-toggle @GroupToggleClass("Franchise")" type="button" data-bs-toggle="collapse" data-bs-target="#nav-sa-franchise" aria-expanded="@(IsInGroup("Franchise") ? "true" : "false")">
+                                <i class="bi bi-diagram-3-fill sidebar-icon"></i>
+                                <span>Franchise</span>
                                 <i class="bi bi-chevron-down sidebar-chevron ms-auto"></i>
                             </button>
-                            <div class="collapse @GroupOpen("AdminUsers")" id="nav-sa-users">
-                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("AdminUsers")" asp-controller="AdminUsers" asp-action="Index"><i class="bi bi-people-fill sidebar-icon"></i><span>All Users</span></a>
+                            <div class="collapse @GroupOpen("Franchise")" id="nav-sa-franchise">
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Franchise", "MappingRequests")" asp-controller="Franchise" asp-action="MappingRequests"><i class="bi bi-diagram-3 sidebar-icon"></i><span>Mapping Requests</span></a>
                             </div>
                         </div>
 
@@ -267,6 +267,7 @@
                             </button>
                             <div class="collapse @GroupOpen("Franchise")" id="nav-franchise">
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Franchise", "Index")" asp-controller="Franchise" asp-action="Index"><i class="bi bi-file-earmark-text sidebar-icon"></i><span>Agreements</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Franchise", "Create")" asp-controller="Franchise" asp-action="Create"><i class="bi bi-plus-square sidebar-icon"></i><span>Create Agreement</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Franchise", "MappingRequests")" asp-controller="Franchise" asp-action="MappingRequests"><i class="bi bi-diagram-3 sidebar-icon"></i><span>Mapping Requests</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Franchise", "RoyaltyDashboard")" asp-controller="Franchise" asp-action="RoyaltyDashboard"><i class="bi bi-graph-up-arrow sidebar-icon"></i><span>Royalty Dashboard</span></a>
                             </div>

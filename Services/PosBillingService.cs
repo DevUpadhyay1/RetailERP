@@ -534,6 +534,7 @@ public class PosBillingService
                 entityId: bill.PosBillId.ToString(),
                 data: new
                 {
+                    CompanyId = bill.CompanyId,
                     bill.BillNo,
                     bill.StoreId,
                     bill.WarehouseId,
@@ -707,6 +708,7 @@ public class PosBillingService
                 entityId: posReturn.PosReturnId.ToString(),
                 data: new
                 {
+                    CompanyId = bill.CompanyId,
                     posReturn.ReturnNo,
                     OriginalBillNo = bill.BillNo,
                     posReturn.TotalRefund,

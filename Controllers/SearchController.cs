@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
+using RetailERP.Services;
+using System.Security.Claims;
 
 namespace RetailERP.Controllers;
 
@@ -9,10 +11,12 @@ namespace RetailERP.Controllers;
 public sealed class SearchController : Controller
 {
     private readonly ApplicationDbContext _db;
+    private readonly AuditService _audit;
 
-    public SearchController(ApplicationDbContext db)
+    public SearchController(ApplicationDbContext db, AuditService audit)
     {
         _db = db;
+        _audit = audit;
     }
 
     [HttpGet]
@@ -92,6 +96,32 @@ public sealed class SearchController : Controller
                 Url = Url.Action("Edit", "Purchases", new { id = x.PurchaseId })!
             })
             .ToListAsync();
+
+        try
+        {
+            var rawCompanyId = User.FindFirstValue("CompanyId");
+            var companyId = Guid.TryParse(rawCompanyId, out var parsedCompanyId) ? parsedCompanyId : (Guid?)null;
+
+            await _audit.LogAsync(
+                action: "GlobalSearchExecuted",
+                entityType: "Search",
+                entityId: null,
+                data: new
+                {
+                    CompanyId = companyId,
+                    Query = q.Length > 120 ? q[..120] : q,
+                    vm.TotalCount,
+                    InvoiceCount = vm.Invoices.Count,
+                    PurchaseCount = vm.Purchases.Count,
+                    ItemCount = vm.Items.Count,
+                    CustomerCount = vm.Customers.Count,
+                    SupplierCount = vm.Suppliers.Count
+                });
+        }
+        catch
+        {
+            // Search should not fail if audit logging fails.
+        }
 
         return View(vm);
     }

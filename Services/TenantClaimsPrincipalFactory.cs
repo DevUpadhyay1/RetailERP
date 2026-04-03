@@ -22,7 +22,10 @@ public sealed class TenantClaimsPrincipalFactory
     {
         var identity = await base.GenerateClaimsAsync(user);
 
-        if (user.CompanyId.HasValue)
+        var roles = await UserManager.GetRolesAsync(user);
+        var isSuperAdmin = roles.Any(r => string.Equals(r, "SuperAdmin", StringComparison.OrdinalIgnoreCase));
+
+        if (!isSuperAdmin && user.CompanyId.HasValue)
             identity.AddClaim(new Claim("CompanyId", user.CompanyId.Value.ToString()));
 
         return identity;

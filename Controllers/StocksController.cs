@@ -319,6 +319,7 @@ namespace RetailERP.Controllers
                         entityId: request.StockAdjustmentRequestId.ToString(),
                         data: new
                         {
+                            CompanyId = request.CompanyId,
                             request.StockId,
                             request.DeltaQty,
                             request.Reason,
@@ -385,6 +386,7 @@ namespace RetailERP.Controllers
                     entityId: stock.StockId.ToString(),
                     data: new
                     {
+                        CompanyId = stock.Item?.CompanyId,
                         stock.StockId,
                         stock.ItemId,
                         stock.WarehouseId,
@@ -509,6 +511,7 @@ namespace RetailERP.Controllers
                     entityId: req.StockAdjustmentRequestId.ToString(),
                     data: new
                     {
+                        CompanyId = req.CompanyId ?? req.Stock.Item?.CompanyId,
                         req.StockId,
                         req.DeltaQty,
                         req.Reason,
@@ -551,6 +554,7 @@ namespace RetailERP.Controllers
                     entityId: req.StockAdjustmentRequestId.ToString(),
                     data: new
                     {
+                        CompanyId = req.CompanyId,
                         req.StockId,
                         req.DeltaQty,
                         req.Reason,

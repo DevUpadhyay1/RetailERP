@@ -25,3 +25,8 @@
 ## Secrets
 
 Never commit production connection strings, JWT secrets, or payment provider keys. Use User Secrets locally and secure configuration in deployment environments.
+
+## Code of Conduct
+
+Be respectful and professional in all project interactions (issues, PRs, reviews, discussions, and commits).
+Report unacceptable behavior to the repository maintainers for review and action.

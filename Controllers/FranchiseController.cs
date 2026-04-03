@@ -26,6 +26,7 @@ public class FranchiseController : Controller
     }
 
     // ── List ──
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Index(string? q, byte? status, int page = 1, int pageSize = 25)
     {
         if (page < 1) page = 1;
@@ -49,6 +50,7 @@ public class FranchiseController : Controller
     }
 
     // ── Details + Royalty History ──
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Details(Guid? id)
     {
         if (id is null) return NotFound();
@@ -63,6 +65,7 @@ public class FranchiseController : Controller
     }
 
     // ── Create ──
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create()
     {
         Guid? lockedFranchisorId = null;
@@ -99,6 +102,7 @@ public class FranchiseController : Controller
         return View(vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CreateFranchiseAgreementVm vm)
     {
@@ -201,6 +205,7 @@ public class FranchiseController : Controller
     }
 
     // ── Edit ──
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(Guid? id)
     {
         if (id is null) return NotFound();
@@ -231,6 +236,7 @@ public class FranchiseController : Controller
         return View(vm);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(EditFranchiseAgreementVm vm)
     {
@@ -259,6 +265,7 @@ public class FranchiseController : Controller
     }
 
     // ── Royalty Dashboard ──
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> RoyaltyDashboard()
     {
         var scopeCompanyId = ResolveScopeCompanyId();
@@ -270,6 +277,7 @@ public class FranchiseController : Controller
     }
 
     // ── Calculate Royalty ──
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CalculateRoyalty(Guid? agreementId)
     {
         if (agreementId is null) return NotFound();
@@ -289,6 +297,7 @@ public class FranchiseController : Controller
         return View();
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> CalculateRoyalty(Guid agreementId, int year, int month)
     {
@@ -308,6 +317,7 @@ public class FranchiseController : Controller
     }
 
     // ── Generate Royalty Payment ──
+    [Authorize(Roles = "Admin")]
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> GeneratePayment(Guid agreementId, int year, int month)
     {
@@ -328,6 +338,7 @@ public class FranchiseController : Controller
     }
 
     // ── Record Payment ──
+    [Authorize(Roles = "Admin")]
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> RecordPayment(Guid paymentId, decimal amountPaid, string? remarks, Guid agreementId)
     {
@@ -374,8 +385,13 @@ public class FranchiseController : Controller
                 canSubmitRequest = true;
         }
 
-        var query = _db.FranchiseMappingRequests
-            .AsNoTracking()
+        IQueryable<FranchiseMappingRequest> query = _db.FranchiseMappingRequests
+            .AsNoTracking();
+
+        if (isSuperAdmin)
+            query = query.IgnoreQueryFilters();
+
+        query = query
             .Include(x => x.RequestingCompany)
             .Include(x => x.MappedOperatorCompany)
             .Include(x => x.RequestedByUser)
@@ -399,12 +415,15 @@ public class FranchiseController : Controller
         if (isSuperAdmin)
         {
             var options = await _db.Companies.AsNoTracking()
-                .Where(c => c.IsActive)
+                .IgnoreQueryFilters()
+                .Where(c => c.IsActive && c.BusinessType == BusinessType.Franchise)
                 .OrderBy(c => c.Name)
                 .Select(c => new SelectListItem($"{c.Code} — {c.Name}", c.CompanyId.ToString()))
                 .ToListAsync();
 
             ViewBag.OperatorCompanyOptions = options;
+            ViewBag.CreateCompanyUrl = Url.Action("Create", "Companies", new { businessType = BusinessType.Franchise });
+            ViewBag.CompanyIndexUrl = Url.Action("Index", "Companies");
         }
 
         return View(rows);
@@ -466,6 +485,8 @@ public class FranchiseController : Controller
                 entityId: request.FranchiseMappingRequestId.ToString(),
                 data: new
                 {
+                    CompanyId = request.RequestingCompanyId,
+                    FranchisorCompanyId = request.RequestingCompanyId,
                     request.RequestingCompanyId,
                     request.RequestedOperatorName,
                     request.RequestedOperatorCode,
@@ -485,7 +506,14 @@ public class FranchiseController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveMappingRequest(Guid id, Guid mappedOperatorCompanyId, string? reviewNote = null)
     {
+        if (mappedOperatorCompanyId == Guid.Empty)
+        {
+            TempData["Err"] = "Select an existing operator company from the queue. If it is not available, create it first from Companies and then approve mapping.";
+            return RedirectToAction(nameof(MappingRequests));
+        }
+
         var request = await _db.FranchiseMappingRequests
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.FranchiseMappingRequestId == id && x.Status == 1);
         if (request is null)
         {
@@ -497,13 +525,19 @@ public class FranchiseController : Controller
             .FirstOrDefaultAsync(c => c.CompanyId == mappedOperatorCompanyId && c.IsActive);
         if (operatorCompany is null)
         {
-            TempData["Err"] = "Selected operator company is invalid.";
+            TempData["Err"] = "Selected operator company is invalid. Create the operator company first in Companies, then approve this mapping request.";
             return RedirectToAction(nameof(MappingRequests));
         }
 
         if (operatorCompany.CompanyId == request.RequestingCompanyId)
         {
             TempData["Err"] = "Operator company cannot be same as requesting brand-owner company.";
+            return RedirectToAction(nameof(MappingRequests));
+        }
+
+        if (operatorCompany.BusinessType != BusinessType.Franchise)
+        {
+            TempData["Err"] = "Selected company is not a franchise company. Create/select a franchise company first.";
             return RedirectToAction(nameof(MappingRequests));
         }
 
@@ -534,6 +568,9 @@ public class FranchiseController : Controller
                 entityId: request.FranchiseMappingRequestId.ToString(),
                 data: new
                 {
+                    CompanyId = request.RequestingCompanyId,
+                    FranchisorCompanyId = request.RequestingCompanyId,
+                    FranchiseCompanyId = request.MappedOperatorCompanyId,
                     request.RequestingCompanyId,
                     request.MappedOperatorCompanyId,
                     request.ReviewedByUserId
@@ -553,6 +590,7 @@ public class FranchiseController : Controller
     public async Task<IActionResult> RejectMappingRequest(Guid id, string? reviewNote = null)
     {
         var request = await _db.FranchiseMappingRequests
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(x => x.FranchiseMappingRequestId == id && x.Status == 1);
         if (request is null)
         {
@@ -574,6 +612,8 @@ public class FranchiseController : Controller
                 entityId: request.FranchiseMappingRequestId.ToString(),
                 data: new
                 {
+                    CompanyId = request.RequestingCompanyId,
+                    FranchisorCompanyId = request.RequestingCompanyId,
                     request.RequestingCompanyId,
                     request.ReviewedByUserId,
                     request.ReviewNote
