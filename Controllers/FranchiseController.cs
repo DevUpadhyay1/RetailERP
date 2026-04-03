@@ -16,11 +16,13 @@ public class FranchiseController : Controller
 {
     private readonly ApplicationDbContext _db;
     private readonly FranchiseService _svc;
+    private readonly AuditService _audit;
 
-    public FranchiseController(ApplicationDbContext db, FranchiseService svc)
+    public FranchiseController(ApplicationDbContext db, FranchiseService svc, AuditService audit)
     {
         _db = db;
         _svc = svc;
+        _audit = audit;
     }
 
     // ── List ──
@@ -343,6 +345,249 @@ public class FranchiseController : Controller
         return RedirectToAction(nameof(Details), new { id = agreementId });
     }
 
+    // ── Franchise Mapping Request Queue ──
+    [HttpGet]
+    public async Task<IActionResult> MappingRequests()
+    {
+        var isSuperAdmin = IsSuperAdmin();
+        var scopeCompanyId = ResolveScopeCompanyId();
+
+        if (!isSuperAdmin && !scopeCompanyId.HasValue)
+            return Forbid();
+
+        var canSubmitRequest = false;
+        string? requestBlockReason = null;
+        string? requestingCompanyName = null;
+
+        if (!isSuperAdmin)
+        {
+            var ownCompany = await _db.Companies.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.CompanyId == scopeCompanyId!.Value && c.IsActive);
+            if (ownCompany is null)
+                return Forbid();
+
+            requestingCompanyName = ownCompany.Name;
+
+            if (ownCompany.ParentCompanyId.HasValue)
+                requestBlockReason = "Only brand-owner company admins can raise franchise operator mapping requests.";
+            else
+                canSubmitRequest = true;
+        }
+
+        var query = _db.FranchiseMappingRequests
+            .AsNoTracking()
+            .Include(x => x.RequestingCompany)
+            .Include(x => x.MappedOperatorCompany)
+            .Include(x => x.RequestedByUser)
+            .Include(x => x.ReviewedByUser)
+            .AsQueryable();
+
+        if (!isSuperAdmin)
+            query = query.Where(x => x.RequestingCompanyId == scopeCompanyId!.Value);
+
+        var rows = await query
+            .OrderBy(x => x.Status == 1 ? 0 : 1)
+            .ThenByDescending(x => x.RequestedAtUtc)
+            .Take(250)
+            .ToListAsync();
+
+        ViewBag.IsSuperAdmin = isSuperAdmin;
+        ViewBag.CanSubmitRequest = canSubmitRequest;
+        ViewBag.RequestBlockReason = requestBlockReason;
+        ViewBag.RequestingCompanyName = requestingCompanyName;
+
+        if (isSuperAdmin)
+        {
+            var options = await _db.Companies.AsNoTracking()
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.Name)
+                .Select(c => new SelectListItem($"{c.Code} — {c.Name}", c.CompanyId.ToString()))
+                .ToListAsync();
+
+            ViewBag.OperatorCompanyOptions = options;
+        }
+
+        return View(rows);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> SubmitMappingRequest(CreateFranchiseMappingRequestVm vm)
+    {
+        if (IsSuperAdmin())
+        {
+            TempData["Err"] = "SuperAdmin can map companies directly from the request queue.";
+            return RedirectToAction(nameof(MappingRequests));
+        }
+
+        var scopeCompanyId = ResolveScopeCompanyId();
+        if (!scopeCompanyId.HasValue)
+            return Forbid();
+
+        var ownCompany = await _db.Companies.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.CompanyId == scopeCompanyId.Value && c.IsActive);
+        if (ownCompany is null)
+            return Forbid();
+
+        if (ownCompany.ParentCompanyId.HasValue)
+        {
+            TempData["Err"] = "Only brand-owner company admins can raise franchise mapping requests.";
+            return RedirectToAction(nameof(MappingRequests));
+        }
+
+        if (!ModelState.IsValid)
+        {
+            TempData["Err"] = "Please fill required operator details before submitting mapping request.";
+            return RedirectToAction(nameof(MappingRequests));
+        }
+
+        var request = new FranchiseMappingRequest
+        {
+            FranchiseMappingRequestId = Guid.NewGuid(),
+            RequestingCompanyId = ownCompany.CompanyId,
+            RequestedOperatorName = vm.RequestedOperatorName.Trim(),
+            RequestedOperatorCode = string.IsNullOrWhiteSpace(vm.RequestedOperatorCode) ? null : vm.RequestedOperatorCode.Trim(),
+            RequestedOperatorCity = string.IsNullOrWhiteSpace(vm.RequestedOperatorCity) ? null : vm.RequestedOperatorCity.Trim(),
+            RequestedOperatorState = string.IsNullOrWhiteSpace(vm.RequestedOperatorState) ? null : vm.RequestedOperatorState.Trim(),
+            RequestNote = string.IsNullOrWhiteSpace(vm.RequestNote) ? null : vm.RequestNote.Trim(),
+            Status = 1,
+            RequestedByUserId = GetCurrentUserId(),
+            RequestedAtUtc = DateTime.UtcNow,
+            CompanyId = ownCompany.CompanyId
+        };
+
+        _db.FranchiseMappingRequests.Add(request);
+        await _db.SaveChangesAsync();
+
+        try
+        {
+            await _audit.LogAsync(
+                action: "FranchiseMappingRequested",
+                entityType: "FranchiseMappingRequest",
+                entityId: request.FranchiseMappingRequestId.ToString(),
+                data: new
+                {
+                    request.RequestingCompanyId,
+                    request.RequestedOperatorName,
+                    request.RequestedOperatorCode,
+                    request.RequestedByUserId
+                });
+        }
+        catch
+        {
+            // Audit logging is best-effort and should not block business flow.
+        }
+
+        TempData["Ok"] = "Franchise mapping request submitted to SuperAdmin.";
+        return RedirectToAction(nameof(MappingRequests));
+    }
+
+    [Authorize(Roles = "SuperAdmin")]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApproveMappingRequest(Guid id, Guid mappedOperatorCompanyId, string? reviewNote = null)
+    {
+        var request = await _db.FranchiseMappingRequests
+            .FirstOrDefaultAsync(x => x.FranchiseMappingRequestId == id && x.Status == 1);
+        if (request is null)
+        {
+            TempData["Err"] = "Request not found or already processed.";
+            return RedirectToAction(nameof(MappingRequests));
+        }
+
+        var operatorCompany = await _db.Companies
+            .FirstOrDefaultAsync(c => c.CompanyId == mappedOperatorCompanyId && c.IsActive);
+        if (operatorCompany is null)
+        {
+            TempData["Err"] = "Selected operator company is invalid.";
+            return RedirectToAction(nameof(MappingRequests));
+        }
+
+        if (operatorCompany.CompanyId == request.RequestingCompanyId)
+        {
+            TempData["Err"] = "Operator company cannot be same as requesting brand-owner company.";
+            return RedirectToAction(nameof(MappingRequests));
+        }
+
+        if (operatorCompany.ParentCompanyId.HasValue && operatorCompany.ParentCompanyId.Value != request.RequestingCompanyId)
+        {
+            TempData["Err"] = "Operator company is already mapped to another brand owner.";
+            return RedirectToAction(nameof(MappingRequests));
+        }
+
+        operatorCompany.ParentCompanyId = request.RequestingCompanyId;
+        operatorCompany.BusinessType = BusinessType.Franchise;
+
+        request.Status = 2;
+        request.MappedOperatorCompanyId = operatorCompany.CompanyId;
+        request.ReviewedByUserId = GetCurrentUserId();
+        request.ReviewedAtUtc = DateTime.UtcNow;
+        request.ReviewNote = string.IsNullOrWhiteSpace(reviewNote)
+            ? "Approved and mapped by SuperAdmin"
+            : reviewNote.Trim();
+
+        await _db.SaveChangesAsync();
+
+        try
+        {
+            await _audit.LogAsync(
+                action: "FranchiseMappingApproved",
+                entityType: "FranchiseMappingRequest",
+                entityId: request.FranchiseMappingRequestId.ToString(),
+                data: new
+                {
+                    request.RequestingCompanyId,
+                    request.MappedOperatorCompanyId,
+                    request.ReviewedByUserId
+                });
+        }
+        catch
+        {
+            // Audit logging is best-effort and should not block business flow.
+        }
+
+        TempData["Ok"] = "Franchise mapping approved. Operator is now mapped to the requested brand owner.";
+        return RedirectToAction(nameof(MappingRequests));
+    }
+
+    [Authorize(Roles = "SuperAdmin")]
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RejectMappingRequest(Guid id, string? reviewNote = null)
+    {
+        var request = await _db.FranchiseMappingRequests
+            .FirstOrDefaultAsync(x => x.FranchiseMappingRequestId == id && x.Status == 1);
+        if (request is null)
+        {
+            TempData["Err"] = "Request not found or already processed.";
+            return RedirectToAction(nameof(MappingRequests));
+        }
+
+        request.Status = 3;
+        request.ReviewedByUserId = GetCurrentUserId();
+        request.ReviewedAtUtc = DateTime.UtcNow;
+        request.ReviewNote = string.IsNullOrWhiteSpace(reviewNote) ? "Rejected by SuperAdmin" : reviewNote.Trim();
+        await _db.SaveChangesAsync();
+
+        try
+        {
+            await _audit.LogAsync(
+                action: "FranchiseMappingRejected",
+                entityType: "FranchiseMappingRequest",
+                entityId: request.FranchiseMappingRequestId.ToString(),
+                data: new
+                {
+                    request.RequestingCompanyId,
+                    request.ReviewedByUserId,
+                    request.ReviewNote
+                });
+        }
+        catch
+        {
+            // Audit logging is best-effort and should not block business flow.
+        }
+
+        TempData["Ok"] = "Franchise mapping request rejected.";
+        return RedirectToAction(nameof(MappingRequests));
+    }
+
     // ── Helpers ──
     private async Task PopulateCompanyListsAsync(Guid? lockedFranchisorCompanyId = null)
     {
@@ -385,7 +630,31 @@ public class FranchiseController : Controller
         return Guid.TryParse(raw, out var companyId) ? companyId : null;
     }
 
+    private Guid? GetCurrentUserId()
+    {
+        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(raw, out var userId) ? userId : null;
+    }
+
     // ── ViewModels ──
+    public class CreateFranchiseMappingRequestVm
+    {
+        [Required, StringLength(200)]
+        public string RequestedOperatorName { get; set; } = string.Empty;
+
+        [StringLength(50)]
+        public string? RequestedOperatorCode { get; set; }
+
+        [StringLength(100)]
+        public string? RequestedOperatorCity { get; set; }
+
+        [StringLength(100)]
+        public string? RequestedOperatorState { get; set; }
+
+        [StringLength(500)]
+        public string? RequestNote { get; set; }
+    }
+
     public class CreateFranchiseAgreementVm
     {
         [Required, StringLength(100)]

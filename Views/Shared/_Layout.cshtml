@@ -267,6 +267,7 @@
                             </button>
                             <div class="collapse @GroupOpen("Franchise")" id="nav-franchise">
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Franchise", "Index")" asp-controller="Franchise" asp-action="Index"><i class="bi bi-file-earmark-text sidebar-icon"></i><span>Agreements</span></a>
+                                <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Franchise", "MappingRequests")" asp-controller="Franchise" asp-action="MappingRequests"><i class="bi bi-diagram-3 sidebar-icon"></i><span>Mapping Requests</span></a>
                                 <a class="sidebar-link nav-link link-light d-flex align-items-center gap-2 @ActiveIf("Franchise", "RoyaltyDashboard")" asp-controller="Franchise" asp-action="RoyaltyDashboard"><i class="bi bi-graph-up-arrow sidebar-icon"></i><span>Royalty Dashboard</span></a>
                             </div>
                         </div>

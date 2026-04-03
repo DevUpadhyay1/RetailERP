@@ -96,6 +96,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     // Sprint 15 – Franchise Management
     public DbSet<FranchiseAgreement> FranchiseAgreements => Set<FranchiseAgreement>();
     public DbSet<RoyaltyPayment> RoyaltyPayments => Set<RoyaltyPayment>();
+    public DbSet<FranchiseMappingRequest> FranchiseMappingRequests => Set<FranchiseMappingRequest>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -722,6 +723,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureAuditUserFks<PortalAccessLink>(builder);
         ConfigureAuditUserFks<PortalReturnRequest>(builder);
         ConfigureAuditUserFks<SupplierPoResponse>(builder);
+        ConfigureAuditUserFks<FranchiseMappingRequest>(builder);
 
         ConfigureAuditDefaults<Item>(builder);
         ConfigureAuditDefaults<Unit>(builder);
@@ -752,6 +754,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureAuditDefaults<PortalAccessLink>(builder);
         ConfigureAuditDefaults<PortalReturnRequest>(builder);
         ConfigureAuditDefaults<SupplierPoResponse>(builder);
+        ConfigureAuditDefaults<FranchiseMappingRequest>(builder);
 
         // ---- Company FK (optional) ----
         ConfigureCompanyFk<Item>(builder);
@@ -779,6 +782,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureCompanyFk<PortalAccessLink>(builder);
         ConfigureCompanyFk<PortalReturnRequest>(builder);
         ConfigureCompanyFk<SupplierPoResponse>(builder);
+        ConfigureCompanyFk<FranchiseMappingRequest>(builder);
 
         // ═══════════════════════════════════════════════════════════
         // Sprint 7 – Promotions
@@ -954,6 +958,36 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         builder.Entity<RoyaltyPayment>()
             .Property(x => x.AmountPaid)
             .HasPrecision(18, 2);
+
+        builder.Entity<FranchiseMappingRequest>()
+            .HasIndex(x => new { x.RequestingCompanyId, x.Status, x.RequestedAtUtc });
+
+        builder.Entity<FranchiseMappingRequest>()
+            .ToTable(t => t.HasCheckConstraint("CK_FranchiseMappingRequests_Status", "[Status] IN (1,2,3,4)"));
+
+        builder.Entity<FranchiseMappingRequest>()
+            .HasOne(x => x.RequestingCompany)
+            .WithMany()
+            .HasForeignKey(x => x.RequestingCompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<FranchiseMappingRequest>()
+            .HasOne(x => x.MappedOperatorCompany)
+            .WithMany()
+            .HasForeignKey(x => x.MappedOperatorCompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<FranchiseMappingRequest>()
+            .HasOne(x => x.RequestedByUser)
+            .WithMany()
+            .HasForeignKey(x => x.RequestedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<FranchiseMappingRequest>()
+            .HasOne(x => x.ReviewedByUser)
+            .WithMany()
+            .HasForeignKey(x => x.ReviewedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         ConfigureAuditUserFks<FranchiseAgreement>(builder);
         ConfigureAuditDefaults<FranchiseAgreement>(builder);

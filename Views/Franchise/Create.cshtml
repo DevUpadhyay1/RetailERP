@@ -18,7 +18,8 @@
             @if (lockFranchisor && noOperatorAvailable)
             {
                 <div class="alert alert-warning">
-                    No operator company is mapped to your brand yet. Please request SuperAdmin to create and map franchise operator first.
+                    No operator company is mapped to your brand yet. Please request SuperAdmin first from
+                    <a asp-action="MappingRequests" class="alert-link">Franchise Mapping Requests</a>.
                 </div>
             }
 
