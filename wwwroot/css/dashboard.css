@@ -20,6 +20,53 @@
 
 .grid-stack { min-height: 300px; }
 
+.dashboard-hero {
+    position: relative;
+    z-index: 20;
+    padding: .95rem 1rem;
+    border-radius: .9rem;
+    border: 1px solid var(--erp-border, #e2e8f0);
+    background:
+        radial-gradient(circle at 92% 18%, rgba(59,130,246,.16), transparent 40%),
+        linear-gradient(135deg, rgba(255,255,255,.98), rgba(241,245,249,.92));
+    box-shadow: var(--erp-shadow-sm);
+    overflow: visible;
+}
+
+.dashboard-hero-title {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    color: var(--erp-text, #1e293b);
+}
+
+.dashboard-role-badge {
+    font-size: .68rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.quick-add-dropdown .dropdown-menu {
+    z-index: 1085;
+}
+
+.quick-add-menu {
+    min-width: 13.5rem;
+    padding: .4rem;
+    border-radius: .8rem;
+}
+
+.quick-add-menu .dropdown-item {
+    padding: .48rem .6rem;
+    font-weight: 500;
+}
+
+.quick-add-menu .dropdown-item i {
+    width: 1.05rem;
+    text-align: center;
+}
+
 /* ── Widget containers ──────────────────────────────── */
 .grid-stack .grid-stack-item-content {
     background: var(--erp-bg-card, #fff);
@@ -294,9 +341,19 @@ body.dark-mode .widget-picker-item { background: var(--erp-bg-card); border-colo
 body.dark-mode .widget-picker-item .picker-text { color: var(--erp-text); }
 body.dark-mode .btn-outline-dark { color: #94a3b8; border-color: #475569; }
 body.dark-mode .btn-outline-dark:hover { background: #334155; color: #e2e8f0; }
+body.dark-mode .dashboard-hero {
+    border-color: var(--erp-border);
+    background:
+        radial-gradient(circle at 92% 18%, rgba(96,165,250,.18), transparent 42%),
+        linear-gradient(135deg, rgba(30,41,59,.96), rgba(15,23,42,.94));
+}
+body.dark-mode .dashboard-hero-title { color: #f1f5f9; }
+body.dark-mode .quick-add-menu .dropdown-item i.text-warning { color: #facc15 !important; }
 
 /* ── Responsive ─────────────────────────────────────── */
 @media (max-width: 768px) {
     .widget-picker { width: 100%; }
     .widget-kpi .kpi-value { font-size: 1.3rem; }
+    .dashboard-hero { padding: .8rem .85rem; }
+    .dashboard-hero-title { font-size: 1.15rem; }
 }

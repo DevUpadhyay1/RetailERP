@@ -33,32 +33,34 @@
     var greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 }
 
-<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 position-relative" style="z-index: 1050;">
-    <div class="header-content">
-        <h2 class="mb-1 fw-bold brand-font">@greeting, @displayName</h2>
-        <div class="text-white-50 small fw-medium">
-            @DateTime.Now.ToString("dddd, dd MMMM yyyy") &middot;
-            Role: <span class="badge bg-primary bg-opacity-75" style="letter-spacing:0.05em;text-transform:uppercase;">@roleLabel</span>
+<div class="dashboard-hero d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h2 class="dashboard-hero-title mb-1">@greeting, @displayName</h2>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="text-muted small">@DateTime.Now.ToString("dddd, dd MMMM yyyy")</span>
+            <span class="badge bg-primary dashboard-role-badge">@roleLabel</span>
         </div>
     </div>
-    <div class="d-flex flex-wrap gap-2 header-content">
+    <div class="d-flex flex-wrap align-items-center gap-2">
         @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Cashier") || User.IsInRole("Finance"))
         {
-            <a class="btn btn-primary shadow-sm" asp-controller="Invoices" asp-action="Create" style="border-radius: 8px;"><i class="bi bi-receipt me-1"></i>New Sale</a>
-            <a class="btn btn-warning shadow-sm" asp-controller="Pos" asp-action="StartQuick" style="border-radius: 8px; color: #78350f;"><i class="bi bi-display me-1"></i>POS Bill</a>
+            <a class="btn btn-primary" asp-controller="Invoices" asp-action="Create"><i class="bi bi-plus-lg me-1"></i>New Sale</a>
+            <a class="btn btn-warning" asp-controller="Pos" asp-action="StartQuick"><i class="bi bi-cart3 me-1"></i>New POS Bill</a>
         }
         @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Inventory") || User.IsInRole("Finance"))
         {
-            <a class="btn btn-outline-light" asp-controller="Purchases" asp-action="Create" style="border-radius: 8px; backdrop-filter: blur(4px);"><i class="bi bi-bag-plus me-1"></i>Purchase</a>
+            <a class="btn btn-outline-primary" asp-controller="Purchases" asp-action="Create"><i class="bi bi-bag-plus me-1"></i>New Purchase</a>
         }
-        <div class="btn-group">
-            <button class="btn btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" type="button" style="border-radius: 8px; backdrop-filter: blur(4px);"><i class="bi bi-lightning-charge me-1"></i>Quick Add</button>
-            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="border-radius:12px; overflow:hidden;">
-                <li><a class="dropdown-item py-2" asp-controller="Items" asp-action="Create"><i class="bi bi-upc-scan me-2 text-primary"></i>Item Master</a></li>
-                <li><a class="dropdown-item py-2" asp-controller="Customers" asp-action="Create"><i class="bi bi-person-plus me-2 text-success"></i>Customer</a></li>
+        <div class="btn-group quick-add-dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-boundary="viewport" type="button">
+                <i class="bi bi-lightning-charge me-1"></i>Quick Add
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end quick-add-menu">
+                <li><a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Items" asp-action="Create"><i class="bi bi-upc-scan text-primary"></i><span>Item</span></a></li>
+                <li><a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Customers" asp-action="Create"><i class="bi bi-person-plus text-success"></i><span>Customer</span></a></li>
                 @if (User.IsInRole("Admin") || User.IsInRole("Manager") || User.IsInRole("Inventory"))
                 {
-                    <li><a class="dropdown-item py-2" asp-controller="Suppliers" asp-action="Create"><i class="bi bi-truck me-2 text-warning"></i>Supplier</a></li>
+                    <li><a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Suppliers" asp-action="Create"><i class="bi bi-truck text-warning"></i><span>Supplier</span></a></li>
                 }
             </ul>
         </div>
@@ -66,7 +68,7 @@
 </div>
 
 <div class="dashboard-toolbar">
-    <button id="btn-lock-toggle" class="btn btn-sm btn-outline-secondary" title="Lock / Unlock dashboard editing">
+    <button id="btn-lock-toggle" class="btn btn-sm btn-outline-dark" title="Lock / Unlock dashboard editing">
         <i class="bi bi-unlock me-1"></i><span>Lock</span>
     </button>
     <button id="btn-add-widget" class="btn btn-sm btn-outline-primary edit-mode-btn"><i class="bi bi-plus-circle me-1"></i>Add Widget</button>
