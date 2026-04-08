@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'retailerp-v2';
+const CACHE_VERSION = 'retailerp-v3';
 const APP_SHELL = [
     '/',
     '/css/site.css',
@@ -75,11 +75,14 @@ self.addEventListener('fetch', event => {
         event.respondWith(
             fetch(request)
                 .then(response => {
-                    const clone = response.clone();
-                    caches.open(CACHE_VERSION).then(cache => cache.put(request, clone));
+                    const contentType = response.headers.get('Content-Type') || '';
+                    if (response.ok && !response.redirected && contentType.includes('text/html')) {
+                        const clone = response.clone();
+                        caches.open(CACHE_VERSION).then(cache => cache.put(request, clone));
+                    }
                     return response;
                 })
-                .catch(() => caches.match(request).then(r => r || caches.match('/offline.html')))
+                .catch(() => caches.match('/offline.html'))
         );
         return;
     }

@@ -11,11 +11,11 @@
 
 | Check | Action |
 |-------|--------|
-| App listening | Hit site root or `/health` |
-| Readiness (LB / K8s) | `GET /health/ready` returns JSON; includes SQL (+ Redis when enabled) |
+| App listening | Hit site root/login route |
+| Readiness (LB / K8s) | Use authenticated `GET /health/ready` by default; if anonymous probes are required, set `OperationalEndpoints` flags and enforce gateway IP restrictions |
 | Database | `/health` should report SQL check; verify migrations applied |
 | Logs | Inspect `Logs/retailerp-*.log` on server |
-| Metrics | `GET /metrics` (Prometheus format) should return request/error counters |
+| Metrics | Use authenticated `GET /metrics` by default; keep anonymous access off unless restricted at gateway/firewall |
 | Redis | Optional; if misconfigured, app uses in-memory cache (see startup logs) |
 
 ## Alerting Baseline

@@ -44,5 +44,20 @@ public static class ProductionStartupValidation
         if (string.IsNullOrWhiteSpace(hosts) || hosts == "*")
             Log.Warning(
                 "Production: AllowedHosts is '*' or empty. Set AllowedHosts to your real domain(s) for better security.");
+
+        var allowAnonymousHealth = configuration.GetValue<bool?>("OperationalEndpoints:AllowAnonymousHealth") ?? false;
+        var allowAnonymousMetrics = configuration.GetValue<bool?>("OperationalEndpoints:AllowAnonymousMetrics") ?? false;
+        if (allowAnonymousHealth)
+            Log.Warning("Production: OperationalEndpoints:AllowAnonymousHealth is enabled. Expose /health endpoints only behind trusted network controls.");
+        if (allowAnonymousMetrics)
+            Log.Warning("Production: OperationalEndpoints:AllowAnonymousMetrics is enabled. Expose /metrics only behind trusted network controls.");
+
+        var knownProxies = configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>()
+            ?.Count(v => !string.IsNullOrWhiteSpace(v)) ?? 0;
+        var knownNetworks = configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>()
+            ?.Count(v => !string.IsNullOrWhiteSpace(v)) ?? 0;
+        if (knownProxies == 0 && knownNetworks == 0)
+            Log.Warning(
+                "Production: ForwardedHeaders has no KnownProxies/KnownNetworks configured. Configure trusted proxies to prevent spoofed forwarding headers.");
     }
 }

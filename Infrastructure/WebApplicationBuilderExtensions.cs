@@ -1,6 +1,9 @@
 using System.Globalization;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.RateLimiting;
+using AspNetIpNetwork = Microsoft.AspNetCore.HttpOverrides.IPNetwork;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -36,6 +39,10 @@ public static class WebApplicationBuilderExtensions
     public static void AddRetailErp(this WebApplicationBuilder builder)
     {
         ProductionStartupValidation.ThrowIfInvalidForProduction(builder.Environment, builder.Configuration);
+
+        var allowInsecureCookiesForLocalHttp = builder.Configuration.GetValue<bool>("Security:AllowInsecureCookiesForLocalHttp");
+        if (builder.Environment.IsProduction() && allowInsecureCookiesForLocalHttp)
+            Log.Warning("Security:AllowInsecureCookiesForLocalHttp is enabled in Production. Use only for local HTTP testing behind trusted access.");
 
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
@@ -97,7 +104,9 @@ public static class WebApplicationBuilderExtensions
 
             if (builder.Environment.IsProduction())
             {
-                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.SecurePolicy = allowInsecureCookiesForLocalHttp
+                    ? CookieSecurePolicy.SameAsRequest
+                    : CookieSecurePolicy.Always;
                 options.Cookie.HttpOnly = true;
                 options.Cookie.SameSite = SameSiteMode.Lax;
             }
@@ -209,7 +218,9 @@ public static class WebApplicationBuilderExtensions
         {
             options.HeaderName = "X-XSRF-TOKEN";
             if (builder.Environment.IsProduction())
-                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.SecurePolicy = allowInsecureCookiesForLocalHttp
+                    ? CookieSecurePolicy.SameAsRequest
+                    : CookieSecurePolicy.Always;
         });
 
         // Single registration: MVC + view localization (avoid duplicate AddControllersWithViews)
@@ -372,8 +383,61 @@ public static class WebApplicationBuilderExtensions
             builder.Services.Configure<ForwardedHeadersOptions>(options =>
             {
                 options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-                options.KnownNetworks.Clear();
-                options.KnownProxies.Clear();
+                options.ForwardLimit = builder.Configuration.GetValue<int?>("ForwardedHeaders:ForwardLimit") ?? 2;
+
+                var knownProxies = builder.Configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>()
+                    ?? Array.Empty<string>();
+                var knownNetworks = builder.Configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>()
+                    ?? Array.Empty<string>();
+
+                var configuredProxyCount = 0;
+                foreach (var proxyEntry in knownProxies)
+                {
+                    if (string.IsNullOrWhiteSpace(proxyEntry))
+                        continue;
+
+                    if (IPAddress.TryParse(proxyEntry.Trim(), out var ip))
+                    {
+                        options.KnownProxies.Add(ip);
+                        configuredProxyCount++;
+                    }
+                    else
+                    {
+                        Log.Warning("ForwardedHeaders: ignoring invalid KnownProxies value '{ProxyEntry}'", proxyEntry);
+                    }
+                }
+
+                var configuredNetworkCount = 0;
+                foreach (var networkEntry in knownNetworks)
+                {
+                    if (string.IsNullOrWhiteSpace(networkEntry))
+                        continue;
+
+                    if (TryParseCidrNetwork(networkEntry.Trim(), out var network))
+                    {
+                        options.KnownNetworks.Add(network);
+                        configuredNetworkCount++;
+                    }
+                    else
+                    {
+                        Log.Warning(
+                            "ForwardedHeaders: ignoring invalid KnownNetworks value '{NetworkEntry}'. Expected CIDR format (e.g. 10.0.0.0/24).",
+                            networkEntry);
+                    }
+                }
+
+                if (configuredProxyCount == 0 && configuredNetworkCount == 0)
+                {
+                    Log.Warning("ForwardedHeaders: no known proxies/networks configured. Only loopback forwarded headers will be trusted.");
+                }
+                else
+                {
+                    Log.Information(
+                        "ForwardedHeaders: configured {ProxyCount} proxies and {NetworkCount} networks; ForwardLimit={ForwardLimit}",
+                        configuredProxyCount,
+                        configuredNetworkCount,
+                        options.ForwardLimit);
+                }
             });
 
             builder.Services.AddHsts(options =>
@@ -382,5 +446,33 @@ public static class WebApplicationBuilderExtensions
                 options.IncludeSubDomains = true;
             });
         }
+    }
+
+    private static bool TryParseCidrNetwork(string value, out AspNetIpNetwork network)
+    {
+        network = null!;
+
+        var parts = value.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 2)
+            return false;
+
+        if (!IPAddress.TryParse(parts[0], out var prefixAddress))
+            return false;
+
+        if (!int.TryParse(parts[1], out var prefixLength))
+            return false;
+
+        var maxPrefixLength = prefixAddress.AddressFamily switch
+        {
+            AddressFamily.InterNetwork => 32,
+            AddressFamily.InterNetworkV6 => 128,
+            _ => 0
+        };
+
+        if (prefixLength < 0 || prefixLength > maxPrefixLength)
+            return false;
+
+        network = new AspNetIpNetwork(prefixAddress, prefixLength);
+        return true;
     }
 }

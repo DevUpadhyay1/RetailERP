@@ -1,8 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @{
+        var seoTitle = string.IsNullOrWhiteSpace(ViewData["Title"] as string) ? "RetailERP" : ViewData["Title"]!.ToString();
+        var seoDescription = string.IsNullOrWhiteSpace(ViewData["Description"] as string)
+            ? "RetailERP is a cloud-ready retail management platform for POS billing, inventory control, invoices, and analytics."
+            : ViewData["Description"]!.ToString();
+        var canonicalUrl = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}";
+    }
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="@seoDescription" />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="@canonicalUrl" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="@seoTitle - RetailERP" />
+    <meta property="og:description" content="@seoDescription" />
+    <meta property="og:url" content="@canonicalUrl" />
     <meta name="theme-color" content="#0f172a" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />

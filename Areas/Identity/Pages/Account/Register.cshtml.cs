@@ -11,7 +11,6 @@ using RetailERP.Data.Identity;
 namespace RetailERP.Areas.Identity.Pages.Account;
 
 [AllowAnonymous]
-[EnableRateLimiting("Login")]
 public class RegisterModel : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
@@ -61,6 +60,7 @@ public class RegisterModel : PageModel
         ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
     }
 
+    [EnableRateLimiting("Login")]
     public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
     {
         returnUrl ??= Url.Content("~/");
@@ -94,31 +94,33 @@ public class RegisterModel : PageModel
             return Page();
         }
 
-        // Professional default: first-ever account becomes Admin (bootstrap), then disable public registration.
-        const string defaultRole = "Admin";
-
-        if (!await _roleManager.RoleExistsAsync(defaultRole))
+        // Bootstrap default: first-ever account gets both SuperAdmin and Admin.
+        var bootstrapRoles = new[] { "SuperAdmin", "Admin" };
+        foreach (var role in bootstrapRoles)
         {
-            var roleResult = await _roleManager.CreateAsync(new ApplicationRole { Name = defaultRole });
-            if (!roleResult.Succeeded)
+            if (!await _roleManager.RoleExistsAsync(role))
             {
-                foreach (var error in roleResult.Errors)
+                var roleResult = await _roleManager.CreateAsync(new ApplicationRole { Name = role });
+                if (!roleResult.Succeeded)
+                {
+                    foreach (var error in roleResult.Errors)
+                        ModelState.AddModelError(string.Empty, error.Description);
+
+                    return Page();
+                }
+            }
+
+            var addRoleResult = await _userManager.AddToRoleAsync(user, role);
+            if (!addRoleResult.Succeeded)
+            {
+                foreach (var error in addRoleResult.Errors)
                     ModelState.AddModelError(string.Empty, error.Description);
 
                 return Page();
             }
         }
 
-        var addRoleResult = await _userManager.AddToRoleAsync(user, defaultRole);
-        if (!addRoleResult.Succeeded)
-        {
-            foreach (var error in addRoleResult.Errors)
-                ModelState.AddModelError(string.Empty, error.Description);
-
-            return Page();
-        }
-
-        _logger.LogInformation("User created a new account and assigned role {Role}.", defaultRole);
+        _logger.LogInformation("User created a new account and assigned bootstrap roles: {Roles}.", string.Join(",", bootstrapRoles));
 
         await _signInManager.SignInAsync(user, isPersistent: false);
         return LocalRedirect(returnUrl);

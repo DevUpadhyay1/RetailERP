@@ -33,6 +33,8 @@ wwwroot/lib/
 # Secrets / local overrides
 **/appsettings.*.local.json
 **/appsettings.*.Secrets.json
+**/.env.production
+**/.env.staging
 
 # Node (if any frontend exists)
 node_modules/
@@ -60,3 +62,6 @@ test_err.log
 
 # Test results
 **/TestResults/
+
+# Local tunnel tools
+tools/cloudflared.exe

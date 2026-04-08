@@ -10,19 +10,38 @@ namespace RetailERP.Tests;
 public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
+    private readonly HttpClient _authenticatedClient;
 
     public IntegrationTests(CustomWebApplicationFactory factory)
-        => _client = factory.CreateClient(new()
+    {
+        _client = factory.CreateClient(new()
         {
             // Don't follow redirects so we can assert 302 for auth tests.
             AllowAutoRedirect = false
         });
 
+        _authenticatedClient = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.AddAuthentication(defaultScheme: "TestScheme")
+                    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, TestAuthHandler>(
+                        "TestScheme", _ => { });
+            });
+        }).CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        _authenticatedClient.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("TestScheme");
+    }
+
     /// <summary>GET /health returns 200 Healthy.</summary>
     [Fact]
     public async Task Health_ReturnsOk()
     {
-        var response = await _client.GetAsync("/health");
+        var response = await _authenticatedClient.GetAsync("/health");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
@@ -33,7 +52,7 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task HealthReady_ReturnsJsonWithStatusKey()
     {
-        var response = await _client.GetAsync("/health/ready");
+        var response = await _authenticatedClient.GetAsync("/health/ready");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -68,12 +87,12 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
         // 1. Echo: send a known value and expect it back.
         var request = new HttpRequestMessage(HttpMethod.Get, "/health");
         request.Headers.Add("X-Correlation-Id", "test-123");
-        var echoResponse = await _client.SendAsync(request);
+        var echoResponse = await _authenticatedClient.SendAsync(request);
         Assert.True(echoResponse.Headers.TryGetValues("X-Correlation-Id", out var echoValues));
         Assert.Equal("test-123", echoValues!.First());
 
         // 2. Generate: omit header and expect a non-empty value back.
-        var genResponse = await _client.GetAsync("/health");
+        var genResponse = await _authenticatedClient.GetAsync("/health");
         Assert.True(genResponse.Headers.TryGetValues("X-Correlation-Id", out var genValues));
         var generated = genValues!.First();
         Assert.False(string.IsNullOrWhiteSpace(generated), "Expected a generated correlation ID");
@@ -83,7 +102,7 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Metrics_ReturnsPrometheusPayload()
     {
-        var response = await _client.GetAsync("/metrics");
+        var response = await _authenticatedClient.GetAsync("/metrics");
         var body = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

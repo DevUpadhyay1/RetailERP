@@ -83,12 +83,12 @@ public static class WebApplicationExtensions
             h.TryAdd("X-XSS-Protection", "1; mode=block");
 
             var connectSrc = isDev
-                ? "connect-src 'self' wss: ws: http://localhost:* https://cdn.jsdelivr.net https://api.razorpay.com https://lumberjack.razorpay.com; "
-                : "connect-src 'self' wss: ws: https://cdn.jsdelivr.net https://api.razorpay.com https://lumberjack.razorpay.com; ";
+                ? "connect-src 'self' wss: ws: http://localhost:* https://cdn.jsdelivr.net https://api.razorpay.com https://lumberjack.razorpay.com https://cloudflareinsights.com; "
+                : "connect-src 'self' wss: ws: https://cdn.jsdelivr.net https://api.razorpay.com https://lumberjack.razorpay.com https://cloudflareinsights.com; ";
 
             var scriptSrc = isDev
-                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* https://cdn.jsdelivr.net https://checkout.razorpay.com https://api.razorpay.com; "
-                : "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://checkout.razorpay.com https://api.razorpay.com; ";
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* https://cdn.jsdelivr.net https://checkout.razorpay.com https://api.razorpay.com https://static.cloudflareinsights.com; "
+                : "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://checkout.razorpay.com https://api.razorpay.com https://static.cloudflareinsights.com; ";
 
             h.TryAdd("Content-Security-Policy",
                 "default-src 'self'; " +
@@ -157,10 +157,27 @@ public static class WebApplicationExtensions
 
         app.MapHub<RetailHub>("/hubs/retail");
 
-        app.MapHealthChecks("/health").AllowAnonymous();
+        var allowAnonymousHealthEndpoints = app.Configuration.GetValue<bool?>("OperationalEndpoints:AllowAnonymousHealth")
+            ?? app.Environment.IsDevelopment();
+        var allowAnonymousMetricsEndpoint = app.Configuration.GetValue<bool?>("OperationalEndpoints:AllowAnonymousMetrics")
+            ?? app.Environment.IsDevelopment();
+
+        if (!allowAnonymousHealthEndpoints || !allowAnonymousMetricsEndpoint)
+        {
+            Log.Information(
+                "Operational endpoints are protected. AllowAnonymousHealth={AllowAnonymousHealth}, AllowAnonymousMetrics={AllowAnonymousMetrics}",
+                allowAnonymousHealthEndpoints,
+                allowAnonymousMetricsEndpoint);
+        }
+
+        var livenessEndpoint = app.MapHealthChecks("/health");
+        if (allowAnonymousHealthEndpoints)
+            livenessEndpoint.AllowAnonymous();
+        else
+            livenessEndpoint.RequireAuthorization();
 
         // Kubernetes-style readiness: SQL (+ Redis when enabled), tagged "ready" in AddHealthChecks.
-        app.MapHealthChecks("/health/ready", new HealthCheckOptions
+        var readinessEndpoint = app.MapHealthChecks("/health/ready", new HealthCheckOptions
         {
             Predicate = r => r.Tags.Contains("ready"),
             ResponseWriter = async (context, report) =>
@@ -179,12 +196,20 @@ public static class WebApplicationExtensions
                         })
                 });
             }
-        }).AllowAnonymous();
+        });
+        if (allowAnonymousHealthEndpoints)
+            readinessEndpoint.AllowAnonymous();
+        else
+            readinessEndpoint.RequireAuthorization();
 
-        app.MapGet("/metrics", () =>
+        var metricsEndpoint = app.MapGet("/metrics", () =>
         {
             var payload = appMetrics.RenderPrometheus();
             return Results.Text(payload, "text/plain; version=0.0.4; charset=utf-8");
-        }).AllowAnonymous();
+        });
+        if (allowAnonymousMetricsEndpoint)
+            metricsEndpoint.AllowAnonymous();
+        else
+            metricsEndpoint.RequireAuthorization();
     }
 }

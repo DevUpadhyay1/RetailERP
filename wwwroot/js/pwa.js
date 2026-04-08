@@ -359,12 +359,23 @@ const OfflineSync = {
 const ItemCacheLoader = {
     async refresh() {
         if (!navigator.onLine) return;
+
+        // Item cache priming is only needed on POS routes.
+        const path = (window.location.pathname || '').toLowerCase();
+        if (!path.startsWith('/pos')) return;
+
         try {
             const xsrf = document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || '';
             const resp = await fetch('/Pos/AllItems', {
-                headers: { 'X-XSRF-TOKEN': xsrf }
+                headers: { 'X-XSRF-TOKEN': xsrf },
+                credentials: 'same-origin'
             });
-            if (!resp.ok) return;
+
+            if (resp.redirected || resp.type === 'opaqueredirect' || !resp.ok) return;
+
+            const contentType = resp.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) return;
+
             const items = await resp.json();
             if (Array.isArray(items) && items.length > 0) {
                 await OfflineDB.cacheItems(items);
@@ -386,10 +397,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('[PWA] IndexedDB ready');
         OfflineSync._updateBadge();
     });
-    // Pre-cache items for offline POS
-    if (navigator.onLine) {
-        ItemCacheLoader.refresh();
-    }
+
+    // Pre-cache items only when user is on POS pages.
+    if (navigator.onLine) ItemCacheLoader.refresh();
 });
 
 // Expose for use by POS billing page

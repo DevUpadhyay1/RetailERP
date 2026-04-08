@@ -21,7 +21,6 @@ using RetailERP.Data.Identity;
 namespace RetailERP.Areas.Identity.Pages.Account
 {
     [AllowAnonymous]
-    [EnableRateLimiting("Login")]
     public class LoginModel : PageModel
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
@@ -42,7 +41,7 @@ namespace RetailERP.Areas.Identity.Pages.Account
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         [BindProperty]
-        public InputModel Input { get; set; }
+        public InputModel Input { get; set; } = new();
 
         /// <summary>
         ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
@@ -112,6 +111,7 @@ namespace RetailERP.Areas.Identity.Pages.Account
             ReturnUrl = returnUrl;
         }
 
+        [EnableRateLimiting("Login")]
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
             returnUrl ??= Url.Content("~/");

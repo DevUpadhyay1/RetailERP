@@ -13,6 +13,15 @@ Set on the host or container:
 | `ConnectionStrings__DefaultConnection` | SQL Server connection string | Required |
 | `Jwt__SecretKey` | 32+ random characters | Never use dev sample from repo |
 | `AllowedHosts` | `shop.yourdomain.com` | Override `*` - validation warns if `*` |
+| `OperationalEndpoints__AllowAnonymousHealth` | `false` | Keep `false` in production unless gateway-restricted |
+| `OperationalEndpoints__AllowAnonymousMetrics` | `false` | Keep `false` in production unless gateway-restricted |
+| `ForwardedHeaders__KnownProxies__0` | `10.0.0.10` | Trusted reverse proxy IP(s) |
+| `ForwardedHeaders__KnownProxies__1` | `10.0.0.11` | Optional additional trusted proxy IP |
+| `ForwardedHeaders__KnownProxies__2` | `10.0.0.12` | Optional additional trusted proxy IP |
+| `ForwardedHeaders__KnownNetworks__0` | `10.0.0.0/24` | Trusted proxy CIDR(s) |
+| `ForwardedHeaders__KnownNetworks__1` | `fd00:10::/64` | Optional additional trusted proxy CIDR |
+| `ForwardedHeaders__KnownNetworks__2` | `172.18.0.0/16` | Optional additional trusted proxy CIDR |
+| `ForwardedHeaders__ForwardLimit` | `2` | Max number of forwarding hops to trust |
 | `ConnectionStrings__Redis` | `redis:6379` | Optional; health check probes Redis when cache uses it |
 | `Razorpay__KeyId` | `rzp_live_...` | Required for payments |
 | `Razorpay__KeySecret` | `...` | Required for payments |
@@ -28,8 +37,27 @@ Azure/Linux env syntax uses double underscore `__` for nested config.
 - Terminate TLS at the proxy.
 - Forward headers: `X-Forwarded-For`, `X-Forwarded-Proto`.
 - The app enables `ForwardedHeaders` in non-Development so redirects and URL generation stay correct.
+- Configure `ForwardedHeaders:KnownProxies` and/or `ForwardedHeaders:KnownNetworks` so only trusted reverse proxies can set forwarded headers.
 
-Security note: `KnownProxies` and `KnownNetworks` are currently cleared. For strict environments, lock these down to trusted proxy IPs.
+### Quick setup command (recommended)
+
+Use the deploy script to write trusted proxy settings and validate them before `docker compose up`:
+
+```powershell
+.\scripts\deploy_production.ps1 \
+  -AppDir "C:\retailerp" \
+  -EnvFile ".env.production" \
+  -KnownProxies "10.0.0.10","10.0.0.11" \
+  -KnownNetworks "10.0.0.0/24"
+```
+
+The script rejects empty/placeholder/invalid proxy and CIDR values unless `-SkipForwardedHeaderValidation` is explicitly set.
+
+Validation-only check (no container changes):
+
+```powershell
+.\scripts\deploy_production.ps1 -AppDir "C:\retailerp" -EnvFile ".env.production" -ValidateOnly
+```
 
 ## 3. Database
 
@@ -38,9 +66,8 @@ Security note: `KnownProxies` and `KnownNetworks` are currently cleared. For str
 
 ## 4. Health and metrics
 
-- `GET /health` - SQL Server (+ Redis when configured).
-- `GET /health/ready` - readiness JSON payload for orchestrators.
-- `GET /metrics` - Prometheus metrics (request/error/latency counters).
+- By default in production, `/health`, `/health/ready`, and `/metrics` require authentication.
+- If you intentionally expose them anonymously, set `OperationalEndpoints:AllowAnonymousHealth` and/or `OperationalEndpoints:AllowAnonymousMetrics` and enforce network-level restrictions at the gateway/firewall.
 
 ## 5. CI/CD pipeline notes
 
@@ -77,3 +104,8 @@ docker run -e ASPNETCORE_ENVIRONMENT=Production \
 - [ ] `Logs/` ACLs restricted to application service account only
 
 See also: [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md)
+
+## 8. VPS quickstart
+
+For a copy-paste Ubuntu 22.04 setup (Docker + Nginx + Let's Encrypt) using
+`quickbusiness.co.in`, see [VPS_SETUP_UBUNTU.md](VPS_SETUP_UBUNTU.md).
