@@ -19,6 +19,9 @@ permissions:
   contents: read
   packages: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 concurrency:
   group: staging-deploy
   cancel-in-progress: true
@@ -45,12 +48,14 @@ jobs:
 
       - name: Compute image tag
         id: meta
+        shell: bash
         run: |
           TAG="${{ github.event.inputs.image_tag }}"
           if [ -z "$TAG" ]; then
             TAG="staging-${GITHUB_SHA::7}"
           fi
-          IMAGE="ghcr.io/${{ github.repository_owner }}/retailerp:$TAG"
+          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          IMAGE="ghcr.io/${OWNER_LOWER}/retailerp:$TAG"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
