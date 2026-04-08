@@ -1,5 +1,5 @@
-# Manual Docker build + optional SSH deploy.
-# Does NOT run on push — use ci.yml for that. Run from: Actions → Deploy Production → Run workflow.
+# Automatic Docker build + production deploy on push to main.
+# Also supports manual run from: Actions -> Deploy Production -> Run workflow.
 #
 # Note: Never use `secrets.*` in job-level `if:` — GitHub does not support it and the run can show
 # "No jobs were run". Use a workflow_dispatch input (below) instead.
@@ -7,6 +7,11 @@
 name: Deploy Production
 
 on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'Docs/**'
+      - '**/*.md'
   workflow_dispatch:
     inputs:
       image_tag:
@@ -22,6 +27,10 @@ on:
 permissions:
   contents: read
   packages: write
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
 
 jobs:
   build-and-push-image:
@@ -45,9 +54,16 @@ jobs:
 
       - name: Compute image tag
         id: meta
+        shell: bash
         run: |
           TAG="${{ github.event.inputs.image_tag }}"
-          if [ -z "$TAG" ]; then TAG="latest"; fi
+          if [ -z "$TAG" ]; then
+            if [ "${{ github.event_name }}" = "push" ]; then
+              TAG="prod-${GITHUB_SHA::7}"
+            else
+              TAG="latest"
+            fi
+          fi
           IMAGE="ghcr.io/${{ github.repository_owner }}/retailerp:$TAG"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
@@ -61,11 +77,36 @@ jobs:
   deploy-over-ssh:
     runs-on: ubuntu-latest
     needs: build-and-push-image
+    environment: production
     # Boolean workflow_dispatch input — safe in job if (unlike secrets.*)
     # Boolean inputs are strings 'true' / 'false' in github.event.inputs
-    if: ${{ github.event.inputs.deploy_to_server == 'true' }}
+    if: ${{ github.event_name == 'push' || github.event.inputs.deploy_to_server == 'true' }}
 
     steps:
+      - name: Validate production secrets
+        shell: bash
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_USER: ${{ secrets.PROD_USER }}
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          PROD_APP_DIR: ${{ secrets.PROD_APP_DIR }}
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+        run: |
+          set -euo pipefail
+          missing=()
+
+          [ -n "${PROD_HOST:-}" ] || missing+=("PROD_HOST")
+          [ -n "${PROD_USER:-}" ] || missing+=("PROD_USER")
+          [ -n "${PROD_SSH_KEY:-}" ] || missing+=("PROD_SSH_KEY")
+          [ -n "${PROD_APP_DIR:-}" ] || missing+=("PROD_APP_DIR")
+          [ -n "${GHCR_PAT:-}" ] || missing+=("GHCR_PAT")
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required production secrets: ${missing[*]}"
+            echo "Configure them in GitHub repository settings before auto deploy can run."
+            exit 1
+          fi
+
       - name: Deploy on server
         uses: appleboy/ssh-action@v1.2.0
         with:

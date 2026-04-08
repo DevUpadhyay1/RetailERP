@@ -75,6 +75,26 @@ Validation-only check (no container changes):
 - Runs restore/build/test and enforces a baseline line-coverage threshold.
 - Staging workflow: `.github/workflows/deploy-staging.yml`
 - Builds/pushes GHCR image and can deploy over SSH when staging secrets are configured.
+- Production workflow: `.github/workflows/deploy.yml`
+- Auto deploys on every push to `main` (docs-only changes are ignored).
+- Also supports manual run with `workflow_dispatch`.
+
+### Auto deploy flow (what happens after push)
+
+1. Push code to `main`.
+2. GitHub Actions builds and pushes image `ghcr.io/<owner>/retailerp:prod-<sha>`.
+3. Workflow SSHes to production server.
+4. Server updates `APP_IMAGE` to new tag and runs `docker compose pull app && docker compose up -d`.
+5. New container serves live traffic.
+
+If production secrets are missing, workflow fails fast with a clear message.
+
+Required production secrets:
+- `PROD_HOST`
+- `PROD_USER`
+- `PROD_SSH_KEY`
+- `PROD_APP_DIR`
+- `GHCR_PAT`
 
 Required staging secrets:
 - `STAGING_HOST`
