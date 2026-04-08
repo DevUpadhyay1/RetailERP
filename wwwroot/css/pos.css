@@ -932,6 +932,55 @@
 }
 
 @media (max-width: 768px) {
+    .pos-body {
+        height: auto;
+        min-height: 100vh;
+        overflow: auto;
+    }
+
+    .pos-topbar {
+        height: auto;
+        padding: 6px .6rem;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: .4rem;
+    }
+
+    .topbar-fields {
+        width: 100%;
+        overflow-x: auto;
+        justify-content: flex-start;
+        padding-bottom: 2px;
+    }
+
+    .tf {
+        flex: 0 0 auto;
+        min-width: 86px;
+        border-right: 1px solid rgba(255,255,255,.1);
+    }
+
+    .pos-customer-bar {
+        padding: 6px .6rem;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: .5rem;
+    }
+
+    .cb-fields {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: .5rem;
+    }
+
+    .cb-f {
+        flex: 1 1 145px;
+    }
+
+    .cb-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
     .pos-main { flex-direction: column; }
     .pos-right {
         width: 100%; min-width: 100%; max-width: 100%;

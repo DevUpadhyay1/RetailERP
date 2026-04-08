@@ -5,11 +5,52 @@ document.addEventListener('DOMContentLoaded', function () {
 	if (shell && toggle) {
 		var storageKey = 'retailerpsidebar:collapsed';
 		var isCollapsed = localStorage.getItem(storageKey) === '1';
+		var isMobile = function () { return window.matchMedia('(max-width: 767px)').matches; };
+
 		if (isCollapsed) shell.classList.add('sidebar-collapsed');
 
+		var closeMobileNav = function () {
+			shell.classList.remove('mobile-nav-open');
+			toggle.setAttribute('aria-expanded', 'false');
+		};
+
 		toggle.addEventListener('click', function () {
+			if (isMobile()) {
+				var willOpen = !shell.classList.contains('mobile-nav-open');
+				shell.classList.toggle('mobile-nav-open', willOpen);
+				toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+				return;
+			}
+
 			shell.classList.toggle('sidebar-collapsed');
 			localStorage.setItem(storageKey, shell.classList.contains('sidebar-collapsed') ? '1' : '0');
+		});
+
+		document.addEventListener('click', function (e) {
+			if (!isMobile() || !shell.classList.contains('mobile-nav-open')) return;
+
+			var sidebar = document.getElementById('appSidebar');
+			var target = e.target;
+			if (!target) return;
+
+			var clickedInsideSidebar = !!(sidebar && sidebar.contains(target));
+			var clickedToggle = !!toggle.contains(target);
+			if (!clickedInsideSidebar && !clickedToggle) closeMobileNav();
+		});
+
+		document.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape') closeMobileNav();
+		});
+
+		window.addEventListener('resize', function () {
+			if (!isMobile()) closeMobileNav();
+		});
+
+		var navLinks = document.querySelectorAll('.app-sidebar a[href]');
+		navLinks.forEach(function (link) {
+			link.addEventListener('click', function () {
+				if (isMobile()) closeMobileNav();
+			});
 		});
 	}
 

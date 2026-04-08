@@ -924,17 +924,119 @@ body.dark-mode .toast { background: var(--erp-bg-card); color: var(--erp-text); 
 .kpi-animate { transition: all .3s ease; }
 
 /* ── Responsive ───────────────────────────────────────────── */
-@media (max-width: 767px) {
-    .app-sidebar { width: var(--erp-sidebar-w-collapsed); }
-    .app-sidebar .sidebar-section,
-    .app-sidebar .sidebar-link span,
-    .app-sidebar .px-3.py-3.border-bottom span,
-    .app-sidebar .small span { display: none; }
-    .app-sidebar .sidebar-link { justify-content: center; gap: 0; }
+@media (max-width: 991px) {
+    .app-topbar .container-fluid {
+        gap: .5rem !important;
+        flex-wrap: nowrap;
+    }
 
-    /* Keep Bootstrap collapse toggles usable; do not force .collapse display (breaks data-bs-toggle). */
-    .app-sidebar .sidebar-group-toggle { padding-left: 8px; padding-right: 8px; justify-content: center; }
-    .app-sidebar .sidebar-group-toggle > span:not(.sidebar-icon):not(.sidebar-chevron) { display: none; }
-    .app-sidebar .sidebar-group .collapse .sidebar-link { justify-content: center; gap: 0; padding-left: 10px; }
-    .app-sidebar .sidebar-group .collapse .sidebar-link span { display: none; }
+    .app-topbar form[role="search"] {
+        max-width: 260px !important;
+    }
+
+    .app-footer {
+        padding: 8px 12px;
+        font-size: .74rem;
+    }
+}
+
+@media (max-width: 767px) {
+    .app-shell {
+        position: relative;
+    }
+
+    .app-shell::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, .45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--erp-transition-fast);
+        z-index: 1088;
+    }
+
+    .app-shell.mobile-nav-open::after {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .app-sidebar {
+        position: fixed;
+        top: 0;
+        left: calc(-1 * var(--erp-sidebar-w));
+        width: var(--erp-sidebar-w);
+        min-height: 100dvh;
+        z-index: 1089;
+        box-shadow: var(--erp-shadow-lg);
+        transition: left .22s cubic-bezier(.4, 0, .2, 1);
+        overflow-y: auto;
+    }
+
+    .app-shell.mobile-nav-open .app-sidebar {
+        left: 0;
+    }
+
+    .app-main {
+        width: 100%;
+        min-width: 0;
+    }
+
+    /* On mobile, keep full sidebar labels (no forced collapsed-only menu). */
+    .app-shell.sidebar-collapsed .app-sidebar {
+        width: var(--erp-sidebar-w);
+    }
+
+    .app-shell.sidebar-collapsed .app-sidebar .sidebar-section,
+    .app-shell.sidebar-collapsed .app-sidebar .sidebar-link span,
+    .app-shell.sidebar-collapsed .app-sidebar .sidebar-brand-text,
+    .app-shell.sidebar-collapsed .app-sidebar .px-3.py-3.border-bottom span,
+    .app-shell.sidebar-collapsed .app-sidebar .small span {
+        display: initial;
+    }
+
+    .app-shell.sidebar-collapsed .app-sidebar .sidebar-link {
+        justify-content: flex-start;
+        gap: 10px;
+    }
+
+    .app-shell.sidebar-collapsed .app-sidebar .sidebar-group-toggle {
+        display: flex;
+    }
+
+    .app-shell.sidebar-collapsed .app-sidebar .sidebar-group .collapse {
+        display: block;
+        height: auto;
+        border-left: 2px solid rgba(59, 130, 246, .4);
+        margin-left: 16px;
+        padding-left: 2px;
+    }
+
+    .app-shell.sidebar-collapsed .app-sidebar .sidebar-group .collapse .sidebar-link {
+        justify-content: flex-start;
+        gap: 10px;
+        padding-left: 8px;
+    }
+
+    .app-shell.sidebar-collapsed .app-sidebar .sidebar-group .collapse .sidebar-link span {
+        display: inline;
+    }
+
+    .app-topbar {
+        height: 52px;
+    }
+
+    .app-topbar form[role="search"] {
+        display: none;
+    }
+
+    .app-topbar .ms-auto {
+        margin-left: auto !important;
+        gap: .35rem !important;
+    }
+
+    #mainContent.container-fluid {
+        padding-left: .6rem !important;
+        padding-right: .6rem !important;
+    }
 }
