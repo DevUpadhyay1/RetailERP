@@ -47,5 +47,6 @@ This update covers post-deployment stabilization for the Cloudflare tunnel setup
 - Removed accidental artifact: `..env.production`.
 
 ## Notes
-- `ALLOW_INSECURE_COOKIES_FOR_LOCAL_HTTP=true` remains a tunnel-mode compatibility toggle and should be disabled (`false`) when moving to a true HTTPS-terminated production ingress path.
+- `ALLOW_INSECURE_COOKIES_FOR_LOCAL_HTTP` has been restored to `false` after fixing forwarded-header proxy trust.
+- Trusted forwarded proxy was aligned to the current Docker gateway to preserve HTTPS scheme in redirects.
 - Cloudflare DNS and tunnel changes may require local DNS cache flush on developer machines during propagation windows.
