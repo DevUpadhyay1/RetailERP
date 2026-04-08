@@ -44,12 +44,17 @@ jobs:
       - name: Deploy stack
         shell: powershell
         run: |
-          docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+          $envFile = 'C:\7th_Semester\RetailERP\.env.production'
+          if (-not (Test-Path $envFile)) {
+            throw "Production env file not found at $envFile"
+          }
+          docker compose --env-file $envFile -f docker-compose.prod.yml up -d
 
       - name: Show deployment status
         shell: powershell
         run: |
-          docker compose --env-file .env.production -f docker-compose.prod.yml ps
+          $envFile = 'C:\7th_Semester\RetailERP\.env.production'
+          docker compose --env-file $envFile -f docker-compose.prod.yml ps
 
       - name: Cleanup dangling images
         shell: powershell
