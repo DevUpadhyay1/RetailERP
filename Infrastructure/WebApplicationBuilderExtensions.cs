@@ -300,6 +300,7 @@ public static class WebApplicationBuilderExtensions
             healthChecks.AddRedis(redisConn, name: "redis", tags: new[] { "cache", "ready" });
 
         builder.Services.AddScoped<InvoiceService>();
+        builder.Services.AddScoped<InvoiceNumberingService>();
         builder.Services.AddScoped<PurchaseService>();
         builder.Services.AddScoped<PosBillingService>();
         builder.Services.AddScoped<LoyaltyService>();

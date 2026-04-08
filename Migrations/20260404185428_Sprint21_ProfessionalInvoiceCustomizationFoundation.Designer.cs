@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RetailERP.Data;
 
@@ -11,9 +12,11 @@ using RetailERP.Data;
 namespace RetailERP.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260404185428_Sprint21_ProfessionalInvoiceCustomizationFoundation")]
+    partial class Sprint21_ProfessionalInvoiceCustomizationFoundation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1200,9 +1203,6 @@ namespace RetailERP.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("BillTemplateId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid?>("CompanyId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1260,8 +1260,6 @@ namespace RetailERP.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("InvoiceId");
-
-                    b.HasIndex("BillTemplateId");
 
                     b.HasIndex("CreatedByUserId");
 
@@ -3977,11 +3975,6 @@ namespace RetailERP.Migrations
 
             modelBuilder.Entity("RetailERP.Data.Entities.Invoice", b =>
                 {
-                    b.HasOne("RetailERP.Data.Entities.BillTemplate", "BillTemplate")
-                        .WithMany()
-                        .HasForeignKey("BillTemplateId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetailERP.Data.Entities.Company", null)
                         .WithMany()
                         .HasForeignKey("CompanyId")
@@ -4013,8 +4006,6 @@ namespace RetailERP.Migrations
                         .HasForeignKey("WarehouseId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("BillTemplate");
 
                     b.Navigation("Customer");
 

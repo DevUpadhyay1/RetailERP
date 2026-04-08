@@ -1,0 +1,81 @@
+@model RetailERP.Controllers.InvoiceNumberingRulesController.UpsertVm
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <label class="form-label">Document Type</label>
+        <select class="form-select" asp-for="DocumentType" asp-items="ViewBag.DocumentTypes"></select>
+        <span asp-validation-for="DocumentType" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label">Scope</label>
+        <select class="form-select" asp-for="Scope" id="scopeSelect">
+            <option value="@((byte)RetailERP.Data.Entities.InvoiceTemplateScope.Company)">Company</option>
+            <option value="@((byte)RetailERP.Data.Entities.InvoiceTemplateScope.Store)">Store Override</option>
+        </select>
+    </div>
+
+    <div class="col-md-4" id="storeWrap">
+        <label class="form-label">Store</label>
+        <select class="form-select" asp-for="StoreId" asp-items="ViewBag.Stores">
+            <option value="">-- Select Store --</option>
+        </select>
+        <span asp-validation-for="StoreId" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-3">
+        <label class="form-label">Prefix</label>
+        <input class="form-control" asp-for="Prefix" maxlength="20" placeholder="TAX / CN / INV" />
+        <span asp-validation-for="Prefix" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-3">
+        <label class="form-label">Suffix (Optional)</label>
+        <input class="form-control" asp-for="Suffix" maxlength="20" placeholder="BR1" />
+        <span asp-validation-for="Suffix" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-3">
+        <label class="form-label">Number Width</label>
+        <input class="form-control" asp-for="NumberWidth" type="number" min="3" max="8" />
+        <span asp-validation-for="NumberWidth" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-3">
+        <label class="form-label">Next Number</label>
+        <input class="form-control" asp-for="NextNumber" type="number" min="1" />
+        <span asp-validation-for="NextNumber" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label">Reset Policy</label>
+        <select class="form-select" asp-for="ResetPolicy" asp-items="ViewBag.ResetPolicies"></select>
+        <span asp-validation-for="ResetPolicy" class="text-danger"></span>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label">Last Reset Date (Optional)</label>
+        <input class="form-control" asp-for="LastResetAtUtc" type="date" />
+    </div>
+
+    <div class="col-md-4 d-flex align-items-end">
+        <div class="form-check">
+            <input class="form-check-input" asp-for="IsActive" />
+            <label class="form-check-label" asp-for="IsActive">Set as active rule</label>
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    const scopeSelect = document.getElementById('scopeSelect');
+    const storeWrap = document.getElementById('storeWrap');
+    const companyValue = '@((byte)RetailERP.Data.Entities.InvoiceTemplateScope.Company)';
+    const toggleStore = () => {
+        if (!scopeSelect || !storeWrap) return;
+        storeWrap.style.display = scopeSelect.value === companyValue ? 'none' : '';
+    };
+    scopeSelect?.addEventListener('change', toggleStore);
+    toggleStore();
+})();
+</script>

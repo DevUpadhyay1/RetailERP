@@ -23,6 +23,17 @@ public class Invoice : IAuditableEntity, ITenantEntity
     [DataType(DataType.Date)]
     public DateTime InvoiceDate { get; set; } = DateTime.Today;
 
+    public InvoiceDocumentType DocumentType { get; set; } = InvoiceDocumentType.TaxInvoice;
+
+    [DataType(DataType.Date)]
+    public DateTime? DueDate { get; set; }
+
+    [StringLength(30)]
+    public string? ReferenceInvoiceNo { get; set; }
+
+    public Guid? BillTemplateId { get; set; }
+    public BillTemplate? BillTemplate { get; set; }
+
     public Guid? EmployeeId { get; set; }
     public Employee? Employee { get; set; }
 

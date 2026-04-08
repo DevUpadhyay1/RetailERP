@@ -13,24 +13,66 @@ public class InvoiceService
     private readonly AuditService _audit;
     private readonly IHubContext<RetailHub> _hub;
     private readonly CacheService _cache;
+    private readonly InvoiceNumberingService _numbering;
+    private readonly ITenantProvider _tenant;
 
 
-    public InvoiceService(ApplicationDbContext db, AuditService audit, IHubContext<RetailHub> hub, CacheService cache)
+    public InvoiceService(
+        ApplicationDbContext db,
+        AuditService audit,
+        IHubContext<RetailHub> hub,
+        CacheService cache,
+        InvoiceNumberingService numbering,
+        ITenantProvider tenant)
     {
         _db = db;
         _audit = audit;
         _hub = hub;
         _cache = cache;
+        _numbering = numbering;
+        _tenant = tenant;
     }
-    public async Task<Guid> CreateDraftAsync(Guid customerId, Guid warehouseId, DateTime invoiceDate, Guid? employeeId)
+    public async Task<Guid> CreateDraftAsync(
+        Guid customerId,
+        Guid warehouseId,
+        DateTime invoiceDate,
+        Guid? employeeId,
+        InvoiceDocumentType documentType = InvoiceDocumentType.TaxInvoice,
+        DateTime? dueDate = null,
+        string? referenceInvoiceNo = null)
     {
+        var warehouseMeta = await _db.Warehouses
+            .AsNoTracking()
+            .Where(w => w.WarehouseId == warehouseId)
+            .Select(w => new { w.StoreId, w.CompanyId })
+            .FirstOrDefaultAsync()
+            ?? throw new InvalidOperationException("Warehouse not found.");
+
+        var companyId = _tenant.CompanyId ?? warehouseMeta.CompanyId
+            ?? throw new InvalidOperationException("Tenant company context not found for invoice numbering.");
+
+        var nextInvoiceNo = await _numbering.GenerateNextInvoiceNoAsync(
+            companyId,
+            warehouseMeta.StoreId,
+            documentType,
+            invoiceDate);
+
+        var preferredTemplateId = await ResolveInvoiceTemplateIdAsync(
+            companyId,
+            warehouseMeta.StoreId,
+            documentType);
+
         var invoice = new Invoice
         {
             InvoiceId = Guid.NewGuid(),
-            InvoiceNo = await GenerateInvoiceNoAsync(invoiceDate),
+            InvoiceNo = nextInvoiceNo,
             CustomerId = customerId,
             WarehouseId = warehouseId,
             InvoiceDate = invoiceDate,
+            DueDate = dueDate,
+            DocumentType = documentType,
+            ReferenceInvoiceNo = string.IsNullOrWhiteSpace(referenceInvoiceNo) ? null : referenceInvoiceNo.Trim(),
+            BillTemplateId = preferredTemplateId,
             EmployeeId = employeeId,
             Status = 1,
             TotalAmount = 0
@@ -201,24 +243,47 @@ public class InvoiceService
         foreach (var k in keys) await _cache.RemoveAsync(k);
     }
 
-    private async Task<string> GenerateInvoiceNoAsync(DateTime date)
+    private async Task<Guid?> ResolveInvoiceTemplateIdAsync(Guid companyId, Guid? storeId, InvoiceDocumentType documentType)
     {
-        var year = date.Year;
-        var prefix = $"INV-{year}-";
+        var templateQuery = _db.BillTemplates
+            .AsNoTracking()
+            .Where(t =>
+                t.CompanyId == companyId &&
+                t.TemplateType == 2 &&
+                t.DocumentType == documentType);
 
-        var last = await _db.Invoices
-            .Where(x => x.InvoiceNo.StartsWith(prefix))
-            .OrderByDescending(x => x.InvoiceNo)
-            .Select(x => x.InvoiceNo)
-            .FirstOrDefaultAsync();
+        BillTemplate? template = null;
 
-        var next = 1;
-        if (!string.IsNullOrWhiteSpace(last))
+        if (storeId.HasValue)
         {
-            var numPart = last.Replace(prefix, "");
-            if (int.TryParse(numPart, out var n)) next = n + 1;
+            template = await templateQuery
+                .Where(t =>
+                    t.TemplateScope == InvoiceTemplateScope.Store &&
+                    t.StoreId == storeId.Value &&
+                    t.IsDefault)
+                .OrderByDescending(t => t.UpdatedAtUtc)
+                .FirstOrDefaultAsync();
         }
 
-        return $"{prefix}{next:0000}";
+        template ??= await templateQuery
+            .Where(t => t.TemplateScope == InvoiceTemplateScope.Company && t.IsDefault)
+            .OrderByDescending(t => t.UpdatedAtUtc)
+            .FirstOrDefaultAsync();
+
+        if (storeId.HasValue)
+        {
+            template ??= await templateQuery
+                .Where(t => t.TemplateScope == InvoiceTemplateScope.Store && t.StoreId == storeId.Value)
+                .OrderByDescending(t => t.UpdatedAtUtc)
+                .FirstOrDefaultAsync();
+        }
+
+        template ??= await templateQuery
+            .Where(t => t.TemplateScope == InvoiceTemplateScope.Company)
+            .OrderByDescending(t => t.UpdatedAtUtc)
+            .FirstOrDefaultAsync();
+
+        return template?.BillTemplateId;
     }
+
 }

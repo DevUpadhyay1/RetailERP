@@ -56,6 +56,14 @@ public class Company
     [StringLength(300)]
     public string? LogoPath { get; set; }
 
+    /// <summary>Professional invoice: optional authorized signature image.</summary>
+    [StringLength(300)]
+    public string? SignaturePath { get; set; }
+
+    /// <summary>Professional invoice: optional company stamp image.</summary>
+    [StringLength(300)]
+    public string? StampPath { get; set; }
+
     /// <summary>Sprint 16 – Multi-tenant gateway selection.</summary>
     public PaymentGatewayProvider GatewayProvider { get; set; } = PaymentGatewayProvider.None;
 

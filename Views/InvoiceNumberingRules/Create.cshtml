@@ -1,0 +1,21 @@
+@model RetailERP.Controllers.InvoiceNumberingRulesController.UpsertVm
+@{
+    ViewData["Title"] = "Create Numbering Rule";
+}
+
+<h2 class="mb-3">Create Numbering Rule</h2>
+
+<form asp-action="Create" method="post" class="card">
+    <div class="card-body">
+        <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+        <partial name="_Form" model="Model" />
+    </div>
+    <div class="card-footer d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Save Rule</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

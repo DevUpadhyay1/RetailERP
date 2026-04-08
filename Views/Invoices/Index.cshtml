@@ -74,6 +74,7 @@
                             <a class="text-decoration-none" asp-action="Index" asp-route-q="@q" asp-route-status="@status" asp-route-sort="date" asp-route-dir="@ToggleDir("date")" asp-route-page="1" asp-route-pageSize="@pageSize">Date</a>
                         </th>
                         <th>Customer</th>
+                        <th>Type</th>
                         <th>Employee</th>
                         <th>Warehouse</th>
                         <th class="text-end">
@@ -88,7 +89,7 @@
                 <tbody>
                     @if (total == 0)
                     {
-                        <tr><td colspan="8" class="p-4 text-muted">No invoices yet.</td></tr>
+                        <tr><td colspan="9" class="p-4 text-muted">No invoices yet.</td></tr>
                     }
                     else
                     {
@@ -98,6 +99,7 @@
                                 <td>@inv.InvoiceNo</td>
                                 <td>@inv.InvoiceDate.ToString("yyyy-MM-dd")</td>
                                 <td>@(inv.Customer?.Name ?? "-")</td>
+                                <td>@inv.DocumentType</td>
                                 <td>@(inv.Employee is null ? "-" : $"{inv.Employee.EmployeeCode} - {inv.Employee.FirstName} {inv.Employee.LastName}")</td>
                                 <td>@(inv.Warehouse?.Name ?? "-")</td>
                                 <td class="text-end">@inv.TotalAmount.ToString("0.00")</td>
@@ -116,7 +118,10 @@
                                     }
                                 </td>
                                 <td class="text-end">
-                                    <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@inv.InvoiceId">Open</a>
+                                    <div class="d-inline-flex gap-1">
+                                        <a class="btn btn-sm btn-outline-secondary" asp-action="Pdf" asp-route-id="@inv.InvoiceId" target="_blank">PDF</a>
+                                        <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@inv.InvoiceId">Open</a>
+                                    </div>
                                 </td>
                             </tr>
                         }

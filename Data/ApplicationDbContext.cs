@@ -76,6 +76,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     // Sprint 6 – Bill Templates
     public DbSet<BillTemplate> BillTemplates => Set<BillTemplate>();
+    public DbSet<InvoiceNumberingRule> InvoiceNumberingRules => Set<InvoiceNumberingRule>();
 
     // Sprint 7 – Promotions
     public DbSet<Promotion> Promotions => Set<Promotion>();
@@ -144,11 +145,35 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .HasIndex(x => new { x.CompanyId, x.StoreCode })
             .IsUnique();
 
-        // Sprint 6: Only one default template per type per company
+        // Sprint 6+: Only one default template per scope+type+document-type
         builder.Entity<BillTemplate>()
-            .HasIndex(x => new { x.CompanyId, x.TemplateType, x.IsDefault })
+            .HasIndex(x => new { x.CompanyId, x.TemplateType, x.DocumentType, x.TemplateScope, x.StoreId, x.IsDefault })
             .HasFilter("[IsDefault] = 1")
             .IsUnique();
+
+        builder.Entity<BillTemplate>()
+            .HasOne(x => x.Company)
+            .WithMany()
+            .HasForeignKey(x => x.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<BillTemplate>()
+            .HasOne(x => x.Store)
+            .WithMany()
+            .HasForeignKey(x => x.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Tenant-configurable numbering rules for professional invoice flows
+        builder.Entity<InvoiceNumberingRule>()
+            .HasIndex(x => new { x.CompanyId, x.StoreId, x.DocumentType, x.IsActive })
+            .HasFilter("[IsActive] = 1")
+            .IsUnique();
+
+        builder.Entity<InvoiceNumberingRule>()
+            .HasOne(x => x.Store)
+            .WithMany()
+            .HasForeignKey(x => x.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<Warehouse>()
             .HasIndex(x => new { x.CompanyId, x.Name })
@@ -174,10 +199,19 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .IsUnique();
 
         builder.Entity<Invoice>()
+            .HasIndex(x => x.BillTemplateId);
+
+        builder.Entity<Invoice>()
     .HasOne(x => x.Warehouse)
     .WithMany()
     .HasForeignKey(x => x.WarehouseId)
     .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Invoice>()
+            .HasOne(x => x.BillTemplate)
+            .WithMany()
+            .HasForeignKey(x => x.BillTemplateId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Optional: connect invoice/purchase to employee for attribution
         builder.Entity<Invoice>()
@@ -776,6 +810,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureCompanyFk<LoyaltyCard>(builder);
         ConfigureCompanyFk<LoyaltyTransaction>(builder);
         ConfigureCompanyFk<Coupon>(builder);
+        ConfigureCompanyFk<InvoiceNumberingRule>(builder);
         ConfigureCompanyFk<EodReport>(builder);
         ConfigureCompanyFk<SyncLog>(builder);
         ConfigureCompanyFk<Promotion>(builder);

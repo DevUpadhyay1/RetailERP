@@ -18,7 +18,7 @@
         </select>
         <button id="btnApplyPreset" class="btn btn-outline-primary btn-sm"><i class="bi bi-stars me-1"></i>Apply Preset</button>
         <button id="btnSave" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Save</button>
-        <a asp-action="PreviewReceipt" asp-route-id="@Model.BillTemplateId" class="btn btn-outline-info btn-sm" target="_blank"><i class="bi bi-file-pdf me-1"></i>Preview PDF</a>
+        <a asp-action="@(Model.TemplateType == 2 ? "PreviewInvoice" : "PreviewReceipt")" asp-route-id="@Model.BillTemplateId" class="btn btn-outline-info btn-sm" target="_blank"><i class="bi bi-file-pdf me-1"></i>Preview PDF</a>
         <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
     </div>
 </div>
@@ -58,6 +58,26 @@
                 }
                 <input type="file" id="logoFile" accept=".png,.jpg,.jpeg,.webp" class="form-control form-control-sm mb-1" />
                 <button id="btnUploadLogo" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-upload me-1"></i>Upload</button>
+            </div>
+        </div>
+        <div class="card shadow-sm mt-3">
+            <div class="card-header py-2 fw-semibold"><i class="bi bi-pen me-1"></i>Signature / Stamp</div>
+            <div class="card-body p-2">
+                <label class="form-label small mb-1">Signature</label>
+                @if (!string.IsNullOrEmpty(company?.SignaturePath))
+                {
+                    <img src="~/@company.SignaturePath" class="img-fluid border rounded d-block mx-auto mb-2" style="max-height:55px;" />
+                }
+                <input type="file" id="signatureFile" accept=".png,.jpg,.jpeg,.webp" class="form-control form-control-sm mb-1" />
+                <button id="btnUploadSignature" class="btn btn-sm btn-outline-primary w-100 mb-2"><i class="bi bi-upload me-1"></i>Upload Signature</button>
+
+                <label class="form-label small mb-1">Stamp</label>
+                @if (!string.IsNullOrEmpty(company?.StampPath))
+                {
+                    <img src="~/@company.StampPath" class="img-fluid border rounded d-block mx-auto mb-2" style="max-height:55px;" />
+                }
+                <input type="file" id="stampFile" accept=".png,.jpg,.jpeg,.webp" class="form-control form-control-sm mb-1" />
+                <button id="btnUploadStamp" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-upload me-1"></i>Upload Stamp</button>
             </div>
         </div>
     </div>
@@ -173,23 +193,23 @@ const PRESETS={
     modern:[
         {type:'logo',props:{maxHeight:50,align:'center'}},
         {type:'header_row',props:{leftText:'',centerMode:'logo',centerText:'',rightText:'',fontSize:9,logoHeight:28,showSeparator:false,marginTop:0,marginBottom:2}},
-        {type:'store_header',props:{showGst:true,headerText:''}},
+        {type:'store_header',props:{showAddress:true,showPhone:true,showGst:true,showTitle:true,showSeparator:true,headerText:''}},
         {type:'social_row',props:{instagram:'',whatsapp:'',facebook:'',xhandle:'',youtube:'',phone:'',email:'',website:'',align:'center',separator:' | ',fontSize:9,marginTop:0,marginBottom:2}},
-        {type:'bill_info',props:{showCustomerPhone:true,showCustomerEmail:false,showCashier:true}},
-        {type:'items_table',props:{showHsn:false}},
+        {type:'bill_info',props:{showInvoiceNo:true,showInvoiceDate:true,showDocumentType:true,showDueDate:true,showReferenceInvoice:true,showCustomerName:true,showCustomerPhone:true,showCustomerEmail:false,showWarehouse:true,showCashier:false,showSeparator:true}},
+        {type:'items_table',props:{showSerial:true,showItem:true,showSku:false,showHsn:false,showQty:true,showRate:true,showDiscountColumn:false,showTaxPercent:true,showTaxAmount:false,showAmount:true,labelSerial:'#',labelItem:'Item',labelSku:'SKU',labelHsn:'HSN',labelQty:'Qty',labelRate:'Rate',labelDiscount:'Disc',labelTaxPercent:'Tax%',labelTaxAmount:'Tax Amt',labelAmount:'Amt',widthSerial:20,widthItem:4,widthSku:36,widthHsn:40,widthQty:30,widthRate:55,widthDiscount:48,widthTaxPercent:45,widthTaxAmount:52,widthAmount:65,showHeaderBackground:true,headerBgColor:'#f2f2f2',headerTextColor:'#111111',showGrid:false,gridColor:'#d9d9d9',zebraRows:false,zebraColor:'#fafafa',showDescriptionRow:true,showBottomSeparator:true}},
         {type:'totals',props:{showDiscount:true}},
         {type:'payments',props:{}},
         {type:'tax_summary',props:{}},
-        {type:'footer',props:{text:'Thank you for shopping!',showItemCount:true}}
+        {type:'footer',props:{text:'Thank you for shopping!',showItemCount:true,showTotalInWords:true,showComputerGenerated:true}}
     ],
     classic:[
         {type:'logo',props:{maxHeight:52,align:'center'}},
         {type:'header_row',props:{leftText:'',centerMode:'logo',centerText:'',rightText:'',fontSize:9,logoHeight:30,showSeparator:true,marginTop:0,marginBottom:2}},
-        {type:'store_header',props:{showGst:true,headerText:'RETAIL INVOICE'}},
+        {type:'store_header',props:{showAddress:true,showPhone:true,showGst:true,showTitle:true,showSeparator:true,headerText:'RETAIL INVOICE'}},
         {type:'social_row',props:{instagram:'',whatsapp:'',facebook:'',xhandle:'',youtube:'',phone:'',email:'',website:'',align:'center',separator:' | ',fontSize:9,marginTop:0,marginBottom:2}},
-        {type:'bill_info',props:{showCustomerPhone:true,showCustomerEmail:false,showCashier:true}},
+        {type:'bill_info',props:{showInvoiceNo:true,showInvoiceDate:true,showDocumentType:true,showDueDate:true,showReferenceInvoice:true,showCustomerName:true,showCustomerPhone:true,showCustomerEmail:false,showWarehouse:true,showCashier:false,showSeparator:true}},
         {type:'separator',props:{style:'solid',thickness:1,color:'#555555'}},
-        {type:'items_table',props:{showHsn:true}},
+        {type:'items_table',props:{showSerial:true,showItem:true,showSku:false,showHsn:true,showQty:true,showRate:true,showDiscountColumn:false,showTaxPercent:true,showTaxAmount:false,showAmount:true,labelSerial:'#',labelItem:'Item',labelSku:'SKU',labelHsn:'HSN',labelQty:'Qty',labelRate:'Rate',labelDiscount:'Disc',labelTaxPercent:'Tax%',labelTaxAmount:'Tax Amt',labelAmount:'Amt',widthSerial:20,widthItem:4,widthSku:36,widthHsn:40,widthQty:30,widthRate:55,widthDiscount:48,widthTaxPercent:45,widthTaxAmount:52,widthAmount:65,showHeaderBackground:true,headerBgColor:'#f2f2f2',headerTextColor:'#111111',showGrid:true,gridColor:'#d9d9d9',zebraRows:true,zebraColor:'#fafafa',showDescriptionRow:true,showBottomSeparator:true}},
         {type:'separator',props:{style:'solid',thickness:1,color:'#555555'}},
         {type:'totals',props:{showDiscount:true}},
         {type:'payments',props:{}},
@@ -199,7 +219,7 @@ const PRESETS={
         {type:'text_block',props:{text:'Terms & Conditions:\n1. Goods once sold will not be taken back.\n2. Keep this invoice for exchange/warranty as per policy.',fontSize:9,fontFamily:'sans-serif',align:'left',bold:false,italic:false,color:'#333333'}},
         {type:'spacer',props:{height:8}},
         {type:'text_block',props:{text:'Receiver Signature                                Authorised Signatory',fontSize:9,fontFamily:'sans-serif',align:'left',bold:false,italic:false,color:'#444444'}},
-        {type:'footer',props:{text:'Thank you for your business!',showItemCount:true}}
+        {type:'footer',props:{text:'Thank you for your business!',showItemCount:true,showTotalInWords:true,showComputerGenerated:true}}
     ]
 };
 
@@ -207,22 +227,33 @@ let comps=[], sel=null, uid=0;
 const gid=()=>'c'+(++uid);
 
 function dp(t){
-    const m={
-        logo:{maxHeight:50,align:'center',marginTop:0,marginBottom:2},
-        store_header:{showGst:true,headerText:'',marginTop:0,marginBottom:2},
-        bill_info:{marginTop:0,marginBottom:2},
-        items_table:{showHsn:false,marginTop:0,marginBottom:2},
-        totals:{showDiscount:true,marginTop:0,marginBottom:2},
-        payments:{marginTop:0,marginBottom:2},
-        tax_summary:{marginTop:0,marginBottom:2},
-        footer:{text:'Thank you for shopping!',showItemCount:true,marginTop:0,marginBottom:2},
-        header_row:{leftText:'',centerMode:'logo',centerText:'',rightText:'',fontSize:9,logoHeight:28,showSeparator:false,marginTop:0,marginBottom:2},
-        social_row:{instagram:'',whatsapp:'',facebook:'',xhandle:'',youtube:'',phone:'',email:'',website:'',align:'center',separator:' | ',fontSize:9,marginTop:0,marginBottom:2},
-        text_block:{text:'Your text here',fontSize:12,fontFamily:'sans-serif',align:'center',bold:false,italic:false,color:'#000000',marginTop:0,marginBottom:2},
-        separator:{style:'dashed',thickness:1,color:'#999999',marginTop:0,marginBottom:2},
-        spacer:{height:12,marginTop:0,marginBottom:0}
+    const styleBase={
+        visibleWhen:'always',
+        padding:0,
+        backgroundColor:'#ffffff',
+        borderWidth:0,
+        borderColor:'#cccccc',
+        borderStyle:'solid',
+        marginTop:0,
+        marginBottom:2
     };
-    return JSON.parse(JSON.stringify(m[t]||{}));
+
+    const m={
+        logo:{maxHeight:50,align:'center'},
+        store_header:{showAddress:true,showPhone:true,showGst:true,showTitle:true,showSeparator:true,headerText:''},
+        bill_info:{showInvoiceNo:true,showInvoiceDate:true,showDocumentType:true,showDueDate:true,showReferenceInvoice:true,showCustomerName:true,showCustomerPhone:true,showCustomerEmail:false,showWarehouse:true,showCashier:false,showSeparator:true},
+        items_table:{showSerial:true,showItem:true,showSku:false,showHsn:false,showQty:true,showRate:true,showDiscountColumn:false,showTaxPercent:true,showTaxAmount:false,showAmount:true,labelSerial:'#',labelItem:'Item',labelSku:'SKU',labelHsn:'HSN',labelQty:'Qty',labelRate:'Rate',labelDiscount:'Disc',labelTaxPercent:'Tax%',labelTaxAmount:'Tax Amt',labelAmount:'Amt',widthSerial:20,widthItem:4,widthSku:36,widthHsn:40,widthQty:30,widthRate:55,widthDiscount:48,widthTaxPercent:45,widthTaxAmount:52,widthAmount:65,showHeaderBackground:true,headerBgColor:'#f2f2f2',headerTextColor:'#111111',showGrid:false,gridColor:'#d9d9d9',zebraRows:false,zebraColor:'#fafafa',showDescriptionRow:true,showBottomSeparator:true},
+        totals:{showDiscount:true},
+        payments:{},
+        tax_summary:{},
+        footer:{text:'Thank you for shopping!',showItemCount:true,showTotalInWords:true,showComputerGenerated:true},
+        header_row:{leftText:'',centerMode:'logo',centerText:'',rightText:'',fontSize:9,logoHeight:28,showSeparator:false},
+        social_row:{instagram:'',whatsapp:'',facebook:'',xhandle:'',youtube:'',phone:'',email:'',website:'',align:'center',separator:' | ',fontSize:9},
+        text_block:{text:'Your text here',fontSize:12,fontFamily:'sans-serif',align:'center',bold:false,italic:false,color:'#000000'},
+        separator:{style:'dashed',thickness:1,color:'#999999'},
+        spacer:{height:12,marginBottom:0}
+    };
+    return JSON.parse(JSON.stringify(Object.assign({}, styleBase, m[t]||{})));
 }
 
 // Load saved
@@ -328,20 +359,106 @@ function renderWysiwyg(comp){
         }
         case 'store_header':{
             let h=`<div class="c b" style="font-size:13px">${esc(CO.name)}</div>`;
-            if(CO.addr)h+=`<div class="c sm">${esc(CO.addr)}</div>`;
-            if(CO.phone)h+=`<div class="c sm">Ph: ${esc(CO.phone)}</div>`;
-            if(p.showGst&&CO.gst)h+=`<div class="c sm">GSTIN: ${esc(CO.gst)}</div>`;
-            if(p.headerText)h+=`<div class="c sm">${esc(p.headerText)}</div>`;
-            h+='<hr/>';return applySpacing(h, p);
+            if((p.showAddress ?? true) && CO.addr)h+=`<div class="c sm">${esc(CO.addr)}</div>`;
+            if((p.showPhone ?? true) && CO.phone)h+=`<div class="c sm">Ph: ${esc(CO.phone)}</div>`;
+            if((p.showGst ?? true)&&CO.gst)h+=`<div class="c sm">GSTIN: ${esc(CO.gst)}</div>`;
+            if(p.showTitle !== false){
+                h+=`<div class="c sm b">${esc(p.headerText || 'TAX INVOICE')}</div>`;
+            }
+            if(p.showSeparator !== false) h+='<hr/>';
+            return applySpacing(h, p);
         }
-        case 'bill_info':
-            return applySpacing(`<div class="r md"><span>Bill#: <b>POS-0001</b></span><span>08/03/2026</span></div><div class="md">Customer: Walk-in</div><div class="md">Cashier: Admin</div><hr/>`, p);
+        case 'bill_info':{
+            let h='';
+            if((p.showInvoiceNo ?? true) || (p.showInvoiceDate ?? true)){
+                h+=`<div class="r md">`
+                    + `<span>${(p.showInvoiceNo ?? true) ? 'Invoice#: <b>TAX-2026-0001</b>' : ''}</span>`
+                    + `<span>${(p.showInvoiceDate ?? true) ? '08/03/2026' : ''}</span>`
+                    + `</div>`;
+            }
+            if(p.showDocumentType ?? true) h+=`<div class="md">Document: TAX INVOICE</div>`;
+            if(p.showDueDate ?? true) h+=`<div class="md">Due Date: 07/04/2026</div>`;
+            if(p.showReferenceInvoice ?? true) h+=`<div class="md">Ref Invoice: TAX-2026-0000</div>`;
+            if(p.showCustomerName ?? true) h+=`<div class="md">Customer: Walk-in</div>`;
+            if(p.showCustomerPhone ?? true) h+=`<div class="md">Phone: 9000000000</div>`;
+            if(p.showCustomerEmail) h+=`<div class="md">Email: customer@example.com</div>`;
+            if(p.showWarehouse ?? true) h+=`<div class="md">Warehouse: Main Warehouse</div>`;
+            if(p.showCashier) h+=`<div class="md">Cashier: Admin</div>`;
+            if(p.showSeparator !== false) h+='<hr/>';
+            return applySpacing(h, p);
+        }
         case 'items_table':{
-            let h=`<div class="r b md"><span>Item</span>${p.showHsn?'<span>HSN</span>':''}<span>Qty</span><span>Rate</span><span>Amt</span></div>`;
-            h+=`<div class="md"><div class="b">Paracetamol 500mg</div><div class="r" style="color:#888"><span>2 x ₹25.00</span>${p.showHsn?'<span>30049099</span>':''}<span>₹50.00</span></div></div>`;
-            h+=`<div class="md"><div class="b">Amoxicillin 250mg</div><div class="r" style="color:#888"><span>1 x ₹120.00</span>${p.showHsn?'<span>30041000</span>':''}<span>₹120.00</span></div></div>`;
-            h+=`<div class="md"><div class="b">Vitamin D3 Drops</div><div class="r" style="color:#888"><span>1 x ₹180.00</span>${p.showHsn?'<span>29362990</span>':''}<span>₹180.00</span></div></div>`;
-            h+='<hr/>';return applySpacing(h, p);
+            const cols=[];
+            if(p.showSerial !== false) cols.push({k:'serial',label:p.labelSerial||'#',align:'right'});
+            cols.push({k:'item',label:p.labelItem||'Item',align:'left'});
+            if(p.showSku) cols.push({k:'sku',label:p.labelSku||'SKU',align:'left'});
+            if(p.showHsn) cols.push({k:'hsn',label:p.labelHsn||'HSN',align:'left'});
+            if(p.showQty !== false) cols.push({k:'qty',label:p.labelQty||'Qty',align:'right'});
+            if(p.showRate !== false) cols.push({k:'rate',label:p.labelRate||'Rate',align:'right'});
+            if(p.showDiscountColumn) cols.push({k:'discount',label:p.labelDiscount||'Disc',align:'right'});
+            if(p.showTaxPercent !== false) cols.push({k:'taxPercent',label:p.labelTaxPercent||'Tax%',align:'right'});
+            if(p.showTaxAmount) cols.push({k:'taxAmount',label:p.labelTaxAmount||'Tax Amt',align:'right'});
+            if(p.showAmount !== false) cols.push({k:'amount',label:p.labelAmount||'Amt',align:'right'});
+
+            const rows=[
+                {item:'Paracetamol 500mg',sku:'PCM-500',hsn:'30049099',qty:'2',rate:'₹25.00',discount:'₹0.00',taxPercent:'5%',taxAmount:'₹2.50',amount:'₹52.50'},
+                {item:'Vitamin Syrup',sku:'VIT-SYR',hsn:'30041000',qty:'1',rate:'₹180.00',discount:'₹0.00',taxPercent:'12%',taxAmount:'₹21.60',amount:'₹201.60'}
+            ];
+
+            const showGrid = !!p.showGrid;
+            const showHeaderBackground = p.showHeaderBackground !== false;
+            const headerBgColor = p.headerBgColor || '#f2f2f2';
+            const headerTextColor = p.headerTextColor || '#111111';
+            const gridColor = p.gridColor || '#d9d9d9';
+            const zebraRows = !!p.zebraRows;
+            const zebraColor = p.zebraColor || '#fafafa';
+
+            const cellStyle = (align, extra='') =>
+                `padding:2px 4px;text-align:${align};${showGrid ? `border:1px solid ${gridColor};` : ''}${extra}`;
+
+            let h='<table style="width:100%;border-collapse:collapse;font-size:10px">';
+            h+='<thead><tr>';
+            cols.forEach(c=>{
+                const headBg = showHeaderBackground ? `background:${headerBgColor};` : '';
+                h+=`<th style="${cellStyle(c.align, `${headBg}color:${headerTextColor};font-weight:700;`)}">${esc(c.label)}</th>`;
+            });
+            h+='</tr></thead><tbody>';
+
+            rows.forEach((r,idx)=>{
+                const rowBg = zebraRows && idx % 2 === 1 ? zebraColor : 'transparent';
+                h+='<tr>';
+                cols.forEach(c=>{
+                    let val='';
+                    switch(c.k){
+                        case 'serial': val=String(idx+1); break;
+                        case 'item': val=r.item; break;
+                        case 'sku': val=r.sku; break;
+                        case 'hsn': val=r.hsn; break;
+                        case 'qty': val=r.qty; break;
+                        case 'rate': val=r.rate; break;
+                        case 'discount': val=r.discount; break;
+                        case 'taxPercent': val=r.taxPercent; break;
+                        case 'taxAmount': val=r.taxAmount; break;
+                        case 'amount': val=r.amount; break;
+                    }
+                    h+=`<td style="${cellStyle(c.align, `background:${rowBg};`)}">${esc(val)}</td>`;
+                });
+                h+='</tr>';
+
+                if((p.showDescriptionRow ?? true) && !p.showSku){
+                    h+='<tr>';
+                    cols.forEach(c=>{
+                        const val = c.k === 'item' ? r.sku : '';
+                        const color = c.k === 'item' ? 'color:#666;' : '';
+                        h+=`<td style="${cellStyle(c.align, `background:${rowBg};${color}`)}">${esc(val)}</td>`;
+                    });
+                    h+='</tr>';
+                }
+            });
+
+            h+='</tbody></table>';
+            if(p.showBottomSeparator !== false) h+='<hr/>';
+            return applySpacing(h, p);
         }
         case 'totals':{
             let h=`<div class="r md"><span>Sub Total</span><span>₹350.00</span></div>`;
@@ -358,7 +475,8 @@ function renderWysiwyg(comp){
             let h='';
             if(p.showItemCount)h+=`<div class="c sm">Items: 4 &bull; 08/03/2026 14:30</div>`;
             h+=`<div class="c sm">${esc(p.text||'Thank you!')}</div>`;
-            h+=`<div class="c" style="font-size:8px">&mdash; RetailERP POS &mdash;</div>`;
+            if(p.showTotalInWords !== false) h+=`<div class="c sm">Total in words: Three Hundred Seventy One Rupees Only</div>`;
+            if(p.showComputerGenerated !== false) h+=`<div class="c" style="font-size:8px">&mdash; RetailERP POS &mdash;</div>`;
             return applySpacing(h, p);
         }
         case 'text_block':{
@@ -375,7 +493,21 @@ function renderWysiwyg(comp){
 }
 
 function applySpacing(inner, props){
-    return inner;
+    const padding = parseInt(props?.padding ?? 0, 10) || 0;
+    const borderWidth = parseInt(props?.borderWidth ?? 0, 10) || 0;
+    const borderColor = props?.borderColor || '#cccccc';
+    const borderStyle = props?.borderStyle || 'solid';
+    const borderRadius = parseInt(props?.borderRadius ?? 0, 10) || 0;
+    const backgroundColor = props?.backgroundColor || '';
+
+    const styles = [];
+    if (padding > 0) styles.push(`padding:${padding}px`);
+    if (borderWidth > 0) styles.push(`border:${borderWidth}px ${borderStyle} ${borderColor}`);
+    if (borderRadius > 0) styles.push(`border-radius:${borderRadius}px`);
+    if (backgroundColor && backgroundColor.toLowerCase() !== '#ffffff') styles.push(`background:${backgroundColor}`);
+
+    if (!styles.length) return inner;
+    return `<div style="${styles.join(';')}">${inner}</div>`;
 }
 
 function renderSocialTokens(p){
@@ -413,8 +545,12 @@ function renderProps(){
             h+=pSel('align','Alignment',comp.props.align,[['left','Left'],['center','Center'],['right','Right']]);
             break;
         case 'store_header':
+            h+=pChk('showAddress','Show Address',comp.props.showAddress);
+            h+=pChk('showPhone','Show Phone',comp.props.showPhone);
             h+=pChk('showGst','Show GSTIN',comp.props.showGst);
+            h+=pChk('showTitle','Show Header Title',comp.props.showTitle);
             h+=pTa('headerText','Extra Header Line',comp.props.headerText);
+            h+=pChk('showSeparator','Show Separator',comp.props.showSeparator);
             break;
         case 'header_row':
             h+=pTa('leftText','Left Text',comp.props.leftText);
@@ -439,11 +575,63 @@ function renderProps(){
             h+=pNum('fontSize','Font Size',comp.props.fontSize,7,20);
             break;
         case 'bill_info':
-            h+=`<p class="text-muted small mb-0"><i class="bi bi-info-circle me-1"></i>Auto-filled from bill data: Bill#, Date, Customer, Cashier.</p>`;
+            h+=pChk('showInvoiceNo','Show Invoice Number',comp.props.showInvoiceNo);
+            h+=pChk('showInvoiceDate','Show Invoice Date',comp.props.showInvoiceDate);
+            h+=pChk('showDocumentType','Show Document Type',comp.props.showDocumentType);
+            h+=pChk('showDueDate','Show Due Date',comp.props.showDueDate);
+            h+=pChk('showReferenceInvoice','Show Reference Invoice',comp.props.showReferenceInvoice);
+            h+=pChk('showCustomerName','Show Customer Name',comp.props.showCustomerName);
+            h+=pChk('showCustomerPhone','Show Customer Phone',comp.props.showCustomerPhone);
+            h+=pChk('showCustomerEmail','Show Customer Email',comp.props.showCustomerEmail);
+            h+=pChk('showWarehouse','Show Warehouse',comp.props.showWarehouse);
+            h+=pChk('showCashier','Show Cashier',comp.props.showCashier);
+            h+=pChk('showSeparator','Show Separator',comp.props.showSeparator);
             break;
         case 'items_table':
-            h+=pChk('showHsn','Show HSN Code Column',comp.props.showHsn);
-            h+=dynInfo(['{{item_name}}','{{qty}}','{{rate}}','{{amount}}','{{hsn}}']);
+            h+=pChk('showSerial','Show Serial Column',comp.props.showSerial);
+            h+=pChk('showItem','Show Item Column',comp.props.showItem);
+            h+=pChk('showSku','Show SKU Column',comp.props.showSku);
+            h+=pChk('showHsn','Show HSN Column',comp.props.showHsn);
+            h+=pChk('showQty','Show Qty Column',comp.props.showQty);
+            h+=pChk('showRate','Show Rate Column',comp.props.showRate);
+            h+=pChk('showDiscountColumn','Show Discount Column',comp.props.showDiscountColumn);
+            h+=pChk('showTaxPercent','Show Tax % Column',comp.props.showTaxPercent);
+            h+=pChk('showTaxAmount','Show Tax Amount Column',comp.props.showTaxAmount);
+            h+=pChk('showAmount','Show Amount Column',comp.props.showAmount);
+            h+=pChk('showDescriptionRow','Show Description Row',comp.props.showDescriptionRow);
+
+            h+=pIn('labelSerial','Serial Label',comp.props.labelSerial);
+            h+=pIn('labelItem','Item Label',comp.props.labelItem);
+            h+=pIn('labelSku','SKU Label',comp.props.labelSku);
+            h+=pIn('labelHsn','HSN Label',comp.props.labelHsn);
+            h+=pIn('labelQty','Qty Label',comp.props.labelQty);
+            h+=pIn('labelRate','Rate Label',comp.props.labelRate);
+            h+=pIn('labelDiscount','Discount Label',comp.props.labelDiscount);
+            h+=pIn('labelTaxPercent','Tax % Label',comp.props.labelTaxPercent);
+            h+=pIn('labelTaxAmount','Tax Amount Label',comp.props.labelTaxAmount);
+            h+=pIn('labelAmount','Amount Label',comp.props.labelAmount);
+
+            h+=pNum('widthSerial','Serial Width',comp.props.widthSerial,8,90);
+            h+=pNum('widthItem','Item Width (relative)',comp.props.widthItem,1,12);
+            h+=pNum('widthSku','SKU Width',comp.props.widthSku,12,130);
+            h+=pNum('widthHsn','HSN Width',comp.props.widthHsn,14,130);
+            h+=pNum('widthQty','Qty Width',comp.props.widthQty,14,130);
+            h+=pNum('widthRate','Rate Width',comp.props.widthRate,20,180);
+            h+=pNum('widthDiscount','Discount Width',comp.props.widthDiscount,20,180);
+            h+=pNum('widthTaxPercent','Tax % Width',comp.props.widthTaxPercent,18,160);
+            h+=pNum('widthTaxAmount','Tax Amount Width',comp.props.widthTaxAmount,20,180);
+            h+=pNum('widthAmount','Amount Width',comp.props.widthAmount,24,220);
+
+            h+=pChk('showHeaderBackground','Show Header Background',comp.props.showHeaderBackground);
+            h+=pColor('headerBgColor','Header Background Color',comp.props.headerBgColor);
+            h+=pColor('headerTextColor','Header Text Color',comp.props.headerTextColor);
+            h+=pChk('showGrid','Show Grid Borders',comp.props.showGrid);
+            h+=pColor('gridColor','Grid Border Color',comp.props.gridColor);
+            h+=pChk('zebraRows','Alternate Row Color',comp.props.zebraRows);
+            h+=pColor('zebraColor','Alternate Row Color',comp.props.zebraColor);
+            h+=pChk('showBottomSeparator','Show Bottom Separator',comp.props.showBottomSeparator);
+
+            h+=dynInfo(['{{item_name}}','{{qty}}','{{rate}}','{{amount}}','{{hsn}}','{{tax_total}}']);
             break;
         case 'totals':
             h+=pChk('showDiscount','Show Discount Row',comp.props.showDiscount);
@@ -458,6 +646,8 @@ function renderProps(){
         case 'footer':
             h+=pTa('text','Footer Message',comp.props.text);
             h+=pChk('showItemCount','Show Item Count & Timestamp',comp.props.showItemCount);
+            h+=pChk('showTotalInWords','Show Total In Words',comp.props.showTotalInWords);
+            h+=pChk('showComputerGenerated','Show Computer Generated Text',comp.props.showComputerGenerated);
             break;
         case 'text_block':
             h+=pTa('text','Content',comp.props.text);
@@ -472,7 +662,7 @@ function renderProps(){
             h+=`<div>`+pColor('color','',comp.props.color)+`</div>`;
             h+=`</div>`;
             h+=`<div class="mt-1"><small class="text-muted">Placeholders (click to insert):</small><div class="mt-1">`
-              +badge('{{company_name}}')+badge('{{bill_no}}')+badge('{{bill_date}}')+badge('{{bill_time}}')+badge('{{grand_total}}')
+                            +badge('{{company_name}}')+badge('{{bill_no}}')+badge('{{invoice_no}}')+badge('{{invoice_date}}')+badge('{{due_date}}')+badge('{{invoice_status}}')+badge('{{grand_total}}')
               +badge('{{grand_total_words}}')+badge('{{sub_total}}')+badge('{{tax_total}}')+badge('{{discount}}')
               +badge('{{customer_name}}')+badge('{{customer_phone}}')+badge('{{customer_email}}')
               +badge('IG: yourshop')+badge('WA: +91XXXXXXXXXX')+badge('FB: yourpage')+badge('YT: yourchannel')
@@ -489,6 +679,21 @@ function renderProps(){
     }
 
     h+=`<div class="border-top pt-2 mt-2">`;
+    h+=pSel('visibleWhen','Show When',comp.props.visibleWhen||'always',[
+        ['always','Always'],
+        ['posted_only','Invoice Posted'],
+        ['draft_only','Invoice Draft'],
+        ['has_due_date','Due Date Exists'],
+        ['has_reference','Reference Invoice Exists'],
+        ['has_customer_phone','Customer Phone Exists'],
+        ['has_customer_email','Customer Email Exists'],
+        ['has_gst','Company GST Exists']
+    ]);
+    h+=pRange('padding','Inner Padding (px)',comp.props.padding ?? 0,0,30);
+    h+=pColor('backgroundColor','Section Background',comp.props.backgroundColor||'#ffffff');
+    h+=pRange('borderWidth','Border Width (px)',comp.props.borderWidth ?? 0,0,6);
+    h+=pSel('borderStyle','Border Style',comp.props.borderStyle||'solid',[['solid','Solid'],['dashed','Dashed'],['dotted','Dotted']]);
+    h+=pColor('borderColor','Border Color',comp.props.borderColor||'#cccccc');
     h+=pRange('marginTop','Top Spacing (px)',comp.props.marginTop ?? 0,0,40);
     h+=pRange('marginBottom','Bottom Spacing (px)',comp.props.marginBottom ?? 0,0,40);
     h+=`</div>`;
@@ -594,6 +799,31 @@ document.getElementById('btnUploadLogo').addEventListener('click',async function
     }catch(e){toast('Network error','danger')}
     btn.innerHTML='<i class="bi bi-upload me-1"></i>Upload';btn.disabled=false;
 });
+
+async function uploadAsset(fileInputId, buttonId, actionUrl, successText) {
+    const input = document.getElementById(fileInputId);
+    const file = input?.files?.[0];
+    if(!file){toast('Select a file first','warning');return;}
+    const form = new FormData();
+    form.append(fileInputId.replace('File',''), file);
+
+    const btn = document.getElementById(buttonId);
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    try{
+        const res = await fetch(actionUrl, { method:'POST', headers:{'X-XSRF-TOKEN':XSRF,'RequestVerificationToken':XSRF}, body:form });
+        const data = await res.json();
+        if(data.success){ toast(successText,'success'); setTimeout(()=>location.reload(),600); }
+        else toast(data.message || 'Upload failed','danger');
+    }catch(e){ toast('Network error','danger'); }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-upload me-1"></i>' + (buttonId === 'btnUploadSignature' ? 'Upload Signature' : 'Upload Stamp');
+}
+
+document.getElementById('btnUploadSignature')?.addEventListener('click', () =>
+    uploadAsset('signatureFile', 'btnUploadSignature', '@Url.Action("UploadSignature")', 'Signature uploaded!'));
+document.getElementById('btnUploadStamp')?.addEventListener('click', () =>
+    uploadAsset('stampFile', 'btnUploadStamp', '@Url.Action("UploadStamp")', 'Stamp uploaded!'));
 
 render();
 })();

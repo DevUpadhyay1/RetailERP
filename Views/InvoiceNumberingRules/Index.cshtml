@@ -1,0 +1,129 @@
+@model List<RetailERP.Data.Entities.InvoiceNumberingRule>
+@{
+    ViewData["Title"] = "Invoice Numbering Rules";
+
+    static string DocLabel(RetailERP.Data.Entities.InvoiceDocumentType type) => type switch
+    {
+        RetailERP.Data.Entities.InvoiceDocumentType.TaxInvoice => "Tax Invoice",
+        RetailERP.Data.Entities.InvoiceDocumentType.BillOfSupply => "Bill of Supply",
+        RetailERP.Data.Entities.InvoiceDocumentType.CreditNote => "Credit Note",
+        RetailERP.Data.Entities.InvoiceDocumentType.DebitNote => "Debit Note",
+        RetailERP.Data.Entities.InvoiceDocumentType.ProformaInvoice => "Proforma Invoice",
+        _ => type.ToString()
+    };
+
+    static string ResetLabel(RetailERP.Data.Entities.InvoiceNumberResetPolicy policy) => policy switch
+    {
+        RetailERP.Data.Entities.InvoiceNumberResetPolicy.Never => "Never",
+        RetailERP.Data.Entities.InvoiceNumberResetPolicy.Yearly => "Yearly",
+        RetailERP.Data.Entities.InvoiceNumberResetPolicy.Monthly => "Monthly",
+        _ => policy.ToString()
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h2 class="mb-0">Invoice Numbering Rules</h2>
+        <div class="text-muted">Configure prefix, suffix, reset cycle, and store-level overrides</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-controller="BillTemplates" asp-action="Index">
+            <i class="bi bi-arrow-left me-1"></i>Back To Templates
+        </a>
+        <a class="btn btn-primary" asp-action="Create">
+            <i class="bi bi-plus-lg me-1"></i>New Rule
+        </a>
+    </div>
+</div>
+
+@if (TempData["Ok"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["Err"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle me-1"></i>No rules configured yet. Create a rule to control invoice numbering.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead class="table-light">
+            <tr>
+                <th>Document Type</th>
+                <th>Scope</th>
+                <th>Preview</th>
+                <th>Reset</th>
+                <th>Next Number</th>
+                <th>Status</th>
+                <th style="width: 240px;">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var r in Model)
+            {
+                var scopeLabel = r.StoreId.HasValue ? $"Store ({r.Store?.Name ?? "N/A"})" : "Company";
+                var period = r.ResetPolicy switch
+                {
+                    RetailERP.Data.Entities.InvoiceNumberResetPolicy.Yearly => "YYYY",
+                    RetailERP.Data.Entities.InvoiceNumberResetPolicy.Monthly => "YYYYMM",
+                    _ => string.Empty
+                };
+                var serial = new string('0', Math.Clamp(r.NumberWidth, 3, 8));
+                var suffix = string.IsNullOrWhiteSpace(r.Suffix) ? string.Empty : "-" + r.Suffix;
+                var preview = string.IsNullOrWhiteSpace(period)
+                    ? $"{r.Prefix}-{serial}{suffix}"
+                    : $"{r.Prefix}-{period}-{serial}{suffix}";
+
+                <tr>
+                    <td>@DocLabel(r.DocumentType)</td>
+                    <td>@scopeLabel</td>
+                    <td><code>@preview</code></td>
+                    <td>@ResetLabel(r.ResetPolicy)</td>
+                    <td>@r.NextNumber</td>
+                    <td>
+                        @if (r.IsActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inactive</span>
+                        }
+                    </td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@r.InvoiceNumberingRuleId">
+                                <i class="bi bi-pencil me-1"></i>Edit
+                            </a>
+                            @if (!r.IsActive)
+                            {
+                                <form asp-action="SetActive" asp-route-id="@r.InvoiceNumberingRuleId" method="post">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-check2-circle me-1"></i>Set Active
+                                    </button>
+                                </form>
+                            }
+                            <form asp-action="Delete"
+                                  asp-route-id="@r.InvoiceNumberingRuleId"
+                                  method="post"
+                                  onsubmit="return confirm('Delete this rule?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash me-1"></i>Delete
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

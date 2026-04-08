@@ -99,7 +99,7 @@ public class ReceiptPdfService
                                 RenderTaxSummary(col, bill, subFontSize);
                                 break;
                             case "footer":
-                                RenderFooter(col, bill, comp.Props, subFontSize);
+                                RenderFooter(col, bill, comp.Props, subFontSize, template, company);
                                 break;
                             case "text_block":
                                 RenderTextBlock(col, bill, company, comp.Props);
@@ -382,7 +382,13 @@ public class ReceiptPdfService
     }
 
     // ── Footer ──
-    private static void RenderFooter(ColumnDescriptor col, PosBill bill, Dictionary<string, JsonElement>? props, int subFontSize)
+    private void RenderFooter(
+        ColumnDescriptor col,
+        PosBill bill,
+        Dictionary<string, JsonElement>? props,
+        int subFontSize,
+        BillTemplate template,
+        Company company)
     {
         if (GetBool(props, "showItemCount", true))
             col.Item().AlignCenter().Text($"Items: {bill.Lines.Count} \u2022 {bill.CompletedAtUtc?.ToLocalTime():dd/MM/yyyy HH:mm}").FontSize(subFontSize);
@@ -390,6 +396,48 @@ public class ReceiptPdfService
         var text = GetStr(props, "text", "Thank you for shopping!");
         if (!string.IsNullOrEmpty(text))
             col.Item().AlignCenter().Text(text).FontSize(subFontSize);
+
+        if (template.ShowSignature || template.ShowStamp)
+        {
+            col.Item().PaddingTop(4).Row(row =>
+            {
+                if (template.ShowStamp)
+                {
+                    row.RelativeItem().AlignLeft().Column(c =>
+                    {
+                        c.Item().Text("Stamp").FontSize(subFontSize);
+                        if (!string.IsNullOrWhiteSpace(company.StampPath))
+                        {
+                            var stampFull = Path.Combine(_env.WebRootPath, company.StampPath.TrimStart('/'));
+                            if (File.Exists(stampFull))
+                                c.Item().Height(36).Image(stampFull).FitHeight();
+                        }
+                    });
+                }
+                else
+                {
+                    row.RelativeItem();
+                }
+
+                if (template.ShowSignature)
+                {
+                    row.RelativeItem().AlignRight().Column(c =>
+                    {
+                        c.Item().AlignRight().Text("Authorised Signatory").FontSize(subFontSize);
+                        if (!string.IsNullOrWhiteSpace(company.SignaturePath))
+                        {
+                            var signFull = Path.Combine(_env.WebRootPath, company.SignaturePath.TrimStart('/'));
+                            if (File.Exists(signFull))
+                                c.Item().AlignRight().Height(36).Image(signFull).FitHeight();
+                        }
+                    });
+                }
+                else
+                {
+                    row.RelativeItem();
+                }
+            });
+        }
 
         col.Item().AlignCenter().Text("\u2014 RetailERP POS \u2014").FontSize(subFontSize > 2 ? subFontSize - 1 : subFontSize);
     }

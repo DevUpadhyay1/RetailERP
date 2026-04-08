@@ -23,6 +23,37 @@
     </div>
 
     <div class="mb-3">
+        <label class="form-label">Invoice Document Type</label>
+        <select asp-for="DocumentType" class="form-select">
+            <option value="1">Tax Invoice</option>
+            <option value="2">Bill of Supply</option>
+            <option value="3">Credit Note</option>
+            <option value="4">Debit Note</option>
+            <option value="5">Proforma Invoice</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Template Scope</label>
+        <select asp-for="TemplateScope" class="form-select" id="templateScope">
+            <option value="1">Company-wide default</option>
+            <option value="2">Store-specific override</option>
+        </select>
+    </div>
+
+    <div class="mb-3" id="storeSelectWrap" style="display:none;">
+        <label class="form-label">Store (for override)</label>
+        <select asp-for="StoreId" class="form-select">
+            <option value="">-- Select Store --</option>
+            @foreach (var s in (IEnumerable<RetailERP.Data.Entities.Store>)ViewBag.Stores)
+            {
+                <option value="@s.StoreId">@s.Name</option>
+            }
+        </select>
+        <span asp-validation-for="StoreId" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
         <label class="form-label">Paper Size</label>
         <select asp-for="PaperSize" class="form-select">
             <option value="Thermal58mm">Thermal 58mm</option>
@@ -30,6 +61,44 @@
             <option value="A4">A4</option>
             <option value="A5">A5</option>
         </select>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Theme Name</label>
+            <input asp-for="ThemeName" class="form-control" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Accent Color</label>
+            <input asp-for="AccentColor" class="form-control" />
+        </div>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-md-6 form-check">
+            <input asp-for="ShowSignature" class="form-check-input" />
+            <label asp-for="ShowSignature" class="form-check-label">Show signature</label>
+        </div>
+        <div class="col-md-6 form-check">
+            <input asp-for="ShowStamp" class="form-check-input" />
+            <label asp-for="ShowStamp" class="form-check-label">Show stamp</label>
+        </div>
+        <div class="col-md-6 form-check">
+            <input asp-for="ShowPartyBalance" class="form-check-input" />
+            <label asp-for="ShowPartyBalance" class="form-check-label">Show party balance</label>
+        </div>
+        <div class="col-md-6 form-check">
+            <input asp-for="EnableFreeItemQuantity" class="form-check-input" />
+            <label asp-for="EnableFreeItemQuantity" class="form-check-label">Enable free item quantity</label>
+        </div>
+        <div class="col-md-6 form-check">
+            <input asp-for="ShowItemDescription" class="form-check-input" />
+            <label asp-for="ShowItemDescription" class="form-check-label">Show item description</label>
+        </div>
+        <div class="col-md-6 form-check">
+            <input asp-for="ShowPhoneOnInvoice" class="form-check-input" />
+            <label asp-for="ShowPhoneOnInvoice" class="form-check-label">Show phone on invoice</label>
+        </div>
     </div>
 
     <div class="form-check mb-3">
@@ -48,4 +117,15 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const scope = document.getElementById('templateScope');
+            const wrap = document.getElementById('storeSelectWrap');
+            function syncScope() {
+                wrap.style.display = scope.value === '2' ? '' : 'none';
+            }
+            scope.addEventListener('change', syncScope);
+            syncScope();
+        })();
+    </script>
 }

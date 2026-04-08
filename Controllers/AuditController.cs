@@ -71,9 +71,10 @@ public class AuditController : Controller
             .ToListAsync();
 
         var companyLookup = await BuildCompanyLookupAsync(isSuperAdmin, scopeCompanyId);
+        var actorCompanyLookup = await BuildActorCompanyLookupAsync(logs);
 
         var rows = logs
-            .Select(x => ProjectRow(x, companyLookup))
+            .Select(x => ProjectRow(x, companyLookup, actorCompanyLookup))
             .ToList();
 
         var filteredRows = ApplyInMemoryFilters(rows, filter, scopeCompanyId, isSuperAdmin)
@@ -134,13 +135,19 @@ public class AuditController : Controller
         return query.OrderByDescending(x => x.CreatedAtUtc);
     }
 
-    private static AuditRowVm ProjectRow(Data.Entities.AuditLog log, IReadOnlyDictionary<Guid, string> companyLookup)
+    private static AuditRowVm ProjectRow(
+        Data.Entities.AuditLog log,
+        IReadOnlyDictionary<Guid, string> companyLookup,
+        IReadOnlyDictionary<Guid, Guid?> actorCompanyLookup)
     {
         var parsed = ParseDataJson(log.DataJson);
 
         var companyId = parsed.CompanyId;
         var franchisorCompanyId = parsed.FranchisorCompanyId;
         var franchiseCompanyId = parsed.FranchiseCompanyId;
+
+        if (!companyId.HasValue && log.ActorUserId.HasValue && actorCompanyLookup.TryGetValue(log.ActorUserId.Value, out var actorCompanyId))
+            companyId = actorCompanyId;
 
         if (!companyId.HasValue && franchisorCompanyId.HasValue)
             companyId = franchisorCompanyId;
@@ -224,6 +231,24 @@ public class AuditController : Controller
             .OrderBy(c => c.Name)
             .Select(c => new { c.CompanyId, c.Code, c.Name })
             .ToDictionaryAsync(c => c.CompanyId, c => $"{c.Code} - {c.Name}");
+    }
+
+    private async Task<Dictionary<Guid, Guid?>> BuildActorCompanyLookupAsync(IEnumerable<Data.Entities.AuditLog> logs)
+    {
+        var actorIds = logs
+            .Where(x => x.ActorUserId.HasValue)
+            .Select(x => x.ActorUserId!.Value)
+            .Distinct()
+            .ToList();
+
+        if (actorIds.Count == 0)
+            return new Dictionary<Guid, Guid?>();
+
+        return await _db.Users
+            .AsNoTracking()
+            .Where(u => actorIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.CompanyId })
+            .ToDictionaryAsync(x => x.Id, x => x.CompanyId);
     }
 
     private static List<SelectListItem> BuildModuleOptions(string? selected)
@@ -353,7 +378,7 @@ public class AuditController : Controller
             using var doc = JsonDocument.Parse(dataJson);
             var root = doc.RootElement;
 
-            var companyId = FindGuid(root, "CompanyId", "companyId");
+            var companyId = FindGuid(root, "CompanyId", "companyId", "TenantCompanyId", "tenantCompanyId");
             var franchisorCompanyId = FindGuid(root, "FranchisorCompanyId", "RequestingCompanyId", "requestingCompanyId", "ParentCompanyId", "parentCompanyId");
             var franchiseCompanyId = FindGuid(root, "FranchiseCompanyId", "MappedOperatorCompanyId", "mappedOperatorCompanyId", "FranchiseeCompanyId", "franchiseeCompanyId");
 
