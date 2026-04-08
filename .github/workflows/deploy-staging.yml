@@ -80,10 +80,9 @@ jobs:
           STAGING_USER: ${{ secrets.STAGING_USER }}
           STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
           STAGING_APP_DIR: ${{ secrets.STAGING_APP_DIR }}
-          GHCR_PAT: ${{ secrets.GHCR_PAT }}
         run: |
           set -euo pipefail
-          if [ -z "${STAGING_HOST:-}" ] || [ -z "${STAGING_USER:-}" ] || [ -z "${STAGING_SSH_KEY:-}" ] || [ -z "${STAGING_APP_DIR:-}" ] || [ -z "${GHCR_PAT:-}" ]; then
+          if [ -z "${STAGING_HOST:-}" ] || [ -z "${STAGING_USER:-}" ] || [ -z "${STAGING_SSH_KEY:-}" ] || [ -z "${STAGING_APP_DIR:-}" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "Staging secrets are missing. Skipping deploy step."
           else
@@ -98,10 +97,15 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
-            set -e
+            set -euo pipefail
             cd "${{ secrets.STAGING_APP_DIR }}"
             export APP_IMAGE="${{ needs.build-and-push-image.outputs.image }}"
-            docker login ghcr.io -u "${{ github.actor }}" -p "${{ secrets.GHCR_PAT }}"
+            GHCR_TOKEN="${{ secrets.GHCR_PAT }}"
+            if [ -z "$GHCR_TOKEN" ]; then
+              GHCR_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+            fi
+            echo "Deploying image: ${APP_IMAGE}"
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             docker compose --env-file .env.staging -f docker-compose.prod.yml pull app
             docker compose --env-file .env.staging -f docker-compose.prod.yml up -d
             docker image prune -f

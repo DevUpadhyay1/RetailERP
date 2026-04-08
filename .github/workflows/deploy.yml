@@ -91,7 +91,6 @@ jobs:
           PROD_USER: ${{ secrets.PROD_USER }}
           PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
           PROD_APP_DIR: ${{ secrets.PROD_APP_DIR }}
-          GHCR_PAT: ${{ secrets.GHCR_PAT }}
         run: |
           set -euo pipefail
           missing=()
@@ -100,7 +99,6 @@ jobs:
           [ -n "${PROD_USER:-}" ] || missing+=("PROD_USER")
           [ -n "${PROD_SSH_KEY:-}" ] || missing+=("PROD_SSH_KEY")
           [ -n "${PROD_APP_DIR:-}" ] || missing+=("PROD_APP_DIR")
-          [ -n "${GHCR_PAT:-}" ] || missing+=("GHCR_PAT")
 
           if [ ${#missing[@]} -gt 0 ]; then
             echo "Missing required production secrets: ${missing[*]}"
@@ -115,10 +113,15 @@ jobs:
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           script: |
-            set -e
+            set -euo pipefail
             cd "${{ secrets.PROD_APP_DIR }}"
             export APP_IMAGE="${{ needs.build-and-push-image.outputs.image }}"
-            docker login ghcr.io -u "${{ github.actor }}" -p "${{ secrets.GHCR_PAT }}"
+            GHCR_TOKEN="${{ secrets.GHCR_PAT }}"
+            if [ -z "$GHCR_TOKEN" ]; then
+              GHCR_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+            fi
+            echo "Deploying image: ${APP_IMAGE}"
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             docker compose --env-file .env.production -f docker-compose.prod.yml pull app
             docker compose --env-file .env.production -f docker-compose.prod.yml up -d
             docker image prune -f
