@@ -9,9 +9,6 @@ name: Deploy Production
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'Docs/**'
-      - '**/*.md'
   workflow_dispatch:
     inputs:
       image_tag:
