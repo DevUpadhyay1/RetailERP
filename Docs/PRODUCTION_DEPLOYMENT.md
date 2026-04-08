@@ -76,25 +76,23 @@ Validation-only check (no container changes):
 - Staging workflow: `.github/workflows/deploy-staging.yml`
 - Builds/pushes GHCR image and can deploy over SSH when staging secrets are configured.
 - Production workflow: `.github/workflows/deploy.yml`
-- Auto deploys on every push to `main` (docs-only changes are ignored).
+- Auto deploys on every push to `main` using a self-hosted Windows runner.
 - Also supports manual run with `workflow_dispatch`.
 
 ### Auto deploy flow (what happens after push)
 
 1. Push code to `main`.
-2. GitHub Actions builds and pushes image `ghcr.io/<owner>/retailerp:prod-<sha>`.
-3. Workflow SSHes to production server.
-4. Server updates `APP_IMAGE` to new tag and runs `docker compose pull app && docker compose up -d`.
-5. New container serves live traffic.
+2. Self-hosted runner checks out latest code.
+3. Runner builds local Docker image `retailerp:latest`.
+4. Runner executes `docker compose --env-file .env.production -f docker-compose.prod.yml up -d`.
+5. Updated container serves live traffic.
 
-If production secrets are missing, workflow fails fast with a clear message.
+### Self-hosted runner requirements (production)
 
-Required production secrets:
-- `PROD_HOST`
-- `PROD_USER`
-- `PROD_SSH_KEY`
-- `PROD_APP_DIR`
-- `GHCR_PAT`
+- GitHub Actions runner registered for this repository with labels `self-hosted`, `Windows`, `X64`.
+- Docker Desktop (or Docker Engine + Compose plugin) installed and running on runner machine.
+- Repository files available through checkout (includes `docker-compose.prod.yml` and `.env.production`).
+- `cloudflared` process managed locally on the same host (outside Actions workflow).
 
 Required staging secrets:
 - `STAGING_HOST`
