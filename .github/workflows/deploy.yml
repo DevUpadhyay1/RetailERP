@@ -52,8 +52,16 @@ jobs:
         shell: powershell
         working-directory: repo
         run: |
+          $logPath = 'C:\actions-runner\deploy-build.log'
+          if (Test-Path $logPath) {
+            Remove-Item -LiteralPath $logPath -Force -ErrorAction SilentlyContinue
+          }
           $env:DOCKER_BUILDKIT = '0'
-          docker build -t retailerp:latest .
+          docker build -t retailerp:latest . *>&1 | Tee-Object -FilePath $logPath
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Build failed. See $logPath"
+            exit $LASTEXITCODE
+          }
 
       - name: Deploy stack
         shell: powershell
