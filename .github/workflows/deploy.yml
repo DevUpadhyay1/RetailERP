@@ -30,31 +30,33 @@ jobs:
       - name: Prepare workspace
         shell: powershell
         run: |
-          $workspace = $env:GITHUB_WORKSPACE
-          if (Test-Path $workspace) {
-            Get-ChildItem -LiteralPath $workspace -Force -ErrorAction SilentlyContinue | ForEach-Object {
-              Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
-            }
+          $checkoutPath = Join-Path $env:GITHUB_WORKSPACE 'repo'
+          if (Test-Path $checkoutPath) {
+            Remove-Item -LiteralPath $checkoutPath -Recurse -Force -ErrorAction SilentlyContinue
           }
 
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          clean: false
+          clean: true
+          path: repo
 
       - name: Verify Docker runtime
         shell: powershell
+        working-directory: repo
         run: |
           docker version
           docker compose version
 
       - name: Build application image
         shell: powershell
+        working-directory: repo
         run: |
           docker build -t retailerp:latest .
 
       - name: Deploy stack
         shell: powershell
+        working-directory: repo
         run: |
           $envFile = 'C:\7th_Semester\RetailERP\.env.production'
           if (-not (Test-Path $envFile)) {
@@ -64,6 +66,7 @@ jobs:
 
       - name: Show deployment status
         shell: powershell
+        working-directory: repo
         run: |
           $envFile = 'C:\7th_Semester\RetailERP\.env.production'
           docker compose --env-file $envFile -f docker-compose.prod.yml ps
