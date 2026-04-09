@@ -57,8 +57,14 @@ jobs:
             Remove-Item -LiteralPath $logPath -Force -ErrorAction SilentlyContinue
           }
           $env:DOCKER_BUILDKIT = '0'
-          docker build -t retailerp:latest . *>&1 | Tee-Object -FilePath $logPath
+          $output = & docker build -t retailerp:latest . 2>&1
+          $output | Out-File -FilePath $logPath -Encoding utf8
+          "LASTEXITCODE=$LASTEXITCODE" | Out-File -FilePath $logPath -Append -Encoding utf8
           if ($LASTEXITCODE -ne 0) {
+            if ($Error.Count -gt 0) {
+              "POWERSHELL_ERROR=" | Out-File -FilePath $logPath -Append -Encoding utf8
+              ($Error[0] | Out-String) | Out-File -FilePath $logPath -Append -Encoding utf8
+            }
             Write-Host "Build failed. See $logPath"
             exit $LASTEXITCODE
           }
