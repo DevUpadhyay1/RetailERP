@@ -52,28 +52,10 @@ jobs:
         shell: powershell
         working-directory: repo
         run: |
-          try {
-            $logPath = Join-Path (Get-Location) 'deploy-build.log'
-            if (Test-Path $logPath) {
-              Remove-Item -LiteralPath $logPath -Force -ErrorAction SilentlyContinue
-            }
-            $env:DOCKER_BUILDKIT = '0'
-            $output = & docker build -t retailerp:latest . 2>&1
-            $output | Out-File -FilePath $logPath -Encoding utf8
-            "LASTEXITCODE=$LASTEXITCODE" | Out-File -FilePath $logPath -Append -Encoding utf8
-            if ($LASTEXITCODE -ne 0) {
-              if ($Error.Count -gt 0) {
-                "POWERSHELL_ERROR=" | Out-File -FilePath $logPath -Append -Encoding utf8
-                ($Error[0] | Out-String) | Out-File -FilePath $logPath -Append -Encoding utf8
-              }
-              Write-Host "Build failed. See $logPath"
-              exit $LASTEXITCODE
-            }
-          } catch {
-            $fallback = Join-Path (Get-Location) 'deploy-build-failure.txt'
-            ($_ | Out-String) | Out-File -FilePath $fallback -Encoding utf8
-            Write-Host "Unhandled build step exception. See $fallback"
-            throw
+          $ErrorActionPreference = 'Continue'
+          docker build -t retailerp:latest .
+          if ($LASTEXITCODE -ne 0) {
+            throw "docker build failed with exit code $LASTEXITCODE"
           }
 
       - name: Deploy stack
