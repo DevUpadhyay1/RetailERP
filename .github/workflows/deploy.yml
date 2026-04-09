@@ -27,8 +27,20 @@ jobs:
     environment: production
 
     steps:
+      - name: Prepare workspace
+        shell: powershell
+        run: |
+          $workspace = $env:GITHUB_WORKSPACE
+          if (Test-Path $workspace) {
+            Get-ChildItem -LiteralPath $workspace -Force -ErrorAction SilentlyContinue | ForEach-Object {
+              Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
+
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          clean: false
 
       - name: Verify Docker runtime
         shell: powershell
