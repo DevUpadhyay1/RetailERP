@@ -52,6 +52,7 @@ jobs:
         shell: powershell
         working-directory: repo
         run: |
+          $env:DOCKER_BUILDKIT = '0'
           docker build -t retailerp:latest .
 
       - name: Deploy stack
