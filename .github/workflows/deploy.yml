@@ -53,9 +53,15 @@ jobs:
         working-directory: repo
         run: |
           $ErrorActionPreference = 'Continue'
-          docker build -t retailerp:latest .
-          if ($LASTEXITCODE -ne 0) {
-            throw "docker build failed with exit code $LASTEXITCODE"
+          $buildLog = Join-Path (Get-Location) 'deploy-build.log'
+          if (Test-Path $buildLog) {
+            Remove-Item -LiteralPath $buildLog -Force -ErrorAction SilentlyContinue
+          }
+          docker build -t retailerp:latest . *> $buildLog
+          $buildExitCode = $LASTEXITCODE
+          Get-Content -Path $buildLog
+          if ($buildExitCode -ne 0) {
+            throw "docker build failed with exit code $buildExitCode"
           }
 
       - name: Deploy stack
