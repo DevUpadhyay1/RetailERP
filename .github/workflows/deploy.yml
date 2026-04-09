@@ -52,7 +52,7 @@ jobs:
         shell: powershell
         working-directory: repo
         run: |
-          $logPath = 'C:\actions-runner\deploy-build.log'
+          $logPath = Join-Path (Get-Location) 'deploy-build.log'
           if (Test-Path $logPath) {
             Remove-Item -LiteralPath $logPath -Force -ErrorAction SilentlyContinue
           }
