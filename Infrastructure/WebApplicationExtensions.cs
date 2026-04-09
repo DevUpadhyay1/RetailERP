@@ -69,6 +69,21 @@ public static class WebApplicationExtensions
         app.UseHttpsRedirection();
         app.UseStaticFiles();
 
+        // Keep authentication/account pages out of search indexes.
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.StartsWithSegments("/Identity", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.OnStarting(() =>
+                {
+                    context.Response.Headers["X-Robots-Tag"] = "noindex, nofollow, noarchive";
+                    return Task.CompletedTask;
+                });
+            }
+
+            await next();
+        });
+
         // Development: relax CSP to allow Browser Link / Hot Reload on random localhost ports.
         // Production: strict CSP that only allows known origins.
         var isDev = app.Environment.IsDevelopment();

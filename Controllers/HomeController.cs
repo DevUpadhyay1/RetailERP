@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Text;
+using System.Xml.Linq;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
 using RetailERP.Data.Identity;
@@ -40,10 +41,59 @@ public class HomeController : Controller
     [AllowAnonymous]
     public async Task<IActionResult> Landing()
     {
-        ViewData["Title"] = "Welcome";
+        ViewData["Title"] = "Cloud POS and Inventory Management";
+        ViewData["Description"] = "RetailERP helps retailers manage POS billing, multi-warehouse inventory, GST invoices, and business analytics from one cloud platform.";
         var hasAnyUser = await _db.Users.AsNoTracking().AnyAsync();
         ViewBag.RegistrationOpen = !hasAnyUser;
         return View();
+    }
+
+    [AllowAnonymous]
+    [HttpGet("/robots.txt")]
+    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Any)]
+    public IActionResult RobotsTxt()
+    {
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var lines = new[]
+        {
+            "User-agent: *",
+            "Allow: /",
+            "Disallow: /Identity/",
+            "Disallow: /Home/Dashboard",
+            "Disallow: /Home/PlatformDashboard",
+            $"Sitemap: {baseUrl}/sitemap.xml"
+        };
+
+        return Content(string.Join(Environment.NewLine, lines), "text/plain", Encoding.UTF8);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("/sitemap.xml")]
+    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Any)]
+    public IActionResult SitemapXml()
+    {
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var now = DateTime.UtcNow.ToString("yyyy-MM-dd");
+
+        XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
+        var urls = new[]
+        {
+            new { Loc = $"{baseUrl}/", ChangeFreq = "daily", Priority = "1.0" },
+            new { Loc = $"{baseUrl}/Home/Landing", ChangeFreq = "daily", Priority = "0.9" }
+        };
+
+        var doc = new XDocument(
+            new XDeclaration("1.0", "utf-8", "yes"),
+            new XElement(ns + "urlset",
+                urls.Select(url =>
+                    new XElement(ns + "url",
+                        new XElement(ns + "loc", url.Loc),
+                        new XElement(ns + "lastmod", now),
+                        new XElement(ns + "changefreq", url.ChangeFreq),
+                        new XElement(ns + "priority", url.Priority)
+                    ))));
+
+        return Content(doc.ToString(), "application/xml", Encoding.UTF8);
     }
 
     // Real dashboard (after login) — Sprint 3: all data loaded via AJAX widgets
