@@ -1,4 +1,4 @@
-# RetailERP â€” short runbook
+# RetailERP - short runbook
 
 ## Local developer
 
@@ -34,6 +34,28 @@ Configure at least these alerts in your monitoring tool (Prometheus/Grafana/Data
 ## Incident: port bind failure (Windows)
 
 If Kestrel fails with **socket 10013** on a port, change `applicationUrl` in `Properties/launchSettings.json` to free ports (e.g. 6000/7000) or stop the process using that port.
+
+## Incident: self-hosted Deploy Production fails at Docker build
+
+Symptom in GitHub Actions:
+- `Build application image` fails.
+- Error contains: `permission denied while trying to connect to the docker API at npipe:////./pipe/docker_engine`.
+
+Root cause:
+- Runner service account cannot access Docker engine pipe on Windows.
+
+Fix:
+1. Check runner service identity:
+	 `Get-CimInstance Win32_Service | Where-Object { $_.Name -like 'actions.runner*' } | Select-Object Name,StartName,State`
+2. If service runs as `NT AUTHORITY\\NETWORK SERVICE`, switch it to a local account with Docker Desktop access.
+3. Restart Docker Desktop.
+4. Restart runner service.
+5. Re-run `Deploy Production` workflow.
+
+Emergency fallback:
+- Build and deploy directly on host:
+	`docker build -t retailerp:latest .`
+	`docker compose --env-file C:\7th_Semester\RetailERP\.env.production -f docker-compose.prod.yml up -d`
 
 ## Logs & Retention
 

@@ -48,6 +48,12 @@ dotnet test RetailERP.sln -c Release
 GitHub Actions workflow: `.github/workflows/ci.yml` (build + test on push/PR).
 CI also collects Cobertura coverage and enforces a baseline threshold (`COVERAGE_THRESHOLD` in workflow).
 Staging deployment workflow: `.github/workflows/deploy-staging.yml` (build image + optional SSH deploy).
+Production deployment workflow: `.github/workflows/deploy.yml` (self-hosted Windows runner).
+
+Important for production workflow:
+- The runner service account must have access to Docker engine on the host.
+- If Actions fails with `permission denied while trying to connect to the docker API at npipe:////./pipe/docker_engine`, fix runner account permissions first.
+- See `Docs/PRODUCTION_DEPLOYMENT.md` for exact remediation steps.
 
 ## Project layout (high level)
 
@@ -65,6 +71,8 @@ Staging deployment workflow: `.github/workflows/deploy-staging.yml` (build image
 2. **Database:** run migrations (`dotnet ef database update`) against production DB from a controlled pipeline or maintenance window.
 3. **Logs:** file logs under `Logs/retailerp-*.log` (rolling daily); console in Development.
 4. **Smoke checks:** `GET /health` after deploy. See [Docs/RUNBOOK.md](Docs/RUNBOOK.md) for more.
+
+If you deploy through GitHub Actions self-hosted runner, ensure the runner account can run `docker version` and `docker build` without permission errors.
 
 ## Roadmap / improvement phases (~80% complete)
 

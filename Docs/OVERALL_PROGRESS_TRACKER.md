@@ -4,7 +4,7 @@ This document tracks what is completed, what is partially done, and what remains
 
 ## Current phase completion (estimated)
 
-**Last doc sync:** 2026-03-29
+**Last doc sync:** 2026-04-09
 
 | Phase | Name | % | Rationale |
 |-------|------|---|-----------|
@@ -27,7 +27,7 @@ Post-onboarding detail doc: **Docs/POST_ONBOARDING_UPDATE.md**
 Core ERP flows are functional with automated tests, CI checks, and operational docs.
 
 **Production-ready:** Close, but not fully closed.  
-Main remaining work is raising coverage targets, adding centralized dashboards/alerts, and finalizing staged rollout operations.
+Main remaining work is raising coverage targets, adding centralized dashboards/alerts, finalizing staged rollout operations, and resolving self-hosted runner Docker permission alignment for fully reliable auto production deploy.
 
 ---
 
@@ -39,6 +39,8 @@ Main remaining work is raising coverage targets, adding centralized dashboards/a
 4. Added lightweight Prometheus-style `/metrics` endpoint.
 5. Added staging deployment workflow (`deploy-staging.yml`) and updated runbook/deployment docs.
 6. Stabilized CI with Node 24 compatible actions, robust coverage parsing, and integration-test DataProtection fix.
+7. Fixed clone-safe UI asset delivery by replacing local `/lib` Bootstrap/jQuery references with CDN-based links in shared layout/POS view.
+8. Isolated current production workflow blocker: runner service account lacks Docker engine pipe access (`npipe:////./pipe/docker_engine`).
 
 ---
 

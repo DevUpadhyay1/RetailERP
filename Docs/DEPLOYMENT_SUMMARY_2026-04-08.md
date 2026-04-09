@@ -50,3 +50,11 @@ This update covers post-deployment stabilization for the Cloudflare tunnel setup
 - `ALLOW_INSECURE_COOKIES_FOR_LOCAL_HTTP` has been restored to `false` after fixing forwarded-header proxy trust.
 - Trusted forwarded proxy was aligned to the current Docker gateway to preserve HTTPS scheme in redirects.
 - Cloudflare DNS and tunnel changes may require local DNS cache flush on developer machines during propagation windows.
+
+## Late Update (2026-04-09)
+- UI rendering issue on production login/2FA was traced to missing local `/lib` static assets; shared layout and POS view now use CDN-hosted Bootstrap/jQuery.
+- Manual host deployment applied this UI fix successfully and live site rendering was restored.
+- Current blocker for automatic production deploy is runner Docker permission:
+  - Deploy Production fails in GitHub Actions at build step with Docker engine pipe permission denied.
+  - Error: `permission denied while trying to connect to the docker API at npipe:////./pipe/docker_engine`.
+- Required fix: run self-hosted runner service under an account with Docker Desktop pipe access.

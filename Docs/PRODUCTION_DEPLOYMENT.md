@@ -79,6 +79,14 @@ Validation-only check (no container changes):
 - Auto deploys on every push to `main` using a self-hosted Windows runner.
 - Also supports manual run with `workflow_dispatch`.
 
+### Current blocker observed on production workflow (2026-04-09)
+
+Deploy job can fail at **Build application image** with this exact error:
+
+`permission denied while trying to connect to the docker API at npipe:////./pipe/docker_engine`
+
+This means the runner service identity cannot access Docker engine on Windows.
+
 ### Auto deploy flow (what happens after push)
 
 1. Push code to `main`.
@@ -93,6 +101,35 @@ Validation-only check (no container changes):
 - Docker Desktop (or Docker Engine + Compose plugin) installed and running on runner machine.
 - Repository files available through checkout (includes `docker-compose.prod.yml` and `.env.production`).
 - `cloudflared` process managed locally on the same host (outside Actions workflow).
+
+Critical account requirement:
+- The account that runs the runner service must be allowed to access Docker engine.
+- If runner service runs as `NT AUTHORITY\\NETWORK SERVICE`, Docker access is often denied on Docker Desktop setups.
+- Prefer running runner service as the same local Windows user that manages Docker Desktop, or a dedicated local account with Docker access.
+
+Quick verify commands on host:
+
+```powershell
+Get-CimInstance Win32_Service | Where-Object { $_.Name -like 'actions.runner*' } | Select-Object Name,StartName,State
+docker version
+```
+
+If `docker version` fails with pipe permission denied, fix service account before retrying workflow.
+
+Recommended remediation steps:
+1. Open `services.msc`.
+2. Open service `actions.runner.<owner>-<repo>.<runner-name>`.
+3. In **Log On**, switch from `NETWORK SERVICE` to the intended local account that has Docker access.
+4. Restart Docker Desktop.
+5. Restart runner service.
+6. Re-run Deploy Production workflow.
+
+If immediate release is required while workflow is blocked, perform manual host deploy:
+
+```powershell
+docker build -t retailerp:latest .
+docker compose --env-file C:\7th_Semester\RetailERP\.env.production -f docker-compose.prod.yml up -d
+```
 
 Required staging secrets:
 - `STAGING_HOST`
