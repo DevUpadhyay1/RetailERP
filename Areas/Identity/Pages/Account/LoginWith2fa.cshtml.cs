@@ -31,6 +31,9 @@ namespace RetailERP.Areas.Identity.Pages.Account
         [BindProperty]
         public InputModel Input { get; set; }
 
+        [TempData]
+        public string ErrorMessage { get; set; }
+
         public bool RememberMe { get; set; }
         public string ReturnUrl { get; set; }
 
@@ -52,7 +55,8 @@ namespace RetailERP.Areas.Identity.Pages.Account
             var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
             if (user == null)
             {
-                throw new InvalidOperationException("Unable to load two-factor authentication user.");
+                TempData["ErrorMessage"] = "Your 2FA session expired. Please sign in again.";
+                return RedirectToPage("./Login");
             }
 
             ReturnUrl = returnUrl;
@@ -73,7 +77,8 @@ namespace RetailERP.Areas.Identity.Pages.Account
             var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
             if (user == null)
             {
-                throw new InvalidOperationException("Unable to load two-factor authentication user.");
+                TempData["ErrorMessage"] = "Your 2FA session expired. Please sign in again.";
+                return RedirectToPage("./Login");
             }
 
             var authenticatorCode = Input.TwoFactorCode.Replace(" ", string.Empty).Replace("-", string.Empty);
@@ -95,7 +100,7 @@ namespace RetailERP.Areas.Identity.Pages.Account
             else
             {
                 _logger.LogWarning("Invalid authenticator code entered for user with ID '{UserId}'.", userId);
-                ModelState.AddModelError(string.Empty, "Invalid authenticator code.");
+                ModelState.AddModelError(string.Empty, "Invalid authenticator code. Verify your phone time is set to automatic and try again, or use a recovery code.");
                 return Page();
             }
         }
