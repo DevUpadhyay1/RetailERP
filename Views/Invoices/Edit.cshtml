@@ -1,62 +1,14 @@
 ﻿@model RetailERP.Controllers.InvoicesController.InvoiceEditVm
 
-@{
-    var invoiceTemplates = (IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>?)ViewBag.InvoiceTemplates;
-    var itemOptions = (IEnumerable<RetailERP.Controllers.InvoicesController.InvoiceItemOptionVm>?)ViewBag.ItemOptions
-        ?? Enumerable.Empty<RetailERP.Controllers.InvoicesController.InvoiceItemOptionVm>();
-}
-
-<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h2 class="mb-0">@Model.InvoiceNo</h2>
         <div class="text-muted">
-            @Model.DocumentType • @Model.InvoiceDate.ToString("yyyy-MM-dd") • @Model.CustomerName • @Model.WarehouseName • @Model.EmployeeName
+            @Model.InvoiceDate.ToString("yyyy-MM-dd") • @Model.CustomerName • @Model.WarehouseName • @Model.EmployeeName
         </div>
-        @if (Model.DueDate.HasValue || !string.IsNullOrWhiteSpace(Model.ReferenceInvoiceNo))
-        {
-            <div class="small text-muted">
-                @if (Model.DueDate.HasValue)
-                {
-                    <span>Due: @Model.DueDate.Value.ToString("yyyy-MM-dd")</span>
-                }
-                @if (!string.IsNullOrWhiteSpace(Model.ReferenceInvoiceNo))
-                {
-                    <span> • Ref: @Model.ReferenceInvoiceNo</span>
-                }
-            </div>
-        }
     </div>
 
-    <div class="d-flex gap-2 align-items-start flex-wrap justify-content-end">
-        <form asp-action="SaveTemplate" method="post" class="d-flex gap-2 align-items-center">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="invoiceId" value="@Model.InvoiceId" />
-            <select class="form-select form-select-sm" id="invoiceTemplateSelect" name="templateId" style="min-width:260px; max-width:420px;">
-                <option value="">Default template (auto)</option>
-                @if (invoiceTemplates is not null)
-                {
-                    foreach (var tpl in invoiceTemplates)
-                    {
-                        if (tpl.Selected)
-                        {
-                            <option value="@tpl.Value" selected>@tpl.Text</option>
-                        }
-                        else
-                        {
-                            <option value="@tpl.Value">@tpl.Text</option>
-                        }
-                    }
-                }
-            </select>
-            <button class="btn btn-outline-dark" type="submit">Save Template</button>
-        </form>
-
-        <form asp-action="Pdf" method="get" target="_blank" class="d-flex gap-2 align-items-center">
-            <input type="hidden" name="id" value="@Model.InvoiceId" />
-            <input type="hidden" name="templateId" id="pdfTemplateId" />
-            <button class="btn btn-outline-primary" type="submit">Download PDF</button>
-        </form>
-
+    <div class="d-flex gap-2">
         <span class="badge @(Model.Status == 2 ? "bg-success" : "bg-secondary")">
             @(Model.Status == 2 ? "Posted" : "Draft")
         </span>
@@ -153,23 +105,16 @@
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="InvoiceId" value="@Model.InvoiceId" />
 
-                        <label class="form-label mb-0" for="addLineItemId">Item</label>
-                        <select class="form-select" id="addLineItemId" name="ItemId">
+                        <label class="form-label mb-0">Item</label>
+                        <select class="form-select" name="ItemId" asp-items="ViewBag.Items">
                             <option value="" disabled selected>-- Select Item --</option>
-                            @foreach (var item in itemOptions)
-                            {
-                                <option value="@item.ItemId" data-unit-price="@item.UnitPrice.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)">
-                                    @item.Text
-                                </option>
-                            }
                         </select>
 
-                        <label class="form-label mb-0" for="addLineQty">Qty</label>
-                        <input class="form-control" id="addLineQty" name="Qty" type="number" step="0.01" min="0.01" value="1" />
+                        <label class="form-label mb-0">Qty</label>
+                        <input class="form-control" name="Qty" type="number" step="0.01" min="0.01" value="1" />
 
-                        <label class="form-label mb-0" for="addLineUnitPrice">Unit Price</label>
-                        <input class="form-control" id="addLineUnitPrice" name="UnitPrice" type="number" step="0.01" min="0" value="0" />
-                        <div class="form-text">Auto-filled from selected item. You can edit manually if needed.</div>
+                        <label class="form-label mb-0">Unit Price</label>
+                        <input class="form-control" name="UnitPrice" type="number" step="0.01" min="0" value="0" />
 
                         <button class="btn btn-primary" type="submit">Add</button>
                         <a class="btn btn-outline-secondary" asp-action="Index">Back to Register</a>
@@ -179,40 +124,3 @@
         </div>
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        (() => {
-            const picker = document.getElementById('invoiceTemplateSelect');
-            const pdfTemplate = document.getElementById('pdfTemplateId');
-
-            if (picker && pdfTemplate) {
-                const sync = () => {
-                    pdfTemplate.value = picker.value || '';
-                };
-
-                picker.addEventListener('change', sync);
-                sync();
-            }
-
-            const itemSelect = document.getElementById('addLineItemId');
-            const priceInput = document.getElementById('addLineUnitPrice');
-
-            const syncItemPrice = () => {
-                if (!itemSelect || !priceInput) return;
-                const selected = itemSelect.options[itemSelect.selectedIndex];
-                if (!selected) return;
-
-                const rawPrice = selected.getAttribute('data-unit-price');
-                if (!rawPrice) return;
-
-                const parsed = Number.parseFloat(rawPrice);
-                if (Number.isNaN(parsed)) return;
-
-                priceInput.value = parsed.toFixed(2);
-            };
-
-            itemSelect?.addEventListener('change', syncItemPrice);
-        })();
-    </script>
-}

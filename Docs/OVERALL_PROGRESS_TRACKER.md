@@ -6,14 +6,14 @@ This document tracks what is completed, what is partially done, and what remains
 
 **Last doc sync:** 2026-04-09
 
-| Phase | Name | % | Rationale |
-|-------|------|---|-----------|
-| 1 | Reliable (tests + CI) | **84%** | 51 automated tests (50 pass, 1 manual benchmark skipped), CI build+test+coverage artifact, baseline coverage threshold enforced |
-| 2 | Security | **100%** | Auth/CSRF/rate-limit/CORS/headers, tenant authorization regression coverage, production validation guardrails |
-| 3 | Observable & operable | **82%** | `/health`, `/health/ready`, correlation IDs, Serilog, `/metrics` endpoint, runbook alerting baseline |
-| 4 | Performance | **100%** | AsNoTracking/projection passes, indexing work, benchmark tooling and 100k profile scripts |
-| 5 | Maintainable codebase | **86%** | Program split to infrastructure extensions, cleaner service registration and pipeline structure |
-| 6 | Demo & documentation | **90%** | Architecture/demo/security/deployment/runbook docs are in place and updated with latest CI/metrics/staging flow |
+| Phase | Name                  | %        | Rationale                                                                                                                       |
+| ----- | --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Reliable (tests + CI) | **84%**  | 51 automated tests (50 pass, 1 manual benchmark skipped), CI build+test+coverage artifact, baseline coverage threshold enforced |
+| 2     | Security              | **100%** | Auth/CSRF/rate-limit/CORS/headers, tenant authorization regression coverage, production validation guardrails                   |
+| 3     | Observable & operable | **82%**  | `/health`, `/health/ready`, correlation IDs, Serilog, `/metrics` endpoint, runbook alerting baseline                            |
+| 4     | Performance           | **100%** | AsNoTracking/projection passes, indexing work, benchmark tooling and 100k profile scripts                                       |
+| 5     | Maintainable codebase | **86%**  | Program split to infrastructure extensions, cleaner service registration and pipeline structure                                 |
+| 6     | Demo & documentation  | **90%**  | Architecture/demo/security/deployment/runbook docs are in place and updated with latest CI/metrics/staging flow                 |
 
 **Overall completion: ~87%**
 
@@ -59,4 +59,3 @@ Main remaining work is raising coverage targets, adding centralized dashboards/a
 - Build: `dotnet build RetailERP.sln -c Release` passed.
 - Tests: `dotnet test RetailERP.sln -c Release --no-build` passed (`50 passed, 1 skipped`).
 - Coverage run: `dotnet test ... --collect:\"XPlat Code Coverage\"` generated Cobertura report (current line coverage ~2.3%).
-

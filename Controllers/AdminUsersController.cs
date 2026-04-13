@@ -9,7 +9,7 @@ using System.Security.Claims;
 
 namespace RetailERP.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,SuperAdmin")]
 public class AdminUsersController : Controller
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -32,12 +32,10 @@ public class AdminUsersController : Controller
     private bool IsSuperAdmin() => User.IsInRole("SuperAdmin");
 
     [HttpGet]
-    public async Task<IActionResult> Index(string? q = null, string? role = null, bool? active = null, string? sort = null, string? dir = null, int page = 1, int pageSize = 5)
+    public async Task<IActionResult> Index(string? q = null, string? role = null, bool? active = null, string sort = "email", string dir = "asc", int page = 1, int pageSize = 5)
     {
         q = (q ?? "").Trim();
         role = (role ?? "").Trim();
-        sort ??= "email";
-        dir ??= "asc";
         if (page < 1) page = 1;
         if (pageSize is < 5 or > 200) pageSize = 5;
 
@@ -112,25 +110,20 @@ public class AdminUsersController : Controller
         if (!IsSuperAdmin())
             roles.Remove("Admin");
 
-        var userIds = users.Select(u => u.Id).ToList();
-        var roleMap = await (from ur in _db.UserRoles.AsNoTracking()
-                             join r in _db.Roles.AsNoTracking() on ur.RoleId equals r.Id
-                             where userIds.Contains(ur.UserId)
-                             select new { ur.UserId, RoleName = r.Name! })
-            .ToListAsync();
-
-        var rolesByUser = roleMap
-            .GroupBy(x => x.UserId)
-            .ToDictionary(g => g.Key, g => g.Select(x => x.RoleName).ToList());
-
-        var rows = users.Select(u => new UserRowVm
+        var rows = new List<UserRowVm>(users.Count);
+        foreach (var u in users)
         {
-            UserId = u.Id,
-            DisplayName = u.DisplayName,
-            Email = u.Email ?? u.UserName ?? "(no email)",
-            IsActive = u.IsActive,
-            Roles = rolesByUser.TryGetValue(u.Id, out var roleList) ? roleList : new List<string>()
-        }).ToList();
+            var userRoles = (await _userManager.GetRolesAsync(u)).ToList();
+
+            rows.Add(new UserRowVm
+            {
+                UserId = u.Id,
+                DisplayName = u.DisplayName,
+                Email = u.Email ?? u.UserName ?? "(no email)",
+                IsActive = u.IsActive,
+                Roles = userRoles
+            });
+        }
 
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
         var currentUser = await _userManager.GetUserAsync(User);
@@ -139,8 +132,8 @@ public class AdminUsersController : Controller
             Query = q,
             Role = role,
             Active = active,
-            Sort = sort!,
-            Dir = dir!,
+            Sort = sort,
+            Dir = dir,
             Page = page,
             PageSize = pageSize,
             TotalCount = total,

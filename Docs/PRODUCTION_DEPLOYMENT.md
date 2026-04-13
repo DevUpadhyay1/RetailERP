@@ -6,29 +6,29 @@ This app refuses to start in Production unless critical settings are safe (see `
 
 Set on the host or container:
 
-| Variable | Example | Notes |
-|----------|---------|--------|
-| `ASPNETCORE_ENVIRONMENT` | `Production` | Required for hardened cookies, validation, no dev seed |
-| `ASPNETCORE_URLS` | `http://+:8080` | Dockerfile uses 8080 |
-| `ConnectionStrings__DefaultConnection` | SQL Server connection string | Required |
-| `Jwt__SecretKey` | 32+ random characters | Never use dev sample from repo |
-| `AllowedHosts` | `shop.yourdomain.com` | Override `*` - validation warns if `*` |
-| `OperationalEndpoints__AllowAnonymousHealth` | `false` | Keep `false` in production unless gateway-restricted |
-| `OperationalEndpoints__AllowAnonymousMetrics` | `false` | Keep `false` in production unless gateway-restricted |
-| `ForwardedHeaders__KnownProxies__0` | `10.0.0.10` | Trusted reverse proxy IP(s) |
-| `ForwardedHeaders__KnownProxies__1` | `10.0.0.11` | Optional additional trusted proxy IP |
-| `ForwardedHeaders__KnownProxies__2` | `10.0.0.12` | Optional additional trusted proxy IP |
-| `ForwardedHeaders__KnownNetworks__0` | `10.0.0.0/24` | Trusted proxy CIDR(s) |
-| `ForwardedHeaders__KnownNetworks__1` | `fd00:10::/64` | Optional additional trusted proxy CIDR |
-| `ForwardedHeaders__KnownNetworks__2` | `172.18.0.0/16` | Optional additional trusted proxy CIDR |
-| `ForwardedHeaders__ForwardLimit` | `2` | Max number of forwarding hops to trust |
-| `ConnectionStrings__Redis` | `redis:6379` | Optional; health check probes Redis when cache uses it |
-| `Razorpay__KeyId` | `rzp_live_...` | Required for payments |
-| `Razorpay__KeySecret` | `...` | Required for payments |
-| `Twilio__AccountSid` | `AC...` | Required for SMS |
-| `Twilio__AuthToken` | `...` | Required for SMS |
-| `WhatsApp__PhoneNumberId` | `...` | Required for WhatsApp messages |
-| `WhatsApp__AccessToken` | `...` | Required for WhatsApp messages |
+| Variable                                      | Example                      | Notes                                                  |
+| --------------------------------------------- | ---------------------------- | ------------------------------------------------------ |
+| `ASPNETCORE_ENVIRONMENT`                      | `Production`                 | Required for hardened cookies, validation, no dev seed |
+| `ASPNETCORE_URLS`                             | `http://+:8080`              | Dockerfile uses 8080                                   |
+| `ConnectionStrings__DefaultConnection`        | SQL Server connection string | Required                                               |
+| `Jwt__SecretKey`                              | 32+ random characters        | Never use dev sample from repo                         |
+| `AllowedHosts`                                | `shop.yourdomain.com`        | Override `*` - validation warns if `*`                 |
+| `OperationalEndpoints__AllowAnonymousHealth`  | `false`                      | Keep `false` in production unless gateway-restricted   |
+| `OperationalEndpoints__AllowAnonymousMetrics` | `false`                      | Keep `false` in production unless gateway-restricted   |
+| `ForwardedHeaders__KnownProxies__0`           | `10.0.0.10`                  | Trusted reverse proxy IP(s)                            |
+| `ForwardedHeaders__KnownProxies__1`           | `10.0.0.11`                  | Optional additional trusted proxy IP                   |
+| `ForwardedHeaders__KnownProxies__2`           | `10.0.0.12`                  | Optional additional trusted proxy IP                   |
+| `ForwardedHeaders__KnownNetworks__0`          | `10.0.0.0/24`                | Trusted proxy CIDR(s)                                  |
+| `ForwardedHeaders__KnownNetworks__1`          | `fd00:10::/64`               | Optional additional trusted proxy CIDR                 |
+| `ForwardedHeaders__KnownNetworks__2`          | `172.18.0.0/16`              | Optional additional trusted proxy CIDR                 |
+| `ForwardedHeaders__ForwardLimit`              | `2`                          | Max number of forwarding hops to trust                 |
+| `ConnectionStrings__Redis`                    | `redis:6379`                 | Optional; health check probes Redis when cache uses it |
+| `Razorpay__KeyId`                             | `rzp_live_...`               | Required for payments                                  |
+| `Razorpay__KeySecret`                         | `...`                        | Required for payments                                  |
+| `Twilio__AccountSid`                          | `AC...`                      | Required for SMS                                       |
+| `Twilio__AuthToken`                           | `...`                        | Required for SMS                                       |
+| `WhatsApp__PhoneNumberId`                     | `...`                        | Required for WhatsApp messages                         |
+| `WhatsApp__AccessToken`                       | `...`                        | Required for WhatsApp messages                         |
 
 Azure/Linux env syntax uses double underscore `__` for nested config.
 
@@ -103,6 +103,7 @@ This means the runner service identity cannot access Docker engine on Windows.
 - `cloudflared` process managed locally on the same host (outside Actions workflow).
 
 Critical account requirement:
+
 - The account that runs the runner service must be allowed to access Docker engine.
 - If runner service runs as `NT AUTHORITY\\NETWORK SERVICE`, Docker access is often denied on Docker Desktop setups.
 - Prefer running runner service as the same local Windows user that manages Docker Desktop, or a dedicated local account with Docker access.
@@ -117,6 +118,7 @@ docker version
 If `docker version` fails with pipe permission denied, fix service account before retrying workflow.
 
 Recommended remediation steps:
+
 1. Open `services.msc`.
 2. Open service `actions.runner.<owner>-<repo>.<runner-name>`.
 3. In **Log On**, switch from `NETWORK SERVICE` to the intended local account that has Docker access.
@@ -132,6 +134,7 @@ docker compose --env-file C:\7th_Semester\RetailERP\.env.production -f docker-co
 ```
 
 Required staging secrets:
+
 - `STAGING_HOST`
 - `STAGING_USER`
 - `STAGING_SSH_KEY`

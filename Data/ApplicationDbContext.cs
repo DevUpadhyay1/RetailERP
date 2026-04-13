@@ -28,7 +28,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<Store> Stores => Set<Store>();
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<Stock> Stocks => Set<Stock>();
-    public DbSet<StockAdjustmentRequest> StockAdjustmentRequests => Set<StockAdjustmentRequest>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
 
@@ -76,7 +75,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     // Sprint 6 – Bill Templates
     public DbSet<BillTemplate> BillTemplates => Set<BillTemplate>();
-    public DbSet<InvoiceNumberingRule> InvoiceNumberingRules => Set<InvoiceNumberingRule>();
 
     // Sprint 7 – Promotions
     public DbSet<Promotion> Promotions => Set<Promotion>();
@@ -85,19 +83,17 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<EInvoice> EInvoices => Set<EInvoice>();
     public DbSet<EWayBill> EWayBills => Set<EWayBill>();
 
-    // Sprint 11 – Notifications
+    // Sprint 9+ – Advanced domain modules
+    public DbSet<InvoiceNumberingRule> InvoiceNumberingRules => Set<InvoiceNumberingRule>();
     public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
     public DbSet<NotificationLog> NotificationLogs => Set<NotificationLog>();
-
-    // Sprint 14 – Customer/Supplier Portals
     public DbSet<PortalAccessLink> PortalAccessLinks => Set<PortalAccessLink>();
     public DbSet<PortalReturnRequest> PortalReturnRequests => Set<PortalReturnRequest>();
     public DbSet<SupplierPoResponse> SupplierPoResponses => Set<SupplierPoResponse>();
-
-    // Sprint 15 – Franchise Management
+    public DbSet<StockAdjustmentRequest> StockAdjustmentRequests => Set<StockAdjustmentRequest>();
     public DbSet<FranchiseAgreement> FranchiseAgreements => Set<FranchiseAgreement>();
-    public DbSet<RoyaltyPayment> RoyaltyPayments => Set<RoyaltyPayment>();
     public DbSet<FranchiseMappingRequest> FranchiseMappingRequests => Set<FranchiseMappingRequest>();
+    public DbSet<RoyaltyPayment> RoyaltyPayments => Set<RoyaltyPayment>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -112,7 +108,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         // Sprint 4: unique indexes are now composite with CompanyId
         // so different tenants can have the same SKU, name, code, etc.
         builder.Entity<Item>()
-            .HasIndex(x => new { x.CompanyId, x.SKU })
+            .HasIndex(x => new { x.SKU, x.CompanyId })
             .IsUnique();
 
         // DMART Phase 1: barcode is optional for now; enforce uniqueness when provided.
@@ -121,66 +117,30 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .IsUnique()
             .HasFilter("[Barcode] IS NOT NULL");
 
-        builder.Entity<Item>()
-            .Property(x => x.UnitPrice)
-            .HasPrecision(18, 2);
-
-        builder.Entity<Item>()
-            .Property(x => x.PurchasePrice)
-            .HasPrecision(18, 2);
-
-        builder.Entity<Item>()
-            .Property(x => x.MRP)
-            .HasPrecision(18, 2);
-
         builder.Entity<Unit>()
-            .HasIndex(x => new { x.CompanyId, x.Name })
+            .HasIndex(x => new { x.Name, x.CompanyId })
             .IsUnique();
 
         builder.Entity<Category>()
-            .HasIndex(x => new { x.CompanyId, x.Name })
+            .HasIndex(x => new { x.Name, x.CompanyId })
             .IsUnique();
 
         builder.Entity<Store>()
-            .HasIndex(x => new { x.CompanyId, x.StoreCode })
+            .HasIndex(x => new { x.StoreCode, x.CompanyId })
             .IsUnique();
 
-        // Sprint 6+: Only one default template per scope+type+document-type
+        // Sprint 6: Only one default template per type per company
         builder.Entity<BillTemplate>()
-            .HasIndex(x => new { x.CompanyId, x.TemplateType, x.DocumentType, x.TemplateScope, x.StoreId, x.IsDefault })
+            .HasIndex(x => new { x.CompanyId, x.TemplateType, x.IsDefault })
             .HasFilter("[IsDefault] = 1")
             .IsUnique();
 
-        builder.Entity<BillTemplate>()
-            .HasOne(x => x.Company)
-            .WithMany()
-            .HasForeignKey(x => x.CompanyId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<BillTemplate>()
-            .HasOne(x => x.Store)
-            .WithMany()
-            .HasForeignKey(x => x.StoreId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Tenant-configurable numbering rules for professional invoice flows
-        builder.Entity<InvoiceNumberingRule>()
-            .HasIndex(x => new { x.CompanyId, x.StoreId, x.DocumentType, x.IsActive })
-            .HasFilter("[IsActive] = 1")
-            .IsUnique();
-
-        builder.Entity<InvoiceNumberingRule>()
-            .HasOne(x => x.Store)
-            .WithMany()
-            .HasForeignKey(x => x.StoreId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         builder.Entity<Warehouse>()
-            .HasIndex(x => new { x.CompanyId, x.Name })
+            .HasIndex(x => new { x.Name, x.CompanyId })
             .IsUnique();
 
         builder.Entity<Supplier>()
-            .HasIndex(x => new { x.CompanyId, x.Name })
+            .HasIndex(x => new { x.Name, x.CompanyId })
             .IsUnique();
 
         builder.Entity<Employee>()
@@ -191,27 +151,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .ToTable(t => t.HasCheckConstraint("CK_Employees_Status", "[Status] IN (1,2,3,4)"));
 
         builder.Entity<Purchase>()
-            .HasIndex(x => new { x.CompanyId, x.PurchaseNo })
+            .HasIndex(x => new { x.PurchaseNo, x.CompanyId })
             .IsUnique();
 
         builder.Entity<Invoice>()
-            .HasIndex(x => new { x.CompanyId, x.InvoiceNo })
+            .HasIndex(x => new { x.InvoiceNo, x.CompanyId })
             .IsUnique();
-
-        builder.Entity<Invoice>()
-            .HasIndex(x => x.BillTemplateId);
 
         builder.Entity<Invoice>()
     .HasOne(x => x.Warehouse)
     .WithMany()
     .HasForeignKey(x => x.WarehouseId)
     .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<Invoice>()
-            .HasOne(x => x.BillTemplate)
-            .WithMany()
-            .HasForeignKey(x => x.BillTemplateId)
-            .OnDelete(DeleteBehavior.Restrict);
 
         // Optional: connect invoice/purchase to employee for attribution
         builder.Entity<Invoice>()
@@ -271,33 +222,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .HasOne(x => x.Warehouse)
             .WithMany()
             .HasForeignKey(x => x.WarehouseId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<StockAdjustmentRequest>()
-            .HasIndex(x => new { x.StockId, x.Status, x.RequestedAtUtc });
-
-        builder.Entity<StockAdjustmentRequest>()
-            .ToTable(t => t.HasCheckConstraint("CK_StockAdjustmentRequests_Status", "[Status] IN (1,2,3,4)"));
-
-        builder.Entity<StockAdjustmentRequest>()
-            .ToTable(t => t.HasCheckConstraint("CK_StockAdjustmentRequests_QtyNonZero", "[DeltaQty] <> 0"));
-
-        builder.Entity<StockAdjustmentRequest>()
-            .HasOne(x => x.Stock)
-            .WithMany()
-            .HasForeignKey(x => x.StockId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<StockAdjustmentRequest>()
-            .HasOne(x => x.RequestedByUser)
-            .WithMany()
-            .HasForeignKey(x => x.RequestedByUserId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<StockAdjustmentRequest>()
-            .HasOne(x => x.ReviewedByUser)
-            .WithMany()
-            .HasForeignKey(x => x.ReviewedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<Invoice>()
@@ -394,7 +318,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .ToTable(t => t.HasCheckConstraint("CK_StockTransactions_QtyNonZero", "[Qty] <> 0"));
 
         builder.Entity<StockTransaction>()
-            .ToTable(t => t.HasCheckConstraint("CK_StockTransactions_Type", "[Type] IN ('IN','OUT','ADJUSTMENT','TRANSFER','RETURN','OPENING')"));
+            .ToTable(t => t.HasCheckConstraint("CK_StockTransactions_Type", "[Type] IN ('IN','OUT','ADJUSTMENT','TRANSFER','RETURN')"));
 
         builder.Entity<StockTransaction>()
             .HasOne(x => x.Item)
@@ -548,83 +472,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             .HasForeignKey(x => x.ItemId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Sprint 14 - Customer/Supplier Portals
-        builder.Entity<PortalAccessLink>()
-            .HasIndex(x => new { x.TokenHash, x.CompanyId })
-            .IsUnique();
-
-        builder.Entity<PortalAccessLink>()
-            .ToTable(t => t.HasCheckConstraint("CK_PortalAccessLinks_PortalType", "[PortalType] IN (1,2)"));
-
-        builder.Entity<PortalAccessLink>()
-            .ToTable(t => t.HasCheckConstraint("CK_PortalAccessLinks_Target",
-                "(([PortalType] = 1 AND [CustomerId] IS NOT NULL AND [SupplierId] IS NULL) " +
-                "OR ([PortalType] = 2 AND [SupplierId] IS NOT NULL AND [CustomerId] IS NULL))"));
-
-        builder.Entity<PortalAccessLink>()
-            .HasOne(x => x.Customer)
-            .WithMany()
-            .HasForeignKey(x => x.CustomerId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<PortalAccessLink>()
-            .HasOne(x => x.Supplier)
-            .WithMany()
-            .HasForeignKey(x => x.SupplierId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<PortalReturnRequest>()
-            .HasIndex(x => new { x.CustomerId, x.RequestedAtUtc });
-
-        builder.Entity<PortalReturnRequest>()
-            .ToTable(t => t.HasCheckConstraint("CK_PortalReturnRequests_Status", "[Status] IN (1,2,3,4)"));
-
-        builder.Entity<PortalReturnRequest>()
-            .HasOne(x => x.Customer)
-            .WithMany()
-            .HasForeignKey(x => x.CustomerId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<PortalReturnRequest>()
-            .HasOne(x => x.PosBill)
-            .WithMany()
-            .HasForeignKey(x => x.PosBillId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<PortalReturnRequest>()
-            .HasOne(x => x.PosReturn)
-            .WithMany()
-            .HasForeignKey(x => x.PosReturnId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<PortalReturnRequest>()
-            .HasOne(x => x.ReviewedByUser)
-            .WithMany()
-            .HasForeignKey(x => x.ReviewedByUserId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<SupplierPoResponse>()
-            .HasIndex(x => x.PurchaseId)
-            .IsUnique();
-
-        builder.Entity<SupplierPoResponse>()
-            .HasIndex(x => new { x.SupplierId, x.ResponseStatus });
-
-        builder.Entity<SupplierPoResponse>()
-            .ToTable(t => t.HasCheckConstraint("CK_SupplierPoResponses_ResponseStatus", "[ResponseStatus] IN (1,2,3)"));
-
-        builder.Entity<SupplierPoResponse>()
-            .HasOne(x => x.Purchase)
-            .WithMany()
-            .HasForeignKey(x => x.PurchaseId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<SupplierPoResponse>()
-            .HasOne(x => x.Supplier)
-            .WithMany()
-            .HasForeignKey(x => x.SupplierId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         // ═══════════════════════════════════════════════════════════
         // Phase 6 – Loyalty + Coupons
         // ═══════════════════════════════════════════════════════════
@@ -734,7 +581,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureAuditUserFks<Store>(builder);
         ConfigureAuditUserFks<Warehouse>(builder);
         ConfigureAuditUserFks<Stock>(builder);
-        ConfigureAuditUserFks<StockAdjustmentRequest>(builder);
         ConfigureAuditUserFks<Customer>(builder);
         ConfigureAuditUserFks<Supplier>(builder);
         ConfigureAuditUserFks<Purchase>(builder);
@@ -754,10 +600,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureAuditUserFks<CouponUsage>(builder);
         ConfigureAuditUserFks<EodReport>(builder);
         ConfigureAuditUserFks<SyncLog>(builder);
-        ConfigureAuditUserFks<PortalAccessLink>(builder);
-        ConfigureAuditUserFks<PortalReturnRequest>(builder);
-        ConfigureAuditUserFks<SupplierPoResponse>(builder);
-        ConfigureAuditUserFks<FranchiseMappingRequest>(builder);
 
         ConfigureAuditDefaults<Item>(builder);
         ConfigureAuditDefaults<Unit>(builder);
@@ -765,7 +607,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureAuditDefaults<Store>(builder);
         ConfigureAuditDefaults<Warehouse>(builder);
         ConfigureAuditDefaults<Stock>(builder);
-        ConfigureAuditDefaults<StockAdjustmentRequest>(builder);
         ConfigureAuditDefaults<Customer>(builder);
         ConfigureAuditDefaults<Supplier>(builder);
         ConfigureAuditDefaults<Purchase>(builder);
@@ -785,10 +626,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureAuditDefaults<CouponUsage>(builder);
         ConfigureAuditDefaults<EodReport>(builder);
         ConfigureAuditDefaults<SyncLog>(builder);
-        ConfigureAuditDefaults<PortalAccessLink>(builder);
-        ConfigureAuditDefaults<PortalReturnRequest>(builder);
-        ConfigureAuditDefaults<SupplierPoResponse>(builder);
-        ConfigureAuditDefaults<FranchiseMappingRequest>(builder);
 
         // ---- Company FK (optional) ----
         ConfigureCompanyFk<Item>(builder);
@@ -797,7 +634,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureCompanyFk<Store>(builder);
         ConfigureCompanyFk<Warehouse>(builder);
         ConfigureCompanyFk<Stock>(builder);
-        ConfigureCompanyFk<StockAdjustmentRequest>(builder);
         ConfigureCompanyFk<Customer>(builder);
         ConfigureCompanyFk<Supplier>(builder);
         ConfigureCompanyFk<Purchase>(builder);
@@ -810,14 +646,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         ConfigureCompanyFk<LoyaltyCard>(builder);
         ConfigureCompanyFk<LoyaltyTransaction>(builder);
         ConfigureCompanyFk<Coupon>(builder);
-        ConfigureCompanyFk<InvoiceNumberingRule>(builder);
         ConfigureCompanyFk<EodReport>(builder);
         ConfigureCompanyFk<SyncLog>(builder);
         ConfigureCompanyFk<Promotion>(builder);
-        ConfigureCompanyFk<PortalAccessLink>(builder);
-        ConfigureCompanyFk<PortalReturnRequest>(builder);
-        ConfigureCompanyFk<SupplierPoResponse>(builder);
-        ConfigureCompanyFk<FranchiseMappingRequest>(builder);
 
         // ═══════════════════════════════════════════════════════════
         // Sprint 7 – Promotions
@@ -915,119 +746,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
         builder.Entity<UserDashboardLayout>()
             .Property(x => x.LastModifiedUtc)
             .HasDefaultValueSql("GETUTCDATE()");
-
-        // ═══════════════════════════════════════════════════════════
-        // Sprint 15 – Franchise Management
-        // ═══════════════════════════════════════════════════════════
-        builder.Entity<Company>()
-            .HasOne(x => x.ParentCompany)
-            .WithMany(x => x.ChildCompanies)
-            .HasForeignKey(x => x.ParentCompanyId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<FranchiseAgreement>()
-            .HasIndex(x => x.AgreementCode)
-            .IsUnique();
-
-        builder.Entity<FranchiseAgreement>()
-            .HasIndex(x => new { x.FranchisorCompanyId, x.FranchiseeCompanyId })
-            .IsUnique();
-
-        builder.Entity<FranchiseAgreement>()
-            .ToTable(t => t.HasCheckConstraint("CK_FranchiseAgreements_Status", "[Status] IN (1,2,3)"));
-
-        builder.Entity<FranchiseAgreement>()
-            .HasOne(x => x.FranchisorCompany)
-            .WithMany()
-            .HasForeignKey(x => x.FranchisorCompanyId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<FranchiseAgreement>()
-            .HasOne(x => x.FranchiseeCompany)
-            .WithMany()
-            .HasForeignKey(x => x.FranchiseeCompanyId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Explicit decimal precision to avoid silent truncation warnings.
-        builder.Entity<FranchiseAgreement>()
-            .Property(x => x.RoyaltyPercent)
-            .HasPrecision(9, 4);
-
-        builder.Entity<FranchiseAgreement>()
-            .Property(x => x.MonthlyFlatFee)
-            .HasPrecision(18, 2);
-
-        builder.Entity<FranchiseAgreement>()
-            .Property(x => x.MinMonthlyRoyalty)
-            .HasPrecision(18, 2);
-
-        builder.Entity<RoyaltyPayment>()
-            .HasIndex(x => new { x.FranchiseAgreementId, x.PeriodYear, x.PeriodMonth })
-            .IsUnique();
-
-        builder.Entity<RoyaltyPayment>()
-            .ToTable(t => t.HasCheckConstraint("CK_RoyaltyPayments_Status", "[Status] IN (1,2,3,4)"));
-
-        builder.Entity<RoyaltyPayment>()
-            .HasOne(x => x.Agreement)
-            .WithMany(x => x.RoyaltyPayments)
-            .HasForeignKey(x => x.FranchiseAgreementId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<RoyaltyPayment>()
-            .Property(x => x.GrossSales)
-            .HasPrecision(18, 2);
-
-        builder.Entity<RoyaltyPayment>()
-            .Property(x => x.RoyaltyAmount)
-            .HasPrecision(18, 2);
-
-        builder.Entity<RoyaltyPayment>()
-            .Property(x => x.FlatFeeAmount)
-            .HasPrecision(18, 2);
-
-        builder.Entity<RoyaltyPayment>()
-            .Property(x => x.TotalDue)
-            .HasPrecision(18, 2);
-
-        builder.Entity<RoyaltyPayment>()
-            .Property(x => x.AmountPaid)
-            .HasPrecision(18, 2);
-
-        builder.Entity<FranchiseMappingRequest>()
-            .HasIndex(x => new { x.RequestingCompanyId, x.Status, x.RequestedAtUtc });
-
-        builder.Entity<FranchiseMappingRequest>()
-            .ToTable(t => t.HasCheckConstraint("CK_FranchiseMappingRequests_Status", "[Status] IN (1,2,3,4)"));
-
-        builder.Entity<FranchiseMappingRequest>()
-            .HasOne(x => x.RequestingCompany)
-            .WithMany()
-            .HasForeignKey(x => x.RequestingCompanyId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<FranchiseMappingRequest>()
-            .HasOne(x => x.MappedOperatorCompany)
-            .WithMany()
-            .HasForeignKey(x => x.MappedOperatorCompanyId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<FranchiseMappingRequest>()
-            .HasOne(x => x.RequestedByUser)
-            .WithMany()
-            .HasForeignKey(x => x.RequestedByUserId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.Entity<FranchiseMappingRequest>()
-            .HasOne(x => x.ReviewedByUser)
-            .WithMany()
-            .HasForeignKey(x => x.ReviewedByUserId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        ConfigureAuditUserFks<FranchiseAgreement>(builder);
-        ConfigureAuditDefaults<FranchiseAgreement>(builder);
-        ConfigureAuditUserFks<RoyaltyPayment>(builder);
-        ConfigureAuditDefaults<RoyaltyPayment>(builder);
 
         // ═══════════════════════════════════════════════════════════
         // Sprint 4 – Multi-tenant global query filters

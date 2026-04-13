@@ -42,9 +42,7 @@ public sealed class SmtpEmailSender : IEmailSender
         if (string.IsNullOrWhiteSpace(smtpPassword))
             throw new InvalidOperationException("SMTP Password is not configured (Smtp:Password). Use User Secrets or environment variables in development.");
 
-        var fromEmail = string.IsNullOrWhiteSpace(_opts.FromEmail)
-            ? smtpUser
-            : _opts.FromEmail.Trim();
+        var fromEmail = string.IsNullOrWhiteSpace(_opts.FromEmail) ? _opts.User : _opts.FromEmail;
 
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(_opts.FromName, fromEmail));

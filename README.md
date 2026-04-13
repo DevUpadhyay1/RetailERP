@@ -28,11 +28,11 @@ dotnet run --project RetailERP.csproj
 
 ## Configuration & secrets
 
-| Setting | Where |
-|--------|--------|
-| `ConnectionStrings:DefaultConnection` | `appsettings.json`, User Secrets, or environment |
-| `Jwt:SecretKey` | **Use User Secrets or env in production** - change from default in repo |
-| `Razorpay`, `Twilio`, `WhatsApp`, `Smtp` | User Secrets / environment - do not commit real keys |
+| Setting                                  | Where                                                                   |
+| ---------------------------------------- | ----------------------------------------------------------------------- |
+| `ConnectionStrings:DefaultConnection`    | `appsettings.json`, User Secrets, or environment                        |
+| `Jwt:SecretKey`                          | **Use User Secrets or env in production** - change from default in repo |
+| `Razorpay`, `Twilio`, `WhatsApp`, `Smtp` | User Secrets / environment - do not commit real keys                    |
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "YOUR_CONNECTION_STRING" --project RetailERP.csproj
@@ -51,19 +51,20 @@ Staging deployment workflow: `.github/workflows/deploy-staging.yml` (build image
 Production deployment workflow: `.github/workflows/deploy.yml` (self-hosted Windows runner).
 
 Important for production workflow:
+
 - The runner service account must have access to Docker engine on the host.
 - If Actions fails with `permission denied while trying to connect to the docker API at npipe:////./pipe/docker_engine`, fix runner account permissions first.
 - See `Docs/PRODUCTION_DEPLOYMENT.md` for exact remediation steps.
 
 ## Project layout (high level)
 
-| Area | Purpose |
-|------|---------|
-| `Controllers/` | MVC + `Api/` REST controllers |
-| `Services/` | Business logic (POS, invoices, loyalty, etc.) |
-| `Data/` | EF Core context, entities, migrations |
-| `Infrastructure/` | Startup composition (`AddRetailErp`, `UseRetailErpPipelineAsync`) |
-| `RetailERP.Tests/` | xUnit + in-memory EF integration and unit tests |
+| Area               | Purpose                                                           |
+| ------------------ | ----------------------------------------------------------------- |
+| `Controllers/`     | MVC + `Api/` REST controllers                                     |
+| `Services/`        | Business logic (POS, invoices, loyalty, etc.)                     |
+| `Data/`            | EF Core context, entities, migrations                             |
+| `Infrastructure/`  | Startup composition (`AddRetailErp`, `UseRetailErpPipelineAsync`) |
+| `RetailERP.Tests/` | xUnit + in-memory EF integration and unit tests                   |
 
 ## Operations (short runbook)
 
@@ -92,4 +93,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Licence
 
 Your project / institution - set as appropriate.
-

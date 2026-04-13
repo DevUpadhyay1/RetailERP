@@ -37,7 +37,7 @@ Required record types:
 Start with monitoring mode for 3-7 days, then tighten policy.
 
 - Type: TXT
-- Name: _dmarc
+- Name: \_dmarc
 - Value: v=DMARC1; p=none; rua=mailto:dmarc@quickbusiness.co.in; fo=1
 
 After verification period, change to:

@@ -39,13 +39,8 @@ public sealed class DbSeeder
         // 1) Roles (including new SuperAdmin)
         string[] roles =
         [
-            RoleSuperAdmin,
-            RoleAdmin,
-            RoleManager,
-            RoleCashier,
-            RoleInventory,
-            RoleFinance,
-            RoleHR
+            RoleSuperAdmin, RoleAdmin, RoleManager, RoleCashier, RoleInventory,
+            RoleFinance, RoleHR
         ];
 
         foreach (var role in roles)
