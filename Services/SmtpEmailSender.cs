@@ -1,4 +1,4 @@
-﻿using MailKit.Net.Smtp;
+using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Options;
@@ -22,10 +22,12 @@ public sealed class SmtpOptions
 public sealed class SmtpEmailSender : IEmailSender
 {
     private readonly SmtpOptions _opts;
+    private readonly Func<ISmtpClient> _clientFactory;
 
-    public SmtpEmailSender(IOptions<SmtpOptions> opts)
+    public SmtpEmailSender(IOptions<SmtpOptions> opts, Func<ISmtpClient>? clientFactory = null)
     {
         _opts = opts.Value;
+        _clientFactory = clientFactory ?? (() => new SmtpClient());
     }
 
     public async Task SendEmailAsync(string email, string subject, string htmlMessage)
@@ -51,7 +53,7 @@ public sealed class SmtpEmailSender : IEmailSender
         message.Subject = subject;
         message.Body = new BodyBuilder { HtmlBody = htmlMessage }.ToMessageBody();
 
-        using var client = new SmtpClient();
+        using var client = _clientFactory();
         var secure = _opts.UseStartTls ? SecureSocketOptions.StartTls : SecureSocketOptions.Auto;
 
         await client.ConnectAsync(_opts.Host, _opts.Port, secure);
@@ -60,4 +62,5 @@ public sealed class SmtpEmailSender : IEmailSender
         await client.DisconnectAsync(true);
     }
 }
+
 
