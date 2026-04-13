@@ -74,7 +74,7 @@ jobs:
           if (-not (Test-Path $envFile)) {
             throw "Production env file not found at $envFile"
           }
-          docker compose --env-file $envFile -f docker-compose.prod.yml up -d
+          docker compose -p retailerp --env-file $envFile -f docker-compose.prod.yml up -d
           if ($LASTEXITCODE -ne 0) {
             throw "docker compose up failed with exit code $LASTEXITCODE"
           }
@@ -84,10 +84,11 @@ jobs:
         working-directory: repo
         run: |
           $envFile = 'C:\7th_Semester\RetailERP\.env.production'
-          docker compose --env-file $envFile -f docker-compose.prod.yml ps
+          docker compose -p retailerp --env-file $envFile -f docker-compose.prod.yml ps
 
       - name: Cleanup dangling images
         shell: powershell
         if: always()
         run: |
           docker image prune -f
+
