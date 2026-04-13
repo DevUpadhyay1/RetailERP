@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using RetailERP.Data;
 using RetailERP.Data.Auditing;
 using RetailERP.Data.Identity;
 using RetailERP.Data.Seed;
+using RetailERP.Infrastructure;
 using RetailERP.Services;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -255,6 +258,7 @@ try
     // ──────────────────────────────────────────────────────
     builder.Services.AddHealthChecks()
         .AddSqlServer(connectionString, name: "sqlserver", tags: new[] { "db", "ready" });
+    builder.Services.AddSingleton<AppMetricsService>();
 
     // App services
     builder.Services.AddScoped<InvoiceService>();
@@ -353,6 +357,8 @@ try
         app.UseHsts();
     }
 
+    app.UseMiddleware<CorrelationIdMiddleware>();
+
     // Serilog request logging (enriched with HTTP info)
     app.UseSerilogRequestLogging(options =>
     {
@@ -361,7 +367,18 @@ try
             diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
             diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.FirstOrDefault());
             diagnosticContext.Set("UserName", httpContext.User?.Identity?.Name ?? "anonymous");
+            diagnosticContext.Set("CorrelationId", httpContext.TraceIdentifier);
         };
+    });
+
+    var appMetrics = app.Services.GetRequiredService<AppMetricsService>();
+    app.Use(async (context, next) =>
+    {
+        var startedAt = DateTime.UtcNow;
+        using var _ = appMetrics.BeginRequest();
+        await next();
+        var durationMs = (long)Math.Max(0, (DateTime.UtcNow - startedAt).TotalMilliseconds);
+        appMetrics.TrackCompletedRequest(context, durationMs);
     });
 
     app.UseHttpsRedirection();
@@ -416,8 +433,37 @@ try
     // Sprint 9: SignalR hub endpoint
     app.MapHub<RetailHub>("/hubs/retail");
 
-    // Health check endpoint — anonymous access
-    app.MapHealthChecks("/health").AllowAnonymous();
+    var livenessEndpoint = app.MapHealthChecks("/health");
+    livenessEndpoint.AllowAnonymous();
+
+    var readinessEndpoint = app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = r => r.Tags.Contains("ready"),
+        ResponseWriter = async (context, report) =>
+        {
+            context.Response.ContentType = "application/json; charset=utf-8";
+            await context.Response.WriteAsJsonAsync(new
+            {
+                status = report.Status.ToString(),
+                checks = report.Entries.ToDictionary(
+                    e => e.Key,
+                    e => new
+                    {
+                        status = e.Value.Status.ToString(),
+                        description = e.Value.Description,
+                        durationMs = Math.Round(e.Value.Duration.TotalMilliseconds, 2)
+                    })
+            });
+        }
+    });
+    readinessEndpoint.AllowAnonymous();
+
+    var metricsEndpoint = app.MapGet("/metrics", () =>
+    {
+        var payload = appMetrics.RenderPrometheus();
+        return Results.Text(payload, "text/plain; version=0.0.4; charset=utf-8");
+    });
+    metricsEndpoint.AllowAnonymous();
 
     app.Run();
 }
