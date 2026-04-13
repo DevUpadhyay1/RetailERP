@@ -935,6 +935,242 @@ public class PosBillingServiceTests
         Assert.Contains("refund", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task CreateBillAsync_ShouldCreateOpenBill_WithGeneratedBillNo()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        await db.SaveChangesAsync();
+
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+        var sut = BuildSut(db, hub);
+
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+
+        var bill = await db.PosBills.AsNoTracking().FirstAsync(b => b.PosBillId == billId);
+        Assert.Equal((byte)1, bill.Status);
+        Assert.StartsWith($"POS-{DateTime.Today:yyyyMMdd}-", bill.BillNo, StringComparison.Ordinal);
+        Assert.Equal(0, bill.SubTotal);
+        Assert.Equal(0, bill.GrandTotal);
+    }
+
+    [Fact]
+    public async Task AddLineAsync_ShouldRecalculateSubtotalTaxAndGrandTotal_WithGst()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        db.Items.Add(new Item
+        {
+            ItemId = itemId,
+            SKU = "SKU-GST",
+            Name = "GST Item",
+            UnitPrice = 100,
+            MRP = null,
+            GstPercent = 18,
+            CompanyId = companyId
+        });
+        await db.SaveChangesAsync();
+
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+        var sut = BuildSut(db, hub);
+
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+        await sut.AddLineAsync(billId, itemId, 2);
+
+        var bill = await db.PosBills.AsNoTracking().FirstAsync(b => b.PosBillId == billId);
+        var line = await db.PosBillLines.AsNoTracking().SingleAsync(l => l.PosBillId == billId);
+
+        Assert.Equal(200, bill.SubTotal);
+        Assert.Equal(36, bill.TaxTotal);
+        Assert.Equal(236, bill.GrandTotal);
+        Assert.Equal(18, line.GstPercentSnapshot);
+    }
+
+    [Fact]
+    public async Task AddPaymentAsync_ShouldPersistPaymentRecord_WithReference()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        await db.SaveChangesAsync();
+
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+        var sut = BuildSut(db, hub);
+
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+        var payment = await sut.AddPaymentAsync(billId, "UPI", 123.45m, "TXN-001");
+
+        var saved = await db.Payments.AsNoTracking().SingleAsync(p => p.PaymentId == payment.PaymentId);
+        Assert.Equal("UPI", saved.Method);
+        Assert.Equal(123.45m, saved.Amount);
+        Assert.Equal("TXN-001", saved.Reference);
+        Assert.False(saved.IsRefund);
+    }
+
+    [Fact]
+    public async Task CompleteBillAsync_ShouldThrow_WhenPaymentIsPartial()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-PART", Name = "Partial Item", UnitPrice = 100, CompanyId = companyId });
+        db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 10, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+        var sut = BuildSut(db, hub);
+
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+        await sut.AddLineAsync(billId, itemId, 2); // GrandTotal = 200
+        await sut.AddPaymentAsync(billId, "Cash", 150, null); // partial
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => sut.CompleteBillAsync(billId));
+        Assert.Contains("Payment shortfall", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CompleteBillAsync_ShouldAllowOverpayment_AndCompleteBill()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-OVR", Name = "Overpay Item", UnitPrice = 100, CompanyId = companyId });
+        db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 10, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+        var sut = BuildSut(db, hub);
+
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+        await sut.AddLineAsync(billId, itemId, 2); // GrandTotal = 200
+        await sut.AddPaymentAsync(billId, "Cash", 250, "OVR-01"); // overpayment edge case
+
+        await sut.CompleteBillAsync(billId);
+
+        var bill = await db.PosBills.AsNoTracking().FirstAsync(b => b.PosBillId == billId);
+        Assert.Equal((byte)2, bill.Status);
+        Assert.NotNull(bill.CompletedAtUtc);
+
+        var stock = await db.Stocks.AsNoTracking().FirstAsync(s => s.ItemId == itemId && s.WarehouseId == warehouseId);
+        Assert.Equal(8, stock.Quantity);
+    }
+
+    [Fact]
+    public async Task ProcessReturnAsync_ShouldReject_DuplicateFullRefund_ForSameLine()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        using var db = new ApplicationDbContext(options);
+        db.Database.EnsureCreated();
+
+        var companyId = Guid.NewGuid();
+        var storeId = Guid.NewGuid();
+        var warehouseId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
+
+        db.Companies.Add(new Company { CompanyId = companyId, Code = "C1", Name = "Co" });
+        db.Stores.Add(new Store { StoreId = storeId, StoreCode = "S1", Name = "St", CompanyId = companyId });
+        db.Warehouses.Add(new Warehouse { WarehouseId = warehouseId, Name = "Wh", StoreId = storeId, CompanyId = companyId });
+        db.Items.Add(new Item { ItemId = itemId, SKU = "SKU-RET-DUP", Name = "Dup Return Item", UnitPrice = 60, CompanyId = companyId });
+        db.Stocks.Add(new Stock { ItemId = itemId, WarehouseId = warehouseId, Quantity = 10, CompanyId = companyId, CreatedAtUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var hub = new Mock<IHubContext<RetailHub>>();
+        hub.Setup(x => x.Clients).Returns(new Mock<IHubClients>().Object);
+        var sut = BuildSut(db, hub);
+
+        var billId = await sut.CreateBillAsync(storeId, warehouseId, null, null);
+        await sut.AddLineAsync(billId, itemId, 1);
+        var grand = (await db.PosBills.AsNoTracking().FirstAsync(b => b.PosBillId == billId)).GrandTotal;
+        await sut.AddPaymentAsync(billId, "Cash", grand, null);
+        await sut.CompleteBillAsync(billId);
+
+        var lineId = await db.PosBillLines.Where(l => l.PosBillId == billId).Select(l => l.PosBillLineId).FirstAsync();
+
+        await sut.ProcessReturnAsync(
+            billId,
+            new List<PosBillingService.ReturnLineInput> { new() { OriginalBillLineId = lineId, Qty = 1 } },
+            "first full refund",
+            "Cash",
+            null);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => sut.ProcessReturnAsync(
+            billId,
+            new List<PosBillingService.ReturnLineInput> { new() { OriginalBillLineId = lineId, Qty = 1 } },
+            "duplicate full refund",
+            "Cash",
+            null));
+
+        Assert.Contains("remaining qty", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     // ═══════════════════════════════════════════════════
     // Loyalty Regression Tests (Sprint 18)
     // ═══════════════════════════════════════════════════

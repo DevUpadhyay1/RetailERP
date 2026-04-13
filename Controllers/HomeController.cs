@@ -29,23 +29,25 @@ public class HomeController : Controller
 
     // Entry: anonymous -> Landing, logged-in -> Dashboard
     [AllowAnonymous]
-    public IActionResult Index()
+    [HttpGet("/")]
+    public async Task<IActionResult> Index()
     {
         if (User?.Identity?.IsAuthenticated == true)
             return RedirectToAction(nameof(Dashboard));
 
-        return RedirectToAction(nameof(Landing));
-    }
-
-    // Public landing page (before login)
-    [AllowAnonymous]
-    public async Task<IActionResult> Landing()
-    {
         ViewData["Title"] = "Cloud POS and Inventory Management";
         ViewData["Description"] = "RetailERP helps retailers manage POS billing, multi-warehouse inventory, GST invoices, and business analytics from one cloud platform.";
         var hasAnyUser = await _db.Users.AsNoTracking().AnyAsync();
         ViewBag.RegistrationOpen = !hasAnyUser;
-        return View();
+        return View(nameof(Landing));
+    }
+
+    // Legacy route kept for backward compatibility. Redirect permanently to canonical root URL.
+    [AllowAnonymous]
+    [HttpGet("/Home/Landing")]
+    public IActionResult Landing()
+    {
+        return RedirectPermanent("/");
     }
 
     [AllowAnonymous]
@@ -78,8 +80,7 @@ public class HomeController : Controller
         XNamespace ns = "http://www.sitemaps.org/schemas/sitemap/0.9";
         var urls = new[]
         {
-            new { Loc = $"{baseUrl}/", ChangeFreq = "daily", Priority = "1.0" },
-            new { Loc = $"{baseUrl}/Home/Landing", ChangeFreq = "daily", Priority = "0.9" }
+            new { Loc = $"{baseUrl}/", ChangeFreq = "daily", Priority = "1.0" }
         };
 
         var doc = new XDocument(
