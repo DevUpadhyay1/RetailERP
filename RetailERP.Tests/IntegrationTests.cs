@@ -63,16 +63,15 @@ public class IntegrationTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     /// <summary>
-    /// Anonymous GET to / (protected by global FallbackPolicy
-    /// RequireAuthenticatedUser) returns 302 redirect to a login page.
-    /// Chosen because "/" is the default route and is always present.
+    /// Anonymous GET to a protected route (e.g. /Home/Dashboard) returns 302 redirect
+    /// to a login page due to the FallbackPolicy RequireAuthenticatedUser.
     /// </summary>
     [Fact]
     public async Task ProtectedRoute_AnonymousGet_Returns302ToLogin()
     {
-        var response = await _client.GetAsync("/");
+        var response = await _client.GetAsync("/Home/Dashboard");
 
-        // FallbackPolicy + Cookie auth â†’ 302 redirect
+        // FallbackPolicy + Cookie auth -> 302 redirect
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.NotNull(response.Headers.Location);
     }
@@ -185,3 +184,4 @@ public class TestAuthHandler : Microsoft.AspNetCore.Authentication.Authenticatio
         return Task.FromResult(Microsoft.AspNetCore.Authentication.AuthenticateResult.Success(ticket));
     }
 }
+
