@@ -30,15 +30,15 @@ public class SmtpEmailSenderTests
         var mockClient = new Mock<MailKit.Net.Smtp.ISmtpClient>();
         
         // Setup mock to record the sent message
-        MimeMessage sentMessage = null;
+        MimeMessage? sentMessage = null;
         mockClient.Setup(c => c.SendAsync(It.IsAny<MimeMessage>(), It.IsAny<CancellationToken>(), It.IsAny<MailKit.ITransferProgress>()))
                   .Callback<MimeMessage, CancellationToken, MailKit.ITransferProgress>((msg, _, _) => sentMessage = msg)
-                  .Returns(Task.CompletedTask);
+                  .Returns(Task.FromResult("OK"));
                   
         // Return completed tasks for other methods
-        mockClient.Setup(c => c.ConnectAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<MailKit.Security.SecureSocketOptions>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        mockClient.Setup(c => c.AuthenticateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        mockClient.Setup(c => c.DisconnectAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        mockClient.Setup(c => c.ConnectAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<MailKit.Security.SecureSocketOptions>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult("OK"));
+        mockClient.Setup(c => c.AuthenticateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult("OK"));
+        mockClient.Setup(c => c.DisconnectAsync(It.IsAny<bool>(), It.IsAny<CancellationToken>())).Returns(Task.FromResult("OK"));
 
         var sender = new SmtpEmailSender(opts, () => mockClient.Object);
 
@@ -51,10 +51,10 @@ public class SmtpEmailSenderTests
 
         // Verify Message
         Assert.NotNull(sentMessage);
-        Assert.Equal("Test Subject", sentMessage.Subject);
-        Assert.Contains("customer@example.com", sentMessage.To.Mailboxes.First().Address);
-        Assert.Contains("testuser", sentMessage.From.Mailboxes.First().Address); 
-        Assert.Contains("Hello", sentMessage.HtmlBody);
+        Assert.Equal("Test Subject", sentMessage!.Subject);
+        Assert.Contains("customer@example.com", sentMessage!.To.Mailboxes.First().Address);
+        Assert.Contains("testuser", sentMessage!.From.Mailboxes.First().Address); 
+        Assert.Contains("Hello", sentMessage!.HtmlBody);
     }
 }
 
@@ -84,7 +84,7 @@ public class SyncQueueWorkerTests
             EntityType = "Item",
             EntityId = Guid.NewGuid().ToString(),
             Payload = "{\"Name\": \"Test\"}",
-            Operation = "Create",
+            Action = "Create", DeviceId = "TestDevice",
             Status = 1, // Pending
             CreatedAtUtc = DateTime.UtcNow
         });
@@ -102,10 +102,11 @@ public class SyncQueueWorkerTests
 
         // Using reflection to call the private method ProcessPendingAsync
         var method = typeof(SyncQueueWorker).GetMethod("ProcessPendingAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        await (Task)method.Invoke(worker, new object[] { CancellationToken.None });
+        await (Task)method!.Invoke(worker, new object[] { CancellationToken.None })!;
 
         var updatedLog = await db.SyncLogs.FindAsync(syncLogId);
-        Assert.Equal(2, updatedLog.Status); // Synced
+        Assert.Equal(2, updatedLog!.Status); // Synced
         Assert.NotNull(updatedLog.SyncedAtUtc);
     }
 }
+
