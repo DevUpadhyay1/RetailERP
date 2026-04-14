@@ -145,7 +145,7 @@ public sealed class FranchiseService
                      && b.Status == 2 // Completed
                      && b.BillDate >= periodStart
                      && b.BillDate < periodEnd)
-            .SumAsync(b => b.GrandTotal);
+            .SumAsync(b => (decimal?)b.GrandTotal) ?? 0m;
 
         var royaltyAmount = grossSales * agreement.RoyaltyPercent / 100m;
         var totalDue = Math.Max(royaltyAmount + agreement.MonthlyFlatFee, agreement.MinMonthlyRoyalty);

@@ -7,6 +7,12 @@ services:
       MSSQL_SA_PASSWORD: ${SA_PASSWORD}
     volumes:
       - sql_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-C", "-S", "localhost", "-U", "sa", "-P", "${SA_PASSWORD}", "-Q", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 
   redis:
     image: redis:7-alpine
@@ -18,8 +24,10 @@ services:
     image: ${APP_IMAGE}
     restart: unless-stopped
     depends_on:
-      - sqlserver
-      - redis
+      redis:
+        condition: service_started
+      sqlserver:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
