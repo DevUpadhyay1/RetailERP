@@ -24,11 +24,10 @@ public class ItemsController : ApiBaseController
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
-            var like = $"%{term}%";
             q = q.Where(i =>
-                EF.Functions.Like(i.Name, like) ||
-                EF.Functions.Like(i.SKU, like) ||
-                (i.Barcode != null && EF.Functions.Like(i.Barcode, like)));
+                i.Name.StartsWith(term) ||
+                i.SKU.StartsWith(term) ||
+                i.Barcode == term);
         }
         if (active.HasValue) q = q.Where(i => i.IsActive == active.Value);
         if (categoryId.HasValue) q = q.Where(i => i.CategoryId == categoryId.Value);

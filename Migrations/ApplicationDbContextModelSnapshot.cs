@@ -267,7 +267,7 @@ namespace RetailERP.Migrations
 
                     b.HasIndex("StoreId");
 
-                    b.HasIndex("CompanyId", "TemplateType", "DocumentType", "TemplateScope", "StoreId", "IsDefault")
+                    b.HasIndex("CompanyId", "TemplateType", "IsDefault")
                         .IsUnique()
                         .HasFilter("[IsDefault] = 1");
 
@@ -312,13 +312,15 @@ namespace RetailERP.Migrations
 
                     b.HasKey("CategoryId");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("ParentCategoryId");
 
                     b.HasIndex("UpdatedByUserId");
 
-                    b.HasIndex("CompanyId", "Name")
+                    b.HasIndex("Name", "CompanyId")
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
@@ -606,7 +608,6 @@ namespace RetailERP.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<decimal>("OpeningBalance")
-                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Phone")
@@ -1030,9 +1031,7 @@ namespace RetailERP.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("CreatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uniqueidentifier");
@@ -1047,11 +1046,9 @@ namespace RetailERP.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("MinMonthlyRoyalty")
-                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("MonthlyFlatFee")
-                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("Notes")
@@ -1059,8 +1056,7 @@ namespace RetailERP.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<decimal>("RoyaltyPercent")
-                        .HasPrecision(9, 4)
-                        .HasColumnType("decimal(9,4)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
@@ -1074,31 +1070,18 @@ namespace RetailERP.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("UpdatedByUserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("FranchiseAgreementId");
 
-                    b.HasIndex("AgreementCode")
-                        .IsUnique();
-
-                    b.HasIndex("CreatedByUserId");
-
                     b.HasIndex("FranchiseeCompanyId");
 
-                    b.HasIndex("UpdatedByUserId");
+                    b.HasIndex("FranchisorCompanyId");
 
-                    b.HasIndex("FranchisorCompanyId", "FranchiseeCompanyId")
-                        .IsUnique();
-
-                    b.ToTable("FranchiseAgreements", t =>
-                        {
-                            t.HasCheckConstraint("CK_FranchiseAgreements_Status", "[Status] IN (1,2,3)");
-                        });
+                    b.ToTable("FranchiseAgreements");
                 });
 
             modelBuilder.Entity("RetailERP.Data.Entities.FranchiseMappingRequest", b =>
@@ -1111,9 +1094,7 @@ namespace RetailERP.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uniqueidentifier");
@@ -1165,33 +1146,22 @@ namespace RetailERP.Migrations
                         .HasColumnType("tinyint");
 
                     b.Property<DateTime>("UpdatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("UpdatedByUserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("FranchiseMappingRequestId");
 
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("CreatedByUserId");
-
                     b.HasIndex("MappedOperatorCompanyId");
 
                     b.HasIndex("RequestedByUserId");
 
+                    b.HasIndex("RequestingCompanyId");
+
                     b.HasIndex("ReviewedByUserId");
 
-                    b.HasIndex("UpdatedByUserId");
-
-                    b.HasIndex("RequestingCompanyId", "Status", "RequestedAtUtc");
-
-                    b.ToTable("FranchiseMappingRequests", t =>
-                        {
-                            t.HasCheckConstraint("CK_FranchiseMappingRequests_Status", "[Status] IN (1,2,3,4)");
-                        });
+                    b.ToTable("FranchiseMappingRequests");
                 });
 
             modelBuilder.Entity("RetailERP.Data.Entities.Invoice", b =>
@@ -1263,6 +1233,8 @@ namespace RetailERP.Migrations
 
                     b.HasIndex("BillTemplateId");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("CustomerId");
@@ -1273,7 +1245,7 @@ namespace RetailERP.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.HasIndex("CompanyId", "InvoiceNo")
+                    b.HasIndex("InvoiceNo", "CompanyId")
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
@@ -1401,10 +1373,6 @@ namespace RetailERP.Migrations
 
                     b.HasIndex("StoreId");
 
-                    b.HasIndex("CompanyId", "StoreId", "DocumentType", "IsActive")
-                        .IsUnique()
-                        .HasFilter("[IsActive] = 1");
-
                     b.ToTable("InvoiceNumberingRules");
                 });
 
@@ -1483,6 +1451,8 @@ namespace RetailERP.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("UnitId");
@@ -1493,7 +1463,7 @@ namespace RetailERP.Migrations
                         .IsUnique()
                         .HasFilter("[Barcode] IS NOT NULL");
 
-                    b.HasIndex("CompanyId", "SKU")
+                    b.HasIndex("SKU", "CompanyId")
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
@@ -1876,9 +1846,7 @@ namespace RetailERP.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uniqueidentifier");
@@ -1915,35 +1883,18 @@ namespace RetailERP.Migrations
                         .HasColumnType("nvarchar(12)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("UpdatedByUserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("PortalAccessLinkId");
 
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("CreatedByUserId");
-
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("SupplierId");
 
-                    b.HasIndex("UpdatedByUserId");
-
-                    b.HasIndex("TokenHash", "CompanyId")
-                        .IsUnique()
-                        .HasFilter("[CompanyId] IS NOT NULL");
-
-                    b.ToTable("PortalAccessLinks", t =>
-                        {
-                            t.HasCheckConstraint("CK_PortalAccessLinks_PortalType", "[PortalType] IN (1,2)");
-
-                            t.HasCheckConstraint("CK_PortalAccessLinks_Target", "(([PortalType] = 1 AND [CustomerId] IS NOT NULL AND [SupplierId] IS NULL) OR ([PortalType] = 2 AND [SupplierId] IS NOT NULL AND [CustomerId] IS NULL))");
-                        });
+                    b.ToTable("PortalAccessLinks");
                 });
 
             modelBuilder.Entity("RetailERP.Data.Entities.PortalReturnRequest", b =>
@@ -1960,9 +1911,7 @@ namespace RetailERP.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uniqueidentifier");
@@ -1993,18 +1942,14 @@ namespace RetailERP.Migrations
                         .HasColumnType("tinyint");
 
                     b.Property<DateTime>("UpdatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("UpdatedByUserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("PortalReturnRequestId");
 
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("CreatedByUserId");
+                    b.HasIndex("CustomerId");
 
                     b.HasIndex("PosBillId");
 
@@ -2012,14 +1957,7 @@ namespace RetailERP.Migrations
 
                     b.HasIndex("ReviewedByUserId");
 
-                    b.HasIndex("UpdatedByUserId");
-
-                    b.HasIndex("CustomerId", "RequestedAtUtc");
-
-                    b.ToTable("PortalReturnRequests", t =>
-                        {
-                            t.HasCheckConstraint("CK_PortalReturnRequests_Status", "[Status] IN (1,2,3,4)");
-                        });
+                    b.ToTable("PortalReturnRequests");
                 });
 
             modelBuilder.Entity("RetailERP.Data.Entities.PosBill", b =>
@@ -2587,6 +2525,8 @@ namespace RetailERP.Migrations
 
                     b.HasKey("PurchaseId");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("EmployeeId");
@@ -2597,7 +2537,7 @@ namespace RetailERP.Migrations
 
                     b.HasIndex("WarehouseId");
 
-                    b.HasIndex("CompanyId", "PurchaseNo")
+                    b.HasIndex("PurchaseNo", "CompanyId")
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
@@ -2699,26 +2639,21 @@ namespace RetailERP.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("AmountPaid")
-                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("CreatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("FlatFeeAmount")
-                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid>("FranchiseAgreementId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<decimal>("GrossSales")
-                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("PaidAtUtc")
@@ -2735,37 +2670,25 @@ namespace RetailERP.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<decimal>("RoyaltyAmount")
-                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<byte>("Status")
                         .HasColumnType("tinyint");
 
                     b.Property<decimal>("TotalDue")
-                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("UpdatedByUserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("RoyaltyPaymentId");
 
-                    b.HasIndex("CreatedByUserId");
+                    b.HasIndex("FranchiseAgreementId");
 
-                    b.HasIndex("UpdatedByUserId");
-
-                    b.HasIndex("FranchiseAgreementId", "PeriodYear", "PeriodMonth")
-                        .IsUnique();
-
-                    b.ToTable("RoyaltyPayments", t =>
-                        {
-                            t.HasCheckConstraint("CK_RoyaltyPayments_Status", "[Status] IN (1,2,3,4)");
-                        });
+                    b.ToTable("RoyaltyPayments");
                 });
 
             modelBuilder.Entity("RetailERP.Data.Entities.Stock", b =>
@@ -2845,9 +2768,7 @@ namespace RetailERP.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uniqueidentifier");
@@ -2884,33 +2805,20 @@ namespace RetailERP.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("UpdatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("UpdatedByUserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("StockAdjustmentRequestId");
 
-                    b.HasIndex("CompanyId");
-
-                    b.HasIndex("CreatedByUserId");
-
                     b.HasIndex("RequestedByUserId");
 
                     b.HasIndex("ReviewedByUserId");
 
-                    b.HasIndex("UpdatedByUserId");
+                    b.HasIndex("StockId");
 
-                    b.HasIndex("StockId", "Status", "RequestedAtUtc");
-
-                    b.ToTable("StockAdjustmentRequests", t =>
-                        {
-                            t.HasCheckConstraint("CK_StockAdjustmentRequests_QtyNonZero", "[DeltaQty] <> 0");
-
-                            t.HasCheckConstraint("CK_StockAdjustmentRequests_Status", "[Status] IN (1,2,3,4)");
-                        });
+                    b.ToTable("StockAdjustmentRequests");
                 });
 
             modelBuilder.Entity("RetailERP.Data.Entities.StockMovement", b =>
@@ -3085,7 +2993,7 @@ namespace RetailERP.Migrations
                         {
                             t.HasCheckConstraint("CK_StockTransactions_QtyNonZero", "[Qty] <> 0");
 
-                            t.HasCheckConstraint("CK_StockTransactions_Type", "[Type] IN ('IN','OUT','ADJUSTMENT','TRANSFER','RETURN','OPENING')");
+                            t.HasCheckConstraint("CK_StockTransactions_Type", "[Type] IN ('IN','OUT','ADJUSTMENT','TRANSFER','RETURN')");
                         });
                 });
 
@@ -3156,11 +3064,13 @@ namespace RetailERP.Migrations
 
                     b.HasKey("StoreId");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("UpdatedByUserId");
 
-                    b.HasIndex("CompanyId", "StoreCode")
+                    b.HasIndex("StoreCode", "CompanyId")
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
@@ -3226,11 +3136,13 @@ namespace RetailERP.Migrations
 
                     b.HasKey("SupplierId");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("UpdatedByUserId");
 
-                    b.HasIndex("CompanyId", "Name")
+                    b.HasIndex("Name", "CompanyId")
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
@@ -3247,9 +3159,7 @@ namespace RetailERP.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uniqueidentifier");
@@ -3274,30 +3184,18 @@ namespace RetailERP.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid?>("UpdatedByUserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("SupplierPoResponseId");
 
-                    b.HasIndex("CompanyId");
+                    b.HasIndex("PurchaseId");
 
-                    b.HasIndex("CreatedByUserId");
+                    b.HasIndex("SupplierId");
 
-                    b.HasIndex("PurchaseId")
-                        .IsUnique();
-
-                    b.HasIndex("UpdatedByUserId");
-
-                    b.HasIndex("SupplierId", "ResponseStatus");
-
-                    b.ToTable("SupplierPoResponses", t =>
-                        {
-                            t.HasCheckConstraint("CK_SupplierPoResponses_ResponseStatus", "[ResponseStatus] IN (1,2,3)");
-                        });
+                    b.ToTable("SupplierPoResponses");
                 });
 
             modelBuilder.Entity("RetailERP.Data.Entities.SyncLog", b =>
@@ -3425,11 +3323,13 @@ namespace RetailERP.Migrations
 
                     b.HasKey("UnitId");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("UpdatedByUserId");
 
-                    b.HasIndex("CompanyId", "Name")
+                    b.HasIndex("Name", "CompanyId")
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
@@ -3501,13 +3401,15 @@ namespace RetailERP.Migrations
 
                     b.HasKey("WarehouseId");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("StoreId");
 
                     b.HasIndex("UpdatedByUserId");
 
-                    b.HasIndex("CompanyId", "Name")
+                    b.HasIndex("Name", "CompanyId")
                         .IsUnique()
                         .HasFilter("[CompanyId] IS NOT NULL");
 
@@ -3689,13 +3591,11 @@ namespace RetailERP.Migrations
                 {
                     b.HasOne("RetailERP.Data.Entities.Company", "Company")
                         .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("CompanyId");
 
                     b.HasOne("RetailERP.Data.Entities.Store", "Store")
                         .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("StoreId");
 
                     b.Navigation("Company");
 
@@ -3731,8 +3631,7 @@ namespace RetailERP.Migrations
                 {
                     b.HasOne("RetailERP.Data.Entities.Company", "ParentCompany")
                         .WithMany("ChildCompanies")
-                        .HasForeignKey("ParentCompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("ParentCompanyId");
 
                     b.Navigation("ParentCompany");
                 });
@@ -3901,27 +3800,17 @@ namespace RetailERP.Migrations
 
             modelBuilder.Entity("RetailERP.Data.Entities.FranchiseAgreement", b =>
                 {
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetailERP.Data.Entities.Company", "FranchiseeCompany")
                         .WithMany()
                         .HasForeignKey("FranchiseeCompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("RetailERP.Data.Entities.Company", "FranchisorCompany")
                         .WithMany()
                         .HasForeignKey("FranchisorCompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UpdatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("FranchiseeCompany");
 
@@ -3930,41 +3819,23 @@ namespace RetailERP.Migrations
 
             modelBuilder.Entity("RetailERP.Data.Entities.FranchiseMappingRequest", b =>
                 {
-                    b.HasOne("RetailERP.Data.Entities.Company", null)
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetailERP.Data.Entities.Company", "MappedOperatorCompany")
                         .WithMany()
-                        .HasForeignKey("MappedOperatorCompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("MappedOperatorCompanyId");
 
                     b.HasOne("RetailERP.Data.Identity.ApplicationUser", "RequestedByUser")
                         .WithMany()
-                        .HasForeignKey("RequestedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("RequestedByUserId");
 
                     b.HasOne("RetailERP.Data.Entities.Company", "RequestingCompany")
                         .WithMany()
                         .HasForeignKey("RequestingCompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("RetailERP.Data.Identity.ApplicationUser", "ReviewedByUser")
                         .WithMany()
-                        .HasForeignKey("ReviewedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UpdatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("ReviewedByUserId");
 
                     b.Navigation("MappedOperatorCompany");
 
@@ -3979,8 +3850,7 @@ namespace RetailERP.Migrations
                 {
                     b.HasOne("RetailERP.Data.Entities.BillTemplate", "BillTemplate")
                         .WithMany()
-                        .HasForeignKey("BillTemplateId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("BillTemplateId");
 
                     b.HasOne("RetailERP.Data.Entities.Company", null)
                         .WithMany()
@@ -4054,15 +3924,9 @@ namespace RetailERP.Migrations
 
             modelBuilder.Entity("RetailERP.Data.Entities.InvoiceNumberingRule", b =>
                 {
-                    b.HasOne("RetailERP.Data.Entities.Company", null)
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetailERP.Data.Entities.Store", "Store")
                         .WithMany()
-                        .HasForeignKey("StoreId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("StoreId");
 
                     b.Navigation("Store");
                 });
@@ -4214,30 +4078,13 @@ namespace RetailERP.Migrations
 
             modelBuilder.Entity("RetailERP.Data.Entities.PortalAccessLink", b =>
                 {
-                    b.HasOne("RetailERP.Data.Entities.Company", null)
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetailERP.Data.Entities.Customer", "Customer")
                         .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("CustomerId");
 
                     b.HasOne("RetailERP.Data.Entities.Supplier", "Supplier")
                         .WithMany()
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UpdatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("SupplierId");
 
                     b.Navigation("Customer");
 
@@ -4246,42 +4093,25 @@ namespace RetailERP.Migrations
 
             modelBuilder.Entity("RetailERP.Data.Entities.PortalReturnRequest", b =>
                 {
-                    b.HasOne("RetailERP.Data.Entities.Company", null)
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetailERP.Data.Entities.Customer", "Customer")
                         .WithMany()
                         .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("RetailERP.Data.Entities.PosBill", "PosBill")
                         .WithMany()
                         .HasForeignKey("PosBillId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("RetailERP.Data.Entities.PosReturn", "PosReturn")
                         .WithMany()
-                        .HasForeignKey("PosReturnId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("PosReturnId");
 
                     b.HasOne("RetailERP.Data.Identity.ApplicationUser", "ReviewedByUser")
                         .WithMany()
-                        .HasForeignKey("ReviewedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UpdatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("ReviewedByUserId");
 
                     b.Navigation("Customer");
 
@@ -4584,21 +4414,11 @@ namespace RetailERP.Migrations
 
             modelBuilder.Entity("RetailERP.Data.Entities.RoyaltyPayment", b =>
                 {
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetailERP.Data.Entities.FranchiseAgreement", "Agreement")
                         .WithMany("RoyaltyPayments")
                         .HasForeignKey("FranchiseAgreementId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UpdatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Agreement");
                 });
@@ -4639,36 +4459,19 @@ namespace RetailERP.Migrations
 
             modelBuilder.Entity("RetailERP.Data.Entities.StockAdjustmentRequest", b =>
                 {
-                    b.HasOne("RetailERP.Data.Entities.Company", null)
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetailERP.Data.Identity.ApplicationUser", "RequestedByUser")
                         .WithMany()
-                        .HasForeignKey("RequestedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("RequestedByUserId");
 
                     b.HasOne("RetailERP.Data.Identity.ApplicationUser", "ReviewedByUser")
                         .WithMany()
-                        .HasForeignKey("ReviewedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("ReviewedByUserId");
 
                     b.HasOne("RetailERP.Data.Entities.Stock", "Stock")
                         .WithMany()
                         .HasForeignKey("StockId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UpdatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("RequestedByUser");
 
@@ -4811,32 +4614,17 @@ namespace RetailERP.Migrations
 
             modelBuilder.Entity("RetailERP.Data.Entities.SupplierPoResponse", b =>
                 {
-                    b.HasOne("RetailERP.Data.Entities.Company", null)
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("RetailERP.Data.Entities.Purchase", "Purchase")
                         .WithMany()
                         .HasForeignKey("PurchaseId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("RetailERP.Data.Entities.Supplier", "Supplier")
                         .WithMany()
                         .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("RetailERP.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UpdatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Purchase");
 
