@@ -34,7 +34,7 @@ services:
       AllowedHosts: ${ALLOWED_HOSTS:-localhost;127.0.0.1}
       Security__AllowInsecureCookiesForLocalHttp: ${ALLOW_INSECURE_COOKIES_FOR_LOCAL_HTTP:-false}
       OperationalEndpoints__AllowAnonymousHealth: "false"
-      OperationalEndpoints__AllowAnonymousMetrics: "false"
+      OperationalEndpoints__AllowAnonymousMetrics: "${ALLOW_METRICS:-true}"
       ForwardedHeaders__ForwardLimit: ${FORWARDED_HEADERS_FORWARD_LIMIT:-2}
       ForwardedHeaders__KnownProxies__0: ${FORWARDED_HEADERS_KNOWN_PROXY_0:-}
       ForwardedHeaders__KnownProxies__1: ${FORWARDED_HEADERS_KNOWN_PROXY_1:-}
@@ -67,9 +67,30 @@ services:
       - app_uploads:/app/wwwroot/uploads
       - app_logs:/app/Logs
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: retailerp-prometheus
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: retailerp-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    restart: unless-stopped
+
 volumes:
   sql_data:
   redis_data:
   app_uploads:
   app_logs:
+  grafana-data:
 
