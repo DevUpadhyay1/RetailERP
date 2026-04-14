@@ -64,3 +64,4 @@ volumes:
   redis_data:
   app_uploads:
   app_logs:
+
