@@ -12,7 +12,7 @@ services:
     volumes:
       - sql_data:/var/opt/mssql
     healthcheck:
-      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${SA_PASSWORD:-Your_strong_Password_123}", "-Q", "SELECT 1"]
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-C", "-S", "localhost", "-U", "sa", "-P", "${SA_PASSWORD:-Your_strong_Password_123}", "-Q", "SELECT 1"]
       interval: 20s
       timeout: 5s
       retries: 10
@@ -37,6 +37,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
+      AllowedHosts: ${ALLOWED_HOSTS:-quickbusiness.co.in;www.quickbusiness.co.in;localhost;127.0.0.1}
       ConnectionStrings__DefaultConnection: Server=sqlserver;Database=RetailERPDb;User Id=sa;Password=${SA_PASSWORD:-Your_strong_Password_123};TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=true
       ConnectionStrings__Redis: redis:6379
       Jwt__SecretKey: ${JWT_SECRET:-CHANGE_ME_TO_A_STRONG_SECRET_FOR_PROD}

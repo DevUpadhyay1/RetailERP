@@ -272,6 +272,10 @@ try
     builder.Services.AddScoped<PromotionService>();  // Sprint 7
     builder.Services.AddScoped<GstReportService>();   // Sprint 8
     builder.Services.AddScoped<EInvoiceService>();    // Sprint 8
+    builder.Services.AddScoped<ItemOnboardingService>();
+    builder.Services.AddScoped<BarcodeLabelService>();
+    builder.Services.AddScoped<CustomerOnboardingService>();
+    builder.Services.AddScoped<SupplierOnboardingService>();
 
     // Sprint 9: SignalR + Background Jobs
     builder.Services.AddSignalR();
