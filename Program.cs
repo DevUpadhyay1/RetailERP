@@ -276,6 +276,13 @@ try
     builder.Services.AddScoped<BarcodeLabelService>();
     builder.Services.AddScoped<CustomerOnboardingService>();
     builder.Services.AddScoped<SupplierOnboardingService>();
+    builder.Services.AddScoped<ForecastService>();
+    builder.Services.AddScoped<FranchiseService>();
+    builder.Services.AddScoped<NotificationService>();
+    builder.Services.AddScoped<PortalService>();
+    builder.Services.AddScoped<SmsService>();
+    builder.Services.AddScoped<WhatsAppService>();
+    builder.Services.AddScoped<InvoiceNumberingService>();
 
     // Sprint 9: SignalR + Background Jobs
     builder.Services.AddSignalR();
