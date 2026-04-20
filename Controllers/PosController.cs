@@ -147,6 +147,22 @@ public class PosController : Controller
         }
 
         var userId = Guid.Parse(_userManager.GetUserId(User)!);
+
+        // ── Reuse existing open bill for this cashier (prevents duplicate empty bills) ──
+        var existingBill = await _db.PosBills
+            .AsNoTracking()
+            .Where(b => b.CashierUserId == userId
+                     && b.StoreId == user.DefaultPosStoreId.Value
+                     && b.WarehouseId == user.DefaultPosWarehouseId.Value
+                     && b.Status == 1 /* Open */
+                     && b.BillDate == DateTime.Today)
+            .OrderByDescending(b => b.BillDate)
+            .Select(b => b.PosBillId)
+            .FirstOrDefaultAsync();
+
+        if (existingBill != Guid.Empty)
+            return RedirectToAction(nameof(Bill), new { id = existingBill });
+
         var billId = await _pos.CreateBillAsync(user.DefaultPosStoreId.Value, user.DefaultPosWarehouseId.Value, null, userId);
         return RedirectToAction(nameof(Bill), new { id = billId });
     }
