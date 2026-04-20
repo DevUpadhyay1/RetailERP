@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using RetailERP.Data;
 using RetailERP.Data.Entities;
 using RetailERP.Services;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
 namespace RetailERP.Controllers;
@@ -164,7 +165,7 @@ public class InvoicesController : Controller
 
         ViewBag.InvoiceTemplates = templateOptions;
 
-        ViewBag.ItemOptions = await _db.Items
+        var itemOptions = await _db.Items
             .AsNoTracking()
             .OrderBy(x => x.SKU)
             .Select(x => new InvoiceItemOptionVm
@@ -174,6 +175,9 @@ public class InvoicesController : Controller
                 UnitPrice = x.UnitPrice
             })
             .ToListAsync();
+
+        ViewBag.ItemOptions = itemOptions;
+        ViewBag.Items = new SelectList(itemOptions, nameof(InvoiceItemOptionVm.ItemId), nameof(InvoiceItemOptionVm.Text));
 
         var vm = new InvoiceEditVm
         {
@@ -196,7 +200,11 @@ public class InvoicesController : Controller
                 .Select(x => new InvoiceLineRowVm
                 {
                     InvoiceLineId = x.InvoiceLineId,
-                    ItemName = x.Item is null ? "(Missing Item)" : $"{x.Item.SKU} - {x.Item.Name}",
+                    ItemName = x.Item is not null
+                        ? $"{x.Item.SKU} - {x.Item.Name}"
+                        : string.IsNullOrWhiteSpace(x.ItemNameSnapshot) && string.IsNullOrWhiteSpace(x.ItemSkuSnapshot)
+                            ? "(Missing Item)"
+                            : $"{(string.IsNullOrWhiteSpace(x.ItemSkuSnapshot) ? "N/A" : x.ItemSkuSnapshot)} - {(string.IsNullOrWhiteSpace(x.ItemNameSnapshot) ? "Item" : x.ItemNameSnapshot)}",
                     Qty = x.Qty,
                     UnitPrice = x.UnitPrice
                 })
@@ -460,7 +468,11 @@ public class InvoicesController : Controller
     {
         public Guid InvoiceId { get; set; }
         public Guid ItemId { get; set; }
+
+        [Range(typeof(decimal), "0.01", "999999999")]
         public decimal Qty { get; set; }
+
+        [Range(typeof(decimal), "0", "999999999")]
         public decimal UnitPrice { get; set; }
     }
 

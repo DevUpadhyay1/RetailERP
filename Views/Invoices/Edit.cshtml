@@ -101,20 +101,20 @@
                 }
                 else
                 {
-                    <form asp-action="AddLine" method="post" class="vstack gap-2">
+                    <form asp-action="AddLine" method="post" class="vstack gap-2" id="add-invoice-line-form">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="InvoiceId" value="@Model.InvoiceId" />
 
                         <label class="form-label mb-0">Item</label>
-                        <select class="form-select" name="ItemId" asp-items="ViewBag.Items">
+                        <select class="form-select" name="ItemId" asp-items="ViewBag.Items" id="invoice-item-select" required>
                             <option value="" disabled selected>-- Select Item --</option>
                         </select>
 
                         <label class="form-label mb-0">Qty</label>
-                        <input class="form-control" name="Qty" type="number" step="0.01" min="0.01" value="1" />
+                        <input class="form-control" name="Qty" type="number" step="0.01" min="0.01" value="1" required />
 
                         <label class="form-label mb-0">Unit Price</label>
-                        <input class="form-control" name="UnitPrice" type="number" step="0.01" min="0" value="0" />
+                        <input class="form-control" name="UnitPrice" type="number" step="0.01" min="0" value="0" id="invoice-unit-price" required />
 
                         <button class="btn btn-primary" type="submit">Add</button>
                         <a class="btn btn-outline-secondary" asp-action="Index">Back to Register</a>
@@ -124,3 +124,30 @@
         </div>
     </div>
 </div>
+
+@{
+    var options = ViewBag.ItemOptions as IEnumerable<RetailERP.Controllers.InvoicesController.InvoiceItemOptionVm>
+                  ?? Enumerable.Empty<RetailERP.Controllers.InvoicesController.InvoiceItemOptionVm>();
+    var priceMap = options.ToDictionary(x => x.ItemId.ToString(), x => x.UnitPrice);
+}
+
+<script>
+    (function () {
+        const select = document.getElementById('invoice-item-select');
+        const unitPriceInput = document.getElementById('invoice-unit-price');
+        const priceMap = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(priceMap));
+
+        if (!select || !unitPriceInput) return;
+
+        const setUnitPrice = () => {
+            const selectedId = select.value;
+            const price = priceMap[selectedId];
+            if (price !== undefined && price !== null) {
+                unitPriceInput.value = Number(price).toFixed(2);
+            }
+        };
+
+        select.addEventListener('change', setUnitPrice);
+        setUnitPrice();
+    })();
+</script>
