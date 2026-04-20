@@ -27,9 +27,8 @@ public class InvoicePdfService
     {
         QuestPDF.Settings.CheckIfAllTextGlyphsAreAvailable = false;
 
-        var components = JsonSerializer.Deserialize<List<LayoutComponent>>(template.LayoutJson, JsonOpts) ?? new();
-        if (components.Count == 0)
-            components = GetDefaultLayout();
+        var parsedComponents = JsonSerializer.Deserialize<List<LayoutComponent>>(template.LayoutJson, JsonOpts);
+        var components = NormalizeLayoutComponents(parsedComponents);
 
         var pageWidth = template.PaperSize switch
         {
@@ -709,6 +708,73 @@ public class InvoicePdfService
         new() { Type = "tax_summary" },
         new() { Type = "footer" }
     ];
+
+    private static List<LayoutComponent> NormalizeLayoutComponents(List<LayoutComponent>? parsed)
+    {
+        if (parsed is null || parsed.Count == 0)
+            return GetDefaultLayout();
+
+        var knownTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "logo",
+            "header_row",
+            "store_header",
+            "social_row",
+            "bill_info",
+            "items_table",
+            "totals",
+            "payments",
+            "tax_summary",
+            "footer",
+            "text_block",
+            "separator",
+            "spacer"
+        };
+
+        var normalized = parsed
+            .Select(c => new LayoutComponent
+            {
+                Type = NormalizeComponentType(c.Type),
+                Props = c.Props
+            })
+            .Where(c => !string.IsNullOrWhiteSpace(c.Type) && knownTypes.Contains(c.Type))
+            .ToList();
+
+        if (normalized.Count == 0)
+            return GetDefaultLayout();
+
+        var meaningful = normalized.Where(c => c.Type is not "separator" and not "spacer").ToList();
+        if (meaningful.Count == 0)
+            return GetDefaultLayout();
+
+        // Guard against corrupted layouts that technically parse but miss core invoice sections.
+        var hasHeader = meaningful.Any(c => c.Type is "store_header" or "header_row");
+        var hasItems = meaningful.Any(c => c.Type == "items_table");
+        var hasTotals = meaningful.Any(c => c.Type == "totals");
+
+        if (!hasHeader || !hasItems || !hasTotals)
+            return GetDefaultLayout();
+
+        return normalized;
+    }
+
+    private static string NormalizeComponentType(string? type)
+    {
+        if (string.IsNullOrWhiteSpace(type))
+            return string.Empty;
+
+        var t = type.Trim().ToLowerInvariant().Replace('-', '_').Replace(' ', '_');
+        return t switch
+        {
+            "storeheader" => "store_header",
+            "headerrow" => "header_row",
+            "billinfo" => "bill_info",
+            "itemstable" => "items_table",
+            "taxsummary" => "tax_summary",
+            "textblock" => "text_block",
+            _ => t
+        };
+    }
 
     private static string GetDocumentTitle(InvoiceDocumentType type) =>
         type switch

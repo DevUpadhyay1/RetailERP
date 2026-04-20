@@ -333,7 +333,9 @@ public class InvoicesController : Controller
                 t.DocumentType == invoice.DocumentType &&
                 t.CompanyId == company.CompanyId);
 
-        template = await ResolveInvoiceTemplateAsync(templateQuery, invoice.Warehouse?.StoreId, templateId ?? invoice.BillTemplateId);
+        // Prefer explicit template from query string. Otherwise use default fallback resolution
+        // so invoices don't get stuck rendering with stale non-default per-invoice templates.
+        template = await ResolveInvoiceTemplateAsync(templateQuery, invoice.Warehouse?.StoreId, templateId);
 
         if (template is null)
         {
