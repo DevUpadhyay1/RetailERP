@@ -469,29 +469,20 @@ public class PosController : Controller
         }
     }
 
-    /// <summary>Complete bill and auto-create next bill with same store/warehouse (AJAX)</summary>
+    /// <summary>Complete bill and show receipt (AJAX)</summary>
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> CompleteBill([FromBody] BillIdReq req)
     {
         try
         {
-            // Get store/warehouse from current bill before completing
-            var currentBill = await _db.PosBills.AsNoTracking()
-                .FirstAsync(b => b.PosBillId == req.BillId);
-            var storeId = currentBill.StoreId;
-            var warehouseId = currentBill.WarehouseId;
-
             await _pos.CompleteBillAsync(req.BillId);
 
-            // Auto-create next bill with same store/warehouse
-            var userId = Guid.Parse(_userManager.GetUserId(User)!);
-            var nextBillId = await _pos.CreateBillAsync(storeId, warehouseId, null, userId);
-
+            // Return to the current completed bill so cashier can see change due and explicitly click 'New Bill' when ready.
             return Json(new
             {
                 success = true,
                 receiptUrl = Url.Action(nameof(Receipt), new { id = req.BillId }),
-                nextBillUrl = Url.Action(nameof(Bill), new { id = nextBillId })
+                nextBillUrl = Url.Action(nameof(Bill), new { id = req.BillId })
             });
         }
         catch (Exception ex)
@@ -606,14 +597,8 @@ public class PosController : Controller
         try
         {
             await _pos.HoldBillAsync(req.BillId);
-
-            // Auto-create next bill with same store/warehouse
-            var currentBill = await _db.PosBills.AsNoTracking()
-                .FirstAsync(b => b.PosBillId == req.BillId);
-            var userId = Guid.Parse(_userManager.GetUserId(User)!);
-            var nextBillId = await _pos.CreateBillAsync(currentBill.StoreId, currentBill.WarehouseId, null, userId);
-
-            return Json(new { success = true, nextBillUrl = Url.Action(nameof(Bill), new { id = nextBillId }) });
+            // After holding, return to index so they can resume or create a new bill
+            return Json(new { success = true, nextBillUrl = Url.Action(nameof(Index)) });
         }
         catch (Exception ex) { return Json(new { success = false, message = ex.Message }); }
     }
