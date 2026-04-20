@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -318,9 +318,10 @@ public class InvoicesController : Controller
 
         if (invoice is null) return NotFound();
 
+        var companyId = invoice.CompanyId ?? GetCompanyId();
         var company = await _db.Companies
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.CompanyId == GetCompanyId());
+            .FirstOrDefaultAsync(c => c.CompanyId == companyId);
         if (company is null) return NotFound();
 
         BillTemplate? template;

@@ -1109,14 +1109,14 @@ public class PosController : Controller
 
         if (bill is null) return NotFound();
 
-        var companyId = Guid.Parse(User.FindFirstValue("CompanyId") ?? Guid.Empty.ToString());
+        var companyId = bill.CompanyId ?? Guid.Parse(User.FindFirstValue("CompanyId") ?? Guid.Empty.ToString());
         var company = await _db.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.CompanyId == companyId);
         if (company is null) return NotFound();
 
         // Find default POS receipt template for this company
         var template = await _db.BillTemplates
             .AsNoTracking()
-            .Where(t => t.TemplateType == 1 && t.IsDefault)
+            .Where(t => t.CompanyId == company.CompanyId && t.TemplateType == 1 && t.IsDefault)
             .FirstOrDefaultAsync();
 
         if (template is null)
