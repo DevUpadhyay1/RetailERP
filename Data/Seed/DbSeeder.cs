@@ -97,7 +97,7 @@ public sealed class DbSeeder
                 continue;
             }
 
-            // Resolve password: env var takes priority, then inline (for dev only)
+            // Resolve password from environment variable only (no inline secrets in config).
             string? password = null;
             if (!string.IsNullOrWhiteSpace(userDef.PasswordEnvVar))
             {
@@ -111,10 +111,11 @@ public sealed class DbSeeder
                 }
             }
 
-            // Fallback to inline password (only acceptable in Development)
-            if (string.IsNullOrWhiteSpace(password) && !string.IsNullOrWhiteSpace(userDef.Password))
+            if (string.IsNullOrWhiteSpace(userDef.PasswordEnvVar))
             {
-                password = userDef.Password;
+                _logger.LogWarning(
+                    "IdentitySeeding: PasswordEnvVar is missing for user {Email}. New user creation will be skipped.",
+                    userDef.Email);
             }
 
             var companyId = userDef.IsGlobal ? null : (Guid?)DefaultCompanyId;
@@ -131,7 +132,14 @@ public sealed class DbSeeder
     // ═══════════════════════════════════════════════════════════
     private async Task EnsureRolesAndDefaultCompanyAsync()
     {
-        await _db.Database.MigrateAsync();
+        if (_db.Database.IsRelational())
+        {
+            await _db.Database.MigrateAsync();
+        }
+        else
+        {
+            await _db.Database.EnsureCreatedAsync();
+        }
 
         string[] roles =
         [
@@ -258,6 +266,12 @@ public sealed class DbSeeder
     /// <summary>Sprint 4 – Backfill null CompanyId to DefaultCompanyId on all tenant entities.</summary>
     private async Task BackfillCompanyIdAsync()
     {
+        if (!_db.Database.IsRelational())
+        {
+            await BackfillCompanyIdInMemoryAsync();
+            return;
+        }
+
         var tables = new[]
         {
             "Items", "Units", "Categories", "Stores", "Warehouses", "Stocks",
@@ -310,6 +324,25 @@ public sealed class DbSeeder
             DefaultCompanyId,
             RoleSuperAdmin);
 #pragma warning restore EF1002
+    }
+
+    private async Task BackfillCompanyIdInMemoryAsync()
+    {
+        // In-memory test providers do not support relational SQL updates.
+        var users = await _userManager.Users.ToListAsync();
+        foreach (var user in users)
+        {
+            if (user.CompanyId.HasValue)
+                continue;
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var isSuperAdmin = roles.Any(r => string.Equals(r, RoleSuperAdmin, StringComparison.OrdinalIgnoreCase));
+            if (isSuperAdmin)
+                continue;
+
+            user.CompanyId = DefaultCompanyId;
+            await _userManager.UpdateAsync(user);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════
