@@ -1,10 +1,19 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RetailERP.Data.Entities;
 using RetailERP.Data.Identity;
 
 namespace RetailERP.Data.Seed;
 
+/// <summary>
+/// Production-grade database seeder.
+/// - Roles and default company are always ensured.
+/// - User accounts are driven by <see cref="IdentitySeedingOptions"/> in appsettings
+///   (per-environment). No hardcoded passwords in source code.
+/// - Demo master data is ONLY seeded in Development environment.
+/// </summary>
 public sealed class DbSeeder
 {
     public const string RoleSuperAdmin = "SuperAdmin";
@@ -21,22 +30,109 @@ public sealed class DbSeeder
     private readonly ApplicationDbContext _db;
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ILogger<DbSeeder> _logger;
+    private readonly IdentitySeedingOptions _seedingOptions;
 
     public DbSeeder(
         ApplicationDbContext db,
         RoleManager<ApplicationRole> roleManager,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        ILogger<DbSeeder> logger,
+        IOptions<IdentitySeedingOptions> seedingOptions)
     {
         _db = db;
         _roleManager = roleManager;
         _userManager = userManager;
+        _logger = logger;
+        _seedingOptions = seedingOptions.Value;
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // Development seed — demo data + config-driven users
+    // ═══════════════════════════════════════════════════════════
     public async Task SeedAsync()
+    {
+        await EnsureRolesAndDefaultCompanyAsync();
+        await SeedConfigDrivenUsersAsync();
+        await BackfillCompanyIdAsync();
+
+        // Demo master data (Development only — only if tables are empty)
+        await SeedDemoDataIfEmptyAsync();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Production seed — NO demo data, config-driven users only
+    // ═══════════════════════════════════════════════════════════
+    public async Task SeedProductionAsync()
+    {
+        await EnsureRolesAndDefaultCompanyAsync();
+        await SeedConfigDrivenUsersAsync();
+        await BackfillCompanyIdAsync();
+
+        // No demo data in production — ever.
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Config-driven user seeding (reads from appsettings)
+    // ═══════════════════════════════════════════════════════════
+    private async Task SeedConfigDrivenUsersAsync()
+    {
+        if (!_seedingOptions.Enabled)
+        {
+            _logger.LogInformation("IdentitySeeding is disabled — skipping user bootstrap.");
+            return;
+        }
+
+        if (_seedingOptions.EnvironmentUsers.Count == 0)
+        {
+            _logger.LogWarning("IdentitySeeding.EnvironmentUsers is empty — no users will be seeded.");
+            return;
+        }
+
+        foreach (var userDef in _seedingOptions.EnvironmentUsers)
+        {
+            if (string.IsNullOrWhiteSpace(userDef.Email))
+            {
+                _logger.LogWarning("IdentitySeeding: skipping entry with empty email.");
+                continue;
+            }
+
+            // Resolve password: env var takes priority, then inline (for dev only)
+            string? password = null;
+            if (!string.IsNullOrWhiteSpace(userDef.PasswordEnvVar))
+            {
+                password = Environment.GetEnvironmentVariable(userDef.PasswordEnvVar);
+                if (string.IsNullOrWhiteSpace(password))
+                {
+                    _logger.LogWarning(
+                        "IdentitySeeding: env var '{EnvVar}' is not set for user {Email}. " +
+                        "New user creation will fail; existing user role sync will still run.",
+                        userDef.PasswordEnvVar, userDef.Email);
+                }
+            }
+
+            // Fallback to inline password (only acceptable in Development)
+            if (string.IsNullOrWhiteSpace(password) && !string.IsNullOrWhiteSpace(userDef.Password))
+            {
+                password = userDef.Password;
+            }
+
+            var companyId = userDef.IsGlobal ? null : (Guid?)DefaultCompanyId;
+
+            await EnsureUserAsync(userDef.Email.Trim(), password, userDef.Roles, companyId);
+            _logger.LogInformation(
+                "IdentitySeeding: ensured user {Email} with roles [{Roles}], IsGlobal={IsGlobal}",
+                userDef.Email, string.Join(", ", userDef.Roles), userDef.IsGlobal);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Roles + default company (always runs)
+    // ═══════════════════════════════════════════════════════════
+    private async Task EnsureRolesAndDefaultCompanyAsync()
     {
         await _db.Database.MigrateAsync();
 
-        // 1) Roles (including new SuperAdmin)
         string[] roles =
         [
             RoleSuperAdmin, RoleAdmin, RoleManager, RoleCashier, RoleInventory,
@@ -56,7 +152,6 @@ public sealed class DbSeeder
             }
         }
 
-        // 2) Default company (tenant) — Sprint 4
         var defaultCompany = await _db.Companies.FindAsync(DefaultCompanyId);
         if (defaultCompany is null)
         {
@@ -73,48 +168,155 @@ public sealed class DbSeeder
             _db.Companies.Add(defaultCompany);
             await _db.SaveChangesAsync();
         }
+    }
 
-        // 3) SuperAdmin user — retailerp.global@gmail.com
-        await EnsureUserAsync(
-            email: "retailerp.global@gmail.com",
-            password: "SuperAdmin@12345",
-            roles: [RoleSuperAdmin],
-            companyId: null  // SuperAdmin sees all tenants
-        );
+    // ═══════════════════════════════════════════════════════════
+    // User ensure (idempotent create-or-sync)
+    // ═══════════════════════════════════════════════════════════
+    private async Task EnsureUserAsync(string email, string? password, string[] roles, Guid? companyId)
+    {
+        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
 
-        // 4) Demo users (tenant-scoped to default company)
-        await EnsureUserAsync(
-            email: "admin@retailerp.com",
-            password: "Admin@12345",
-            roles: [RoleAdmin, RoleManager],
-            companyId: DefaultCompanyId
-        );
+        if (user is null)
+        {
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                _logger.LogWarning(
+                    "Cannot create user {Email} — no password available. " +
+                    "Set the PasswordEnvVar in IdentitySeeding config.",
+                    email);
+                return;
+            }
 
-        await EnsureUserAsync(
-            email: "manager@retailerp.com",
-            password: "Manager@12345",
-            roles: [RoleManager],
-            companyId: DefaultCompanyId
-        );
+            user = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                CompanyId = companyId
+            };
 
-        await EnsureUserAsync(
-            email: "cashier@retailerp.com",
-            password: "Cashier@12345",
-            roles: [RoleCashier],
-            companyId: DefaultCompanyId
-        );
+            var created = await _userManager.CreateAsync(user, password);
+            if (!created.Succeeded)
+            {
+                var msg = string.Join("; ", created.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"User create failed ({email}): {msg}");
+            }
 
-        await EnsureUserAsync(
-            email: "inventory@retailerp.com",
-            password: "Inventory@12345",
-            roles: [RoleInventory],
-            companyId: DefaultCompanyId
-        );
+            _logger.LogInformation("Created new user {Email}", email);
+        }
+        else
+        {
+            // Update CompanyId if changed
+            if (user.CompanyId != companyId)
+                user.CompanyId = companyId;
 
-        // 5) Backfill: set CompanyId on all existing rows that have null CompanyId
-        await BackfillCompanyIdAsync();
+            if (!user.EmailConfirmed)
+                user.EmailConfirmed = true;
 
-        // 6) Demo master data (only if empty — use IgnoreQueryFilters so tenant filters don't hide existing rows)
+            var updated = await _userManager.UpdateAsync(user);
+            if (!updated.Succeeded)
+            {
+                var msg = string.Join("; ", updated.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"User update failed ({email}): {msg}");
+            }
+        }
+
+        // Keep seeded accounts usable after prior failed-attempt lockouts.
+        await _userManager.ResetAccessFailedCountAsync(user);
+        await _userManager.SetLockoutEndDateAsync(user, null);
+
+        // Ensure user has exactly these roles
+        var currentRoles = await _userManager.GetRolesAsync(user);
+        var rolesToRemove = currentRoles.Except(roles, StringComparer.OrdinalIgnoreCase).ToList();
+        var rolesToAdd = roles.Except(currentRoles, StringComparer.OrdinalIgnoreCase).ToList();
+
+        if (rolesToRemove.Count > 0)
+        {
+            var removed = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+            if (!removed.Succeeded)
+            {
+                var msg = string.Join("; ", removed.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Role remove failed ({email}): {msg}");
+            }
+        }
+
+        if (rolesToAdd.Count > 0)
+        {
+            var added = await _userManager.AddToRolesAsync(user, rolesToAdd);
+            if (!added.Succeeded)
+            {
+                var msg = string.Join("; ", added.Errors.Select(e => e.Description));
+                throw new InvalidOperationException($"Role assign failed ({email}): {msg}");
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Backfill CompanyId on all tenant entities
+    // ═══════════════════════════════════════════════════════════
+    /// <summary>Sprint 4 – Backfill null CompanyId to DefaultCompanyId on all tenant entities.</summary>
+    private async Task BackfillCompanyIdAsync()
+    {
+        var tables = new[]
+        {
+            "Items", "Units", "Categories", "Stores", "Warehouses", "Stocks",
+            "Customers", "Suppliers", "Purchases", "Invoices", "StockMovements",
+            "StockTransactions", "PosBills", "Payments", "PosReturns",
+            "LoyaltyCards", "LoyaltyTransactions", "Coupons", "EodReports", "SyncLogs"
+        };
+
+        var conn = _db.Database.GetDbConnection();
+        await conn.OpenAsync();
+        try
+        {
+            foreach (var table in tables)
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = $"UPDATE [{table}] SET [CompanyId] = @cid WHERE [CompanyId] IS NULL";
+                var p = cmd.CreateParameter();
+                p.ParameterName = "@cid";
+                p.Value = DefaultCompanyId;
+                cmd.Parameters.Add(p);
+                try
+                {
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 2601 || ex.Number == 2627)
+                {
+                    // Duplicate-key conflict — skip gracefully; data already has CompanyId.
+                }
+            }
+        }
+        finally
+        {
+            if (conn.State == System.Data.ConnectionState.Open)
+                await conn.CloseAsync();
+        }
+
+        // Also backfill users (non-SuperAdmin users get default company)
+#pragma warning disable EF1002
+        await _db.Database.ExecuteSqlRawAsync(
+            @"UPDATE u
+              SET u.[CompanyId] = {0}
+              FROM [AspNetUsers] u
+              WHERE u.[CompanyId] IS NULL
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM [AspNetUserRoles] ur
+                  INNER JOIN [AspNetRoles] r ON ur.[RoleId] = r.[Id]
+                  WHERE ur.[UserId] = u.[Id] AND r.[Name] = {1}
+              )",
+            DefaultCompanyId,
+            RoleSuperAdmin);
+#pragma warning restore EF1002
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Demo data (Development only)
+    // ═══════════════════════════════════════════════════════════
+    private async Task SeedDemoDataIfEmptyAsync()
+    {
         if (!await _db.Warehouses.IgnoreQueryFilters().AnyAsync())
         {
             _db.Warehouses.AddRange(
@@ -152,133 +354,21 @@ public sealed class DbSeeder
             await _db.SaveChangesAsync();
         }
 
-        // 7) Stock (only if empty)
         if (!await _db.Stocks.IgnoreQueryFilters().AnyAsync())
         {
             var warehouses = await _db.Warehouses.IgnoreQueryFilters().OrderBy(x => x.Name).ToListAsync();
             var items = await _db.Items.IgnoreQueryFilters().OrderBy(x => x.SKU).ToListAsync();
 
-            var main = warehouses.First();
-
-            _db.Stocks.AddRange(
-                new Stock { WarehouseId = main.WarehouseId, ItemId = items[0].ItemId, Quantity = 5 },
-                new Stock { WarehouseId = main.WarehouseId, ItemId = items[1].ItemId, Quantity = 50 },
-                new Stock { WarehouseId = main.WarehouseId, ItemId = items[2].ItemId, Quantity = 20 }
-            );
-
-            await _db.SaveChangesAsync();
-        }
-    }
-
-    /// <summary>Sprint 4 – Backfill null CompanyId to DefaultCompanyId on all tenant entities.</summary>
-    private async Task BackfillCompanyIdAsync()
-    {
-        // Use raw SQL for performance — updates all rows in one shot per table
-        var tables = new[]
-        {
-            "Items", "Units", "Categories", "Stores", "Warehouses", "Stocks",
-            "Customers", "Suppliers", "Purchases", "Invoices", "StockMovements",
-            "StockTransactions", "PosBills", "Payments", "PosReturns",
-            "LoyaltyCards", "LoyaltyTransactions", "Coupons", "EodReports", "SyncLogs"
-        };
-
-        // Use raw ADO.NET to avoid EF Core command-error logging on expected conflicts.
-        var conn = _db.Database.GetDbConnection();
-        await conn.OpenAsync();
-        try
-        {
-            foreach (var table in tables)
+            if (warehouses.Count > 0 && items.Count >= 3)
             {
-                using var cmd = conn.CreateCommand();
-                cmd.CommandText = $"UPDATE [{table}] SET [CompanyId] = @cid WHERE [CompanyId] IS NULL";
-                var p = cmd.CreateParameter();
-                p.ParameterName = "@cid";
-                p.Value = DefaultCompanyId;
-                cmd.Parameters.Add(p);
-                try
-                {
-                    await cmd.ExecuteNonQueryAsync();
-                }
-                catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 2601 || ex.Number == 2627)
-                {
-                    // Duplicate-key conflict — skip gracefully; data already has CompanyId.
-                }
+                var main = warehouses.First();
+                _db.Stocks.AddRange(
+                    new Stock { WarehouseId = main.WarehouseId, ItemId = items[0].ItemId, Quantity = 5 },
+                    new Stock { WarehouseId = main.WarehouseId, ItemId = items[1].ItemId, Quantity = 50 },
+                    new Stock { WarehouseId = main.WarehouseId, ItemId = items[2].ItemId, Quantity = 20 }
+                );
+                await _db.SaveChangesAsync();
             }
-        }
-        finally
-        {
-            // Let EF Core manage the connection lifetime; only close if we opened it.
-            if (conn.State == System.Data.ConnectionState.Open)
-                await conn.CloseAsync();
-        }
-
-        // Also backfill users
-#pragma warning disable EF1002
-        await _db.Database.ExecuteSqlRawAsync(
-            "UPDATE [AspNetUsers] SET [CompanyId] = {0} WHERE [CompanyId] IS NULL AND [Email] <> {1}",
-            DefaultCompanyId, "retailerp.global@gmail.com");
-#pragma warning restore EF1002
-    }
-
-    private async Task EnsureUserAsync(string email, string password, string[] roles, Guid? companyId)
-    {
-        var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Email == email);
-
-        if (user is null)
-        {
-            user = new ApplicationUser
-            {
-                UserName = email,
-                Email = email,
-                EmailConfirmed = true,
-                CompanyId = companyId
-            };
-
-            var created = await _userManager.CreateAsync(user, password);
-            if (!created.Succeeded)
-            {
-                var msg = string.Join("; ", created.Errors.Select(e => e.Description));
-                throw new InvalidOperationException($"User create failed ({email}): {msg}");
-            }
-        }
-        else
-        {
-            // Update CompanyId if changed
-            if (user.CompanyId != companyId)
-            {
-                user.CompanyId = companyId;
-            }
-
-            if (!user.EmailConfirmed)
-            {
-                user.EmailConfirmed = true;
-            }
-
-            var updated = await _userManager.UpdateAsync(user);
-            if (!updated.Succeeded)
-            {
-                var msg = string.Join("; ", updated.Errors.Select(e => e.Description));
-                throw new InvalidOperationException($"User update failed ({email}): {msg}");
-            }
-        }
-
-        // Ensure user has exactly these roles
-        var currentRoles = await _userManager.GetRolesAsync(user);
-        if (currentRoles.Count > 0)
-        {
-            var removed = await _userManager.RemoveFromRolesAsync(user, currentRoles);
-            if (!removed.Succeeded)
-            {
-                var msg = string.Join("; ", removed.Errors.Select(e => e.Description));
-                throw new InvalidOperationException($"Role remove failed ({email}): {msg}");
-            }
-        }
-
-        var added = await _userManager.AddToRolesAsync(user, roles);
-        if (!added.Succeeded)
-        {
-            var msg = string.Join("; ", added.Errors.Select(e => e.Description));
-            throw new InvalidOperationException($"Role assign failed ({email}): {msg}");
         }
     }
 }

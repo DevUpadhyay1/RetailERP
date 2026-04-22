@@ -375,6 +375,7 @@ public static class WebApplicationBuilderExtensions
         builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
         builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
 
+        builder.Services.Configure<IdentitySeedingOptions>(builder.Configuration.GetSection("IdentitySeeding"));
         builder.Services.AddTransient<DbSeeder>();
 
         // Behind nginx / cloud load balancer: correct scheme and client IP for HTTPS redirects and logs.
