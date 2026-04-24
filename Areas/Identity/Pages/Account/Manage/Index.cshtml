@@ -9,14 +9,13 @@
 
 <!-- ── Profile header ── -->
 <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
-    <div class="d-flex align-items-center justify-content-center rounded-circle"
-         style="width:64px;height:64px;background:#dbeafe;color:#3b82f6;font-size:1.6rem;flex-shrink:0;">
+    <div class="d-flex align-items-center justify-content-center rounded-circle profile-avatar-badge">
         <i class="bi bi-person-fill"></i>
     </div>
     <div>
         <h5 class="mb-0 fw-semibold">@(Model.Input.DisplayName ?? Model.Username)</h5>
         <div class="text-muted small">@Model.Email</div>
-        <span class="badge bg-primary bg-opacity-10 text-primary mt-1" style="font-size:.72rem;">@Model.Role</span>
+        <span class="badge profile-role-badge mt-1">@Model.Role</span>
     </div>
 </div>
 
@@ -63,6 +62,37 @@
         </div>
     </div>
 </form>
+
+@section Styles {
+    <style>
+        .profile-avatar-badge {
+            width: 64px;
+            height: 64px;
+            flex-shrink: 0;
+            background: #dbeafe;
+            color: #3b82f6;
+            font-size: 1.6rem;
+        }
+
+        .profile-role-badge {
+            font-size: .72rem;
+            background: rgba(59, 130, 246, .12);
+            color: #2563eb;
+            border: 1px solid rgba(59, 130, 246, .25);
+        }
+
+        body.dark-mode .profile-avatar-badge {
+            background: rgba(59, 130, 246, .2);
+            color: #bfdbfe;
+        }
+
+        body.dark-mode .profile-role-badge {
+            background: rgba(96, 165, 250, .24);
+            color: #dbeafe;
+            border-color: rgba(147, 197, 253, .45);
+        }
+    </style>
+}
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

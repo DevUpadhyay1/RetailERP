@@ -107,7 +107,7 @@
     <!-- ═══ RIGHT: Properties ═══ -->
     <div class="col-12 col-lg-4 order-3">
         <div class="card shadow-sm" id="propCard">
-            <div class="card-header py-2 fw-semibold bg-dark text-white"><i class="bi bi-sliders me-1"></i>Properties</div>
+            <div class="card-header py-2 fw-semibold designer-prop-header"><i class="bi bi-sliders me-1"></i>Properties</div>
             <div class="card-body" id="propPanel">
                 <div class="text-center text-muted py-4">
                     <i class="bi bi-cursor-fill d-block" style="font-size:28px;opacity:.3"></i>
@@ -121,11 +121,19 @@
 @section Styles {
 <style>
 /* ─── Toolbox ─── */
-.tb-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6c757d;padding:4px 6px 2px}
+.tb-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--erp-text-muted,#6c757d);padding:4px 6px 2px}
 .tb-item{cursor:grab;padding:5px 8px;margin-bottom:3px;background:var(--bs-body-bg,#fff);border:1px solid var(--bs-border-color,#dee2e6);border-radius:5px;font-size:12px;font-weight:500;transition:all .12s;display:flex;align-items:center;gap:5px;color:var(--bs-body-color,#212529)}
 .tb-item:hover{border-color:#0d6efd;background:#e7f1ff;color:#212529;transform:translateX(2px)}
 .tb-item.sortable-chosen{opacity:.5}
-.tb-item i{font-size:13px;color:#6c757d;width:16px;text-align:center}
+.tb-item i{font-size:13px;color:var(--erp-text-muted,#6c757d);width:16px;text-align:center}
+
+/* ─── Designer panel theme helpers ─── */
+.designer-prop-header{background:var(--erp-bg-page,#f8f9fa);color:var(--erp-text,#1e293b);border-bottom:1px solid var(--erp-border,#dee2e6)}
+body.dark-mode .designer-prop-header{background:rgba(15,23,42,.55);color:#e2e8f0;border-bottom-color:#334155}
+body.dark-mode .tb-item{background:var(--erp-bg-card,#1e293b);border-color:var(--erp-border,#334155);color:var(--erp-text,#e2e8f0)}
+body.dark-mode .tb-item:hover{background:rgba(59,130,246,.16);border-color:#60a5fa;color:#e2e8f0}
+body.dark-mode .tb-item i{color:var(--erp-text-secondary,#b8c6d9)}
+body.dark-mode #propPanel .text-muted{color:var(--erp-text-muted,#9fb0c4)!important}
 
 /* ─── Canvas: ALWAYS light mode (receipt = white paper) ─── */
 #canvasWrap{background:#fff!important;color:#000!important;color-scheme:light;box-shadow:0 2px 12px rgba(0,0,0,.15);margin:16px 0;transition:width .2s}
