@@ -11,6 +11,7 @@
     let suppressAutoSave = false;
     let lastLayoutHash = '';
     let lastResyncAt = 0;
+    let pendingShadowResync = false;
     const chartInstances = {};
 
     document.addEventListener('DOMContentLoaded', init);
@@ -23,7 +24,7 @@
             }
 
             catalog = data.catalog || [];
-            currentLayout = normalizeLayout(data.layout || []);
+            currentLayout = resolveInitialLayout(data);
             lastLayoutHash = layoutHash(currentLayout);
             chartValueScale = getStoredScalePreference();
 
@@ -34,9 +35,42 @@
             initSignalR();
             wireLeaveHandlers();
             wireAutoResync();
+
+            if (pendingShadowResync) {
+                pendingShadowResync = false;
+                saveLayout();
+            }
         } catch (err) {
             console.error('Dashboard initialization failed:', err);
         }
+    }
+
+    function resolveInitialLayout(data) {
+        const serverLayout = normalizeLayout(data.layout || []);
+        const shadowState = loadShadowLayoutState();
+        const shadowLayout = normalizeLayout(shadowState?.layout || []);
+        const serverHash = layoutHash(serverLayout);
+        const shadowHash = layoutHash(shadowLayout);
+        const serverSavedAt = parseUtcDate(data?.lastModifiedUtc);
+        const shadowSavedAt = parseUtcDate(shadowState?.savedAt);
+
+        pendingShadowResync = false;
+
+        if (!shadowLayout.length || shadowHash === serverHash) {
+            persistShadowLayout(serverLayout, data?.lastModifiedUtc);
+            return serverLayout;
+        }
+
+        const serverTicks = serverSavedAt ? serverSavedAt.getTime() : 0;
+        const shadowTicks = shadowSavedAt ? shadowSavedAt.getTime() : 0;
+
+        if (shadowTicks > serverTicks) {
+            pendingShadowResync = true;
+            return shadowLayout;
+        }
+
+        persistShadowLayout(serverLayout, data?.lastModifiedUtc);
+        return serverLayout;
     }
 
     async function fetchLayoutModel() {
@@ -126,6 +160,50 @@
 
     function layoutHash(placements) {
         return JSON.stringify(normalizeLayout(placements));
+    }
+
+    function getShadowLayoutKey() {
+        const gridEl = document.getElementById('dashboard-grid');
+        const userId = gridEl?.dataset?.dashboardUserId || 'anon';
+        return 'dashboard.layout.shadow.' + userId;
+    }
+
+    function loadShadowLayoutState() {
+        try {
+            const raw = localStorage.getItem(getShadowLayoutKey());
+            if (!raw) return null;
+
+            const parsed = JSON.parse(raw);
+            if (!parsed || !Array.isArray(parsed.layout)) return null;
+            return parsed;
+        } catch {
+            return null;
+        }
+    }
+
+    function persistShadowLayout(placements, savedAtUtc) {
+        try {
+            localStorage.setItem(getShadowLayoutKey(), JSON.stringify({
+                layout: normalizeLayout(placements),
+                savedAt: savedAtUtc || new Date().toISOString()
+            }));
+        } catch {
+            // Ignore storage failures; server persistence remains the source of truth.
+        }
+    }
+
+    function clearShadowLayout() {
+        try {
+            localStorage.removeItem(getShadowLayoutKey());
+        } catch {
+            // Ignore storage failures.
+        }
+    }
+
+    function parseUtcDate(value) {
+        if (!value) return null;
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
     }
 
     function addWidgetToGrid(p) {
@@ -653,6 +731,7 @@
         if (!grid) return;
 
         const placements = collectPlacementsFromGrid();
+        persistShadowLayout(placements);
 
         const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value
             || document.cookie.split('; ').find(r => r.startsWith('XSRF-TOKEN='))?.split('=')[1];
@@ -680,8 +759,10 @@
                 return;
             }
 
+            const result = await resp.json().catch(() => null);
             currentLayout = normalizeLayout(placements);
             lastLayoutHash = layoutHash(currentLayout);
+            persistShadowLayout(currentLayout, result?.lastModifiedUtc);
         } catch (e) {
             console.warn('Dashboard save failed:', e);
         }
@@ -724,7 +805,7 @@
         if (!data) return;
 
         const nextCatalog = data.catalog || [];
-        const nextLayout = normalizeLayout(data.layout || []);
+        const nextLayout = resolveInitialLayout(data);
         const nextHash = layoutHash(nextLayout);
 
         if (nextHash !== lastLayoutHash) {
@@ -806,11 +887,14 @@
                     method: 'POST',
                     headers: { 'X-XSRF-TOKEN': token || '', 'RequestVerificationToken': token || '' }
                 });
+                clearShadowLayout();
 
                 const resp = await fetch('/Home/GetLayout');
                 const data = await resp.json();
                 catalog = data.catalog;
-                renderWidgets(data.layout);
+                currentLayout = resolveInitialLayout(data);
+                lastLayoutHash = layoutHash(currentLayout);
+                renderWidgets(currentLayout);
             });
         }
 

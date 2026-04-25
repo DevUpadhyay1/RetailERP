@@ -20,7 +20,7 @@ public sealed class DashboardService
     //  Layout CRUD
     // ═══════════════════════════════════════════════════
 
-    public async Task<List<WidgetPlacement>> GetLayoutAsync(Guid userId, BusinessType biz, string role)
+    public async Task<DashboardLayoutState> GetLayoutAsync(Guid userId, BusinessType biz, string role)
     {
         return await _cache.GetOrSetAsync($"layout:{userId}", async () =>
         {
@@ -28,18 +28,27 @@ public sealed class DashboardService
                 .FirstOrDefaultAsync(x => x.UserId == userId);
 
             if (layout is not null)
-                return JsonSerializer.Deserialize<List<WidgetPlacement>>(layout.LayoutJson) ?? new();
+            {
+                return new DashboardLayoutState(
+                    JsonSerializer.Deserialize<List<WidgetPlacement>>(layout.LayoutJson) ?? new(),
+                    layout.LastModifiedUtc,
+                    false);
+            }
 
-            return DashboardWidgetCatalog.GetDefaultLayout(biz, role);
+            return new DashboardLayoutState(
+                DashboardWidgetCatalog.GetDefaultLayout(biz, role),
+                null,
+                true);
         }, TimeSpan.FromHours(1));
     }
 
-    public async Task SaveLayoutAsync(Guid userId, List<WidgetPlacement> placements)
+    public async Task<DateTime> SaveLayoutAsync(Guid userId, List<WidgetPlacement> placements)
     {
         var layout = await _db.UserDashboardLayouts
             .FirstOrDefaultAsync(x => x.UserId == userId);
 
         var json = JsonSerializer.Serialize(placements);
+        var lastModifiedUtc = DateTime.UtcNow;
 
         if (layout is null)
         {
@@ -47,17 +56,18 @@ public sealed class DashboardService
             {
                 UserId = userId,
                 LayoutJson = json,
-                LastModifiedUtc = DateTime.UtcNow
+                LastModifiedUtc = lastModifiedUtc
             });
         }
         else
         {
             layout.LayoutJson = json;
-            layout.LastModifiedUtc = DateTime.UtcNow;
+            layout.LastModifiedUtc = lastModifiedUtc;
         }
 
         await _db.SaveChangesAsync();
         await _cache.RemoveAsync($"layout:{userId}");
+        return lastModifiedUtc;
     }
 
     public async Task ResetLayoutAsync(Guid userId)
@@ -535,3 +545,8 @@ public sealed class DashboardService
         };
     }
 }
+
+public sealed record DashboardLayoutState(
+    List<WidgetPlacement> Layout,
+    DateTime? LastModifiedUtc,
+    bool IsDefault);

@@ -299,7 +299,7 @@ public class HomeController : Controller
         // Resolve business type deterministically and company-aware.
         var biz = await ResolveDashboardBusinessTypeAsync(user);
 
-        var layout = await _dash.GetLayoutAsync(user.Id, biz, primaryRole);
+        var layoutState = await _dash.GetLayoutAsync(user.Id, biz, primaryRole);
 
         // Build catalog across all assigned roles to avoid random widget drops.
         var catalog = DashboardWidgetCatalog.All
@@ -307,7 +307,13 @@ public class HomeController : Controller
             .Select(w => new { w.Id, w.Title, w.Icon, type = w.Type.ToString(), w.DefaultW, w.DefaultH })
             .ToList();
 
-        return Json(new { layout, catalog });
+        return Json(new
+        {
+            layout = layoutState.Layout,
+            lastModifiedUtc = layoutState.LastModifiedUtc,
+            isDefault = layoutState.IsDefault,
+            catalog
+        });
     }
 
     private static string GetPrimaryDashboardRole(IEnumerable<string> roles)
@@ -369,8 +375,8 @@ public class HomeController : Controller
         if (placements is null)
             return BadRequest("Invalid dashboard layout payload.");
 
-        await _dash.SaveLayoutAsync(user.Id, placements);
-        return Ok();
+        var lastModifiedUtc = await _dash.SaveLayoutAsync(user.Id, placements);
+        return Ok(new { lastModifiedUtc });
     }
 
     [Authorize]
