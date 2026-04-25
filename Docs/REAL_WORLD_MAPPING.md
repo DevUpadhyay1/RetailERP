@@ -1,72 +1,120 @@
 # RetailERP: Real-World Engineering Mapping
 
-This document bridges the gap between the code we wrote and how it applies to real-world cloud applications. Use this guide to explain *why* these features matter during interviews, vivas, or when introducing new developers to the codebase.
+This file connects repo features to real operational value so you can explain the system like an engineer, not only like a coder.
 
----
+## 1. Correlation ID and structured logs
 
-## 1. End-To-End Correlation ID (`X-Correlation-Id`)
-**What we built:**  
-A custom `CorrelationIdMiddleware` that attaches a unique `X-Correlation-Id` to every incoming request. We configured Serilog to push this ID into every single log message generated during that request.
+**What we built:**
 
-**Real-world match (Observability):**  
-In massive systems (like Amazon or Netflix), a single customer click might trigger dozens of underlying services. If an error happens, looking at thousands of random log lines is impossible. A Correlation ID acts like a tracking number for a package—allowing Operations to securely filter `grep 'my-id' logs.txt` and see the exact chronological lifecycle of *only* that specific user's request.
+- Correlation IDs across the request pipeline
+- Serilog-based logging
+- File logging for server-side diagnostics
 
-**How to prove it works:**
-1. Run the app: `dotnet run` (Make note of the "Now listening on:" port in the console — typically `http://localhost:5820` or `https://localhost:7240`).
-2. Open PowerShell or a terminal and run: `curl.exe -i https://localhost:7240/health` (Note: use `curl.exe` in PowerShell, not just `curl`).
-3. Look at the response headers; you will see `X-Correlation-Id`.
-4. Open the file `Logs/retailerp-*.log` and observe that the same ID is stamped on every database and system log line for that action.
+**Why it matters in the real world:**
 
----
+When something breaks in production, teams do not debug by guessing. They trace one request from entry to exit. Correlation IDs make that possible.
 
-## 2. API Security & Rate Limiting
-**What we built:**  
-Applied `[EnableRateLimiting("Login")]` on critical endpoints and enforced strict `[Authorize]` with role-based JWT authentication across the MVC and API layers.
+**How to prove it:**
 
-**Real-world match (DDoS & Brute Force Protection):**  
-SaaS applications like Shopify are constantly hammered by automated bots trying to guess passwords or scrape data. If these requests hit the database without limits, the server will crash (DDoS), or worse, a weak password will be guessed. Rate limiting creates a strict speed limit, dropping bots instantly in memory before they consume database resources.
+1. Run the app.
+2. Call `/health`.
+3. Inspect the response headers for `X-Correlation-Id`.
+4. Open `Logs/retailerp-*.log` and confirm the same ID appears in logs for that request.
 
-**How to prove it works:**
-1. Try to call the `POST /api/auth/login` endpoint rapidly (e.g., holding down Enter in Postman or a script).
-2. Within seconds, the server will stop processing and return **HTTP 429: Too Many Requests**, protecting your database.
+## 2. JWT, rate limiting, and tenant-safe APIs
 
----
+**What we built:**
 
-## 3. Integration Testing via WebApplicationFactory
-**What we built:**  
-Wired up `CustomWebApplicationFactory` and `DevelopmentWebApplicationFactory` to spin up a complete in-memory replica of our Web Server using an `InMemory` / `SQLite` database provider.
+- JWT-protected APIs
+- Rate-limited login and API paths
+- Company-aware authorization checks
 
-**Real-world match (CI/CD Confidence):**  
-Professional teams don't rely only on Unit Tests, because Unit Tests don't catch routing errors, missing middleware, or database mapping crashes. Integration tests spin up the exact HTTP pipeline a real customer experiences. This guarantees that you can merge code on a Friday afternoon knowing that the `/health` and `login` buttons still work end-to-end.
+**Why it matters in the real world:**
 
-**How to prove it works:**
-1. Run `dotnet test RetailERP.sln -c Release`.
-2. Notice how it completes 38 entire end-to-end and service tests in just a few seconds.
+Retail SaaS products are attacked by bots, scraped by scripts, and must never leak one tenant's data into another tenant's view.
 
----
+**How to prove it:**
 
-## 4. Operational Health Probes
-**What we built:**  
-Implemented `/health` and `/health/ready` endpoints that actively ping SQL Server and Redis connections.
+1. Hit `/api/auth/login` too quickly and observe `429 Too Many Requests`.
+2. Try cross-company access with a mismatched user/company and observe forbidden behavior.
 
-**Real-world match (Self-Healing Cloud Infrastructure):**  
-When you deploy to Azure, AWS, or Kubernetes, you configure the Cloud Load Balancer to ping `/health`. If a server freezes or loses its database connection, `/health` immediately returns `HTTP 503 Unhealthy`. The cloud router automatically removes that server from the pool so customers don't see errors, granting the system "self-healing" capabilities.
+## 3. Integration and regression testing
 
-**How to prove it works:**
-1. Start the app.
-2. In your browser, hit `https://localhost:7240/health/ready` (or whatever port `dotnet run` showed).
-3. You get a JSON payload returning `Healthy`. Stop SQL Server in your services, reload the page, and the JSON instantly shifts to `Unhealthy`.
+**What we built:**
 
----
+- Unit and service tests
+- Integration-style tests
+- Startup validation tests
+- Coverage artifact collection in CI
 
-## 5. Defense-in-Depth against Forgery (CSRF)
-**What we built:**  
-Globally enforced the `AutoValidateAntiforgeryTokenAttribute` on MVC controllers while explicitly opting out API endpoints using `[IgnoreAntiforgeryToken]`.
+**Why it matters in the real world:**
 
-**Real-world match (Banking Security):**  
-CSRF (Cross-Site Request Forgery) attacks occur when an attacker tricks a logged-in admin into visiting a malicious website. Inside that malicious website, hidden scripts submit forms back to your application (e.g., granting the attacker Admin rights). Enforcing Antiforgery Tokens ensures that forms only succeed if they were actually rendered by *your* application.
+Professional teams need confidence that routing, middleware, auth, and DB mapping still work after every change.
 
-**How to prove it works:**
-1. Log in to the portal as an Admin.
-2. Inspect the HTML of any form and delete the hidden `<input name="__RequestVerificationToken">`.
-3. Submit the form—the server will immediately reject the change with an `HTTP 400 Bad Request`.
+**How to prove it:**
+
+1. Run `dotnet test RetailERP.Tests\\RetailERP.Tests.csproj --no-build`.
+2. Current verified snapshot is `88 passed, 1 skipped`.
+
+## 4. Health, readiness, and metrics
+
+**What we built:**
+
+- `/health`
+- `/health/ready`
+- `/metrics`
+
+**Why it matters in the real world:**
+
+These endpoints let load balancers, dashboards, and operations teams decide whether the app is alive, ready, and behaving normally.
+
+**How to prove it:**
+
+1. Open `/health/ready`.
+2. Confirm SQL and Redis readiness behavior.
+3. Open `/metrics` and confirm counters are emitted for monitoring tools.
+
+## 5. Offline sync and PWA support
+
+**What we built:**
+
+- Service worker
+- IndexedDB item and offline bill storage
+- Sync queue with background processing
+
+**Why it matters in the real world:**
+
+Retail counters cannot stop when internet quality drops. Offline capture and later sync are highly practical features for unstable-network environments.
+
+**How to prove it:**
+
+1. Open the POS/PWA experience.
+2. Simulate offline behavior.
+3. Confirm queued offline data is synced after reconnect.
+
+## 6. Background jobs and real-time updates
+
+**What we built:**
+
+- Email queue worker
+- Sync queue worker
+- Stock alert worker
+- EOD auto worker
+- SignalR notifications
+
+**Why it matters in the real world:**
+
+Not all work should happen inside the user's request. Background jobs keep the app responsive while still processing alerts, reports, and queue retries.
+
+## 7. Real business compliance
+
+**What we built:**
+
+- GST reporting
+- E-invoice support
+- Invoice templates and numbering rules
+- Audit trails and stock ledgers
+
+**Why it matters in the real world:**
+
+Retail software is only useful if it supports operational compliance, traceability, and document accuracy, not just sales entry.

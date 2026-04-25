@@ -1,60 +1,123 @@
-# RetailERP CI/CD Pipeline & Staging Architecture Guide
+# RetailERP CI/CD Workflow Guide
 
-This document explains the overarching Continuous Integration and Continuous Deployment (CI/CD) ecosystem built for RetailERP. It covers what each pipeline does, how staging works, the impact on your live servers, and how you can personally verify it.
+This document describes the current GitHub Actions setup in the repository as of `2026-04-25`.
 
----
+## 1. Active workflows
 
-## 1. The Complete Deployment Flow
+### CI (`.github/workflows/ci.yml`)
 
-Whenever you push code or merge pull requests, GitHub Actions watches those changes and triggers specific pipelines based on the branch you targeted.
+Triggers:
 
-### A. The "Staging" (Dry-Run & Verification) Phase
-- **Triggers on:** Any push to the `develop` branch (or Pull Requests targeting `main`).
-- **What it does:** It **does NOT** push code to your live `quickbusiness.co.in` server. Instead, it spins up an isolated, temporary server inside GitHub Actions (labeled `ubuntu-latest`). It builds your entire application, verifies your `docker build` compiles without syntax errors, and runs automated functionality tests ("Smoke Tests"). 
-- **The Result:** If it passes, you get a **Green Checkmark ✅** on GitHub. This confirms that the code is historically safe to merge. If it fails, you get a **Red X ❌**, preventing broken code from getting close to your real servers.
+- Push to `main`, `master`, or `develop`
+- Pull request targeting `main`, `master`, or `develop`
 
-### B. The "Production Gate" (Manual Approval)
-- **Triggers on:** A push into the `main` branch.
-- **What it does:** First, it natively runs the Smoke Test to ensure it's still structurally sound. If it passes, **it pauses**. This invokes your `environment: production` lock. 
-- **The Result:** The pipeline halts entirely and requests a human Administrator (you) to log into GitHub, review the pending update, and click **"Approve and Deploy"**. 
+What it does:
 
-### C. The "Production Deployment" Phase
-- **Triggers on:** You clicking "Approve".
-- **What it does:** The GitHub Runner running secretly in the background of your Windows VPS connects to Docker. It securely injects the `.env.production` file, rebuilds the `retailerp:latest` web app container, and runs `docker compose up -d`. 
-- **Safe Bootup:** The ASP.NET Web App Container will refuse to respond to users until your SQL Server Container passes its independent startup health check. This eliminates `500 Server Errors` on reboot.
-- **The Result:** The changes become instantly visible at `https://quickbusiness.co.in`.
+1. Checks out the repository
+2. Installs .NET 8
+3. Restores the solution
+4. Builds in `Release`
+5. Runs the test project with Cobertura coverage collection
+6. Enforces a minimum line-coverage threshold
+7. Uploads the coverage XML as an artifact
 
----
+Current note:
 
-## 2. How to Test and Cross-Check
+- The threshold is intentionally low (`2%`) and should be raised over time.
 
-You can easily trigger and watch this pipeline work using the following steps without actually disrupting your live production environment:
+### Staging deploy (`.github/workflows/deploy-staging.yml`)
 
-**Step 1: Test the Staging Circuit**
-1. Create a branch and call it `develop`.
-2. Make a simple, completely harmless change (like adding a `// comment` to `Program.cs`) and push it up to `develop`.
-3. Open your GitHub Repository -> **Actions** tab.
-4. You will see an action titled **Staging & Smoke Tests** running. Click on it. You will see it build your code, run the integrity tests, and display a Green Checkmark. 
-5. Cross-check your live site: `qucikbusiness.co.in`. Your arbitrary comment will **not** be there. This proves staging protects the live instance!
+Triggers:
 
-**Step 2: Test the Production Promotion Gate**
-1. Open up a Pull Request moving `develop` into `main`, or simply commit directly to `main` locally and `git push`.
-2. Go to the GitHub **Actions** tab again. 
-3. You will see a job running that eventually enters a yellow **"Waiting for review"** state.
-4. Click on the job. You will see a prompt asking for an Administrator to review the deployment.
-5. Click **Approve**. 
-6. Watch as the pipeline drops into the deployment payload phase, restarts your Docker containers, and finally pushes the change out. 
+- Push to `main`
+- Manual `workflow_dispatch`
 
----
+What it does:
 
-## 3. What is the Impact? Why Did We Build This?
+1. Builds a Docker image
+2. Pushes it to GHCR
+3. Optionally deploys over SSH when staging secrets are configured
 
-Before this architecture, pushing code directly to the repository executed an almost instantaneous Docker container deployment to production.
+Important behavior:
 
-- **The Problem:** If a developer on your team accidentally introduced a syntax parameter bug, or if Entity Framework lost mapping tracking, the live RetailERP ecosystem crashed immediately without warning. Customers would view unhandled `500` exceptions on checkout screens.
-- **The Solution:** The pipeline prevents bad code entirely. 
-    1. If the code breaks, the GitHub "Staging" build turns red and stops.
-    2. Even if the code compiles effectively, it halts before wiping the host servers, requiring you to knowingly authorize the migration.
-    3. During the 15-second reboot sequence, Docker health-checks verify SQL is ready before opening ASP.NET, preventing application startup crashes.
+- This workflow is image-first.
+- If staging secrets are missing, the image build still works and the deploy step is skipped safely.
 
-In short, this is an enterprise-grade mechanism that transforms RetailERP from a volatile codebase into a hardened SaaS platform.
+### Production deploy (`.github/workflows/deploy.yml`)
+
+Triggers:
+
+- Push to `main` or `develop`
+- Manual `workflow_dispatch`
+
+What it does:
+
+1. Runs a lightweight smoke-test job on GitHub-hosted Ubuntu
+2. Deploys to production only when the branch is `main`
+3. Uses a self-hosted Windows runner
+4. Builds `retailerp:latest`
+5. Runs `docker compose -p retailerp --env-file ... -f docker-compose.prod.yml up -d`
+6. Prints compose status and prunes dangling images
+
+Important behavior:
+
+- `develop` triggers the smoke-test job, but not the production deploy job.
+- `main` triggers both the smoke-test job and the production deploy path.
+
+## 2. What this gives the project
+
+This setup already moves RetailERP beyond a basic student project in a few key ways:
+
+- Broken code is caught in CI before manual deployment decisions.
+- Coverage artifacts are generated automatically.
+- Staging supports a registry-based image flow.
+- Production is deployable from source control through a repeatable Docker-based process.
+
+## 3. What is still lightweight
+
+The pipeline is useful and real, but not fully enterprise-hardened yet.
+
+Current gaps:
+
+1. CI coverage gate is present, but the threshold is still a starter baseline.
+2. Smoke tests in `deploy.yml` are placeholder-level, not full application checks.
+3. Production deploy currently uses `retailerp:latest`; versioned image promotion would be safer.
+4. Rollback is operationally possible, but not yet formalized as a first-class workflow step.
+5. Self-hosted runner permissions still matter; Docker access can block deployment if misconfigured.
+
+## 4. Safe release process for this repo
+
+Recommended release flow:
+
+1. Validate locally with `dotnet build RetailERP.sln -c Release`.
+2. Run `dotnet test RetailERP.Tests/RetailERP.Tests.csproj -c Release --no-build`.
+3. Push to a branch and let CI go green.
+4. If using staging, confirm GHCR image build and optional server deploy.
+5. Before production, ensure `.env.production` and secrets are correct on the host.
+6. Push the approved change to `main`.
+7. Verify `/health`, `/health/ready`, login, dashboard, POS, and invoice flows after deploy.
+
+## 5. How to verify each workflow
+
+### CI
+
+- Open GitHub Actions
+- Confirm `CI` ran
+- Check build, test, and coverage upload steps
+
+### Staging
+
+- Confirm `Deploy Staging` ran
+- Check the produced GHCR image tag
+- If staging secrets exist, verify the SSH deploy step
+
+### Production
+
+- Confirm `Deploy Pipeline` ran on `main`
+- Check the self-hosted runner logs
+- Check Docker compose status on the server
+- Verify health endpoints and a basic smoke path on the live URL
+
+## 6. Known operational caution
+
+If production deploy fails with a Docker pipe permission error on Windows, the most likely cause is that the GitHub Actions runner service account cannot access Docker Desktop or Docker Engine. See `PRODUCTION_DEPLOYMENT.md` and `RUNBOOK.md` for the exact fix steps.

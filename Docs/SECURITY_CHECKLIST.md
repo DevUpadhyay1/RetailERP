@@ -1,56 +1,61 @@
-# Security checklist (RetailERP)
+# Security Checklist (RetailERP)
 
-Use this before **production** or **public demo with real data**. Not all items may apply to a college lab setup.
+Use this before production or before any public demo with real data.
 
-## Configuration & secrets
+## Configuration and secrets
 
-- [x] `ConnectionStrings:DefaultConnection` is not committed with production passwords (use User Secrets / env / Key Vault).
-- [x] `Jwt:SecretKey` is a **long random** value in production (not the sample from `appsettings.json`, and removed from source code).
-- [x] With `ASPNETCORE_ENVIRONMENT=Production`, the app **validates** DB + JWT at startup (`ProductionStartupValidation`) — weak dev secrets **fail fast**.
-- [x] `Razorpay`, `Twilio`, `WhatsApp`, SMTP passwords are in secrets, not in git.
+- [x] Production DB connection string is externalized
+- [x] `Jwt:SecretKey` is validated at startup in Production
+- [x] External provider secrets are intended to live outside git
+- [ ] Confirm every live external provider uses real secrets and no placeholder values
 
-## Authentication & authorization
+## Authentication and authorization
 
-- [x] Cookie auth: login, lockout, and inactive user sign-out behave as expected (`Program.cs` / `WebApplicationBuilderExtensions.cs`).
-- [x] New MVC actions have correct `[Authorize(Roles = "...")]` (or inherit policy) based on current controller audit.
-- [x] New API controllers use `[Authorize]` and JWT where intended; anonymous only where deliberate (`[AllowAnonymous]`) based on current controller audit.
-- [x] API controllers now have explicit role-based authorization at controller level (`Controllers/Api/*`).
+- [x] Identity cookie login with lockout is active
+- [x] Inactive-user handling is present
+- [x] JWT-based API authentication is present
+- [x] Role-based authorization is used on sensitive MVC and API paths
+- [x] Tenant/company scoping is enforced through claims and EF filters
 
-## Web & API hardening
+## Web and API hardening
 
-- [x] HTTPS enabled in production; HSTS on (`Program.cs`/pipeline non-Development branch).
-- [x] Rate limiting policies exist and are applied for login/POS/API paths (`WebApplicationBuilderExtensions`, auth and API controllers).
-- [x] CORS: if you add a SPA, restrict `WithOrigins(...)` — do not use `AllowAnyOrigin` with credentials (`ApiCors` policy in `WebApplicationBuilderExtensions.cs`).
-- [x] API rate limiting is enforced by default via `ApiBaseController`.
-- [x] Anonymous portal endpoints are rate-limited (`CustomerPortalController`, `SupplierPortalController`).
-- [x] Anonymous sync queue endpoint is rate-limited and validates key request fields (`SyncController.QueueChange`).
-- [x] CORS policy (`ApiCors`) added with explicit production behavior (`Cors:AllowedOrigins`).
-- [x] Global MVC anti-forgery validation enabled (`AutoValidateAntiforgeryTokenAttribute`), with API controllers explicitly opting out.
+- [x] HTTPS and HSTS are used in production mode
+- [x] Rate limiting exists for login, POS, and API traffic
+- [x] MVC antiforgery validation is enabled
+- [x] API controllers explicitly opt out where token-based access is expected
+- [x] CORS policy exists for API scenarios
 
-## Data & multi-tenant
+## Data and tenant isolation
 
-- [x] Confirm global query filters / `CompanyId` cannot be bypassed by crafted requests (review critical services — fixed IDOR on Items/Customers API).
-- [x] Admin/SuperAdmin routes cannot be called by lower roles (automated test: `IntegrationTests.AdminBoundary_ManagerCannotAccessSuperAdminRoute`).
-- [x] High-risk controllers now enforce company scoping checks on sensitive actions (payment, e-invoice, portal admin).
-- [x] Automated negative tests added for cross-company forbidden access in high-risk controllers (`RetailERP.Tests/SecurityAuthorizationRegressionTests.cs`).
-- [x] Additional malformed/replay-style negative tests added (sync invalid payload/action + duplicate refund attempt rejection).
+- [x] Tenant-owned entities carry `CompanyId`
+- [x] Global query filters enforce tenant scoping
+- [x] High-risk controllers include company checks
+- [x] Negative authorization regression tests exist
 
-## Dependency & supply chain
+## Logging and privacy
 
-- [x] `dotnet list package --vulnerable` run in current audit batch (no vulnerable packages reported on configured sources).
+- [x] Serilog logging is in place
+- [x] Correlation IDs are included for tracing
+- [x] Operational logs exist for troubleshooting
+- [ ] Confirm production log retention, ACLs, and masking policy on the live host
 
-## Logging & privacy
+## Dependency and supply-chain status
 
-- [x] Logs reviewed and hardened to avoid sensitive response-body/token-like exposure on payment/SMS/WhatsApp paths.
-- [x] Correlation ID implemented for end-to-end request tracing via `CorrelationIdMiddleware.cs`.
-- [x] Log retention and access controlled on the server.
-  - **Guidance:** Rotate or cap `Logs/retailerp-*.log` size (Serilog rolling) in production; restrict folder ACLs to app identity + ops only; ship logs to a SIEM if available; define how long payment-related audit trails must be kept for compliance (GST / company policy).
+- [ ] Upgrade `MailKit 4.15.1`
 
-## Deployment
+Current note:
 
-- [ ] Production `deploy.yml` SSH step only enabled when `deploy_to_server` is checked and secrets exist.
-- [ ] Firewall / NSG allows only necessary ports (443, 22 for admin if needed).
+- Build output on `2026-04-25` warns about advisory `GHSA-9j88-vvj5-vhgr`
+- Recommended fix is to upgrade to `MailKit 4.16.0+`
 
----
+## Deployment and perimeter checks
 
-**Viva one-liner:** *“We use Identity + JWT, rate limits, security headers, secrets outside git, and CI runs tests on every push.”*
+- [x] Production startup validation blocks weak config
+- [x] Health and metrics endpoints can be protected by config
+- [ ] Confirm firewall or gateway only exposes necessary ports
+- [ ] Confirm self-hosted runner account has only the permissions it actually needs
+- [ ] Confirm backup and restore testing is part of production operations
+
+## Short honest summary
+
+Security is stronger than a typical college project because the app already has Identity, JWT, tenant scoping, antiforgery, HSTS, rate limits, and production validation. The main open work is dependency hygiene, live-environment verification, and one more targeted hardening pass before wider rollout.

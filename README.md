@@ -1,12 +1,12 @@
 # RetailERP
 
-ASP.NET Core 8 retail / POS / inventory system with MVC UI, REST API (JWT), SignalR, background jobs, GST/e-invoice features, and Serilog logging.
+ASP.NET Core 8 retail / POS / inventory platform with MVC UI, REST APIs (JWT), SignalR, background jobs, multi-tenant company scoping, GST/e-invoice support, and Serilog-based observability.
 
 ## Prerequisites
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download)
-- SQL Server or **LocalDB** (default connection string uses LocalDB)
-- Optional: **Redis** (`ConnectionStrings:Redis`) for distributed cache; app falls back to memory cache if Redis is missing or unreachable
+- SQL Server or LocalDB
+- Optional Redis (`ConnectionStrings:Redis`) for distributed cache and data-protection key storage
 
 ## Quick start
 
@@ -14,77 +14,90 @@ ASP.NET Core 8 retail / POS / inventory system with MVC UI, REST API (JWT), Sign
 git clone <your-repo>
 cd RetailERP
 dotnet restore RetailERP.sln
-dotnet build RetailERP.sln
-dotnet ef database update   # from project folder, if you use EF CLI
+dotnet build RetailERP.sln -c Release
+dotnet ef database update
 dotnet run --project RetailERP.csproj
 ```
 
-- **HTTP profile:** see `Properties/launchSettings.json` (runs on `http://localhost:5820` or `https://localhost:7240` by default).
-- **Swagger (Development):** `/swagger`
-- **Health:** `GET /health` (includes SQL Server check)
-- **Metrics:** `GET /metrics` (Prometheus text format)
+- Default local URLs are defined in `Properties/launchSettings.json`.
+- Swagger is available in Development at `/swagger`.
+- Health endpoints: `/health` and `/health/ready`.
+- Metrics endpoint: `/metrics`.
 
-> **Note:** UI assets (Bootstrap CSS/JS) are loaded via CDN (jsDelivr) to ensure the UI renders correctly on a fresh clone without requiring `libman restore`.
+> UI assets are loaded from CDN so a fresh clone renders correctly without `libman restore`.
 
-## Configuration & secrets
+## Configuration and secrets
 
-| Setting                                  | Where                                                                   |
-| ---------------------------------------- | ----------------------------------------------------------------------- |
-| `ConnectionStrings:DefaultConnection`    | `appsettings.json`, User Secrets, or environment                        |
-| `Jwt:SecretKey`                          | **Use User Secrets or env in production** - change from default in repo |
-| `Razorpay`, `Twilio`, `WhatsApp`, `Smtp` | User Secrets / environment - do not commit real keys                    |
+| Setting | Where |
+| --- | --- |
+| `ConnectionStrings:DefaultConnection` | `appsettings*.json`, User Secrets, or environment |
+| `Jwt:SecretKey` | User Secrets or environment in production |
+| `Razorpay`, `Twilio`, `WhatsApp`, `Smtp` | User Secrets or environment only |
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "YOUR_CONNECTION_STRING" --project RetailERP.csproj
 dotnet user-secrets set "Jwt:SecretKey" "YOUR_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS" --project RetailERP.csproj
 ```
 
-## Tests & CI
+## Validation snapshot
+
+Latest repo verification used for the docs refresh on `2026-04-25`:
+
+- Release build: passed
+- Automated tests: `88 passed, 1 skipped`
+- Coverage collection: enabled in CI, current baseline gate `2%`
+- Current dependency warning: `MailKit 4.15.1` shows a moderate vulnerability warning and should be upgraded
+
+## Tests and CI/CD
 
 ```bash
-dotnet test RetailERP.sln -c Release
+dotnet test RetailERP.Tests/RetailERP.Tests.csproj -c Release --no-build
 ```
 
-GitHub Actions workflow: `.github/workflows/ci.yml` (build + test on push/PR).
-CI also collects Cobertura coverage and enforces a baseline threshold (`COVERAGE_THRESHOLD` in workflow).
-Staging deployment workflow: `.github/workflows/deploy-staging.yml` (build image + optional SSH deploy).
-Production deployment workflow: `.github/workflows/deploy.yml` (self-hosted Windows runner).
+Active workflows:
 
-Important for production workflow:
+- `.github/workflows/ci.yml`: restore, build, test, Cobertura coverage upload, threshold gate
+- `.github/workflows/deploy-staging.yml`: GHCR image build and optional SSH-based staging deploy
+- `.github/workflows/deploy.yml`: self-hosted Windows production deploy for `main`
 
-- The runner service account must have access to Docker engine on the host.
-- If Actions fails with `permission denied while trying to connect to the docker API at npipe:////./pipe/docker_engine`, fix runner account permissions first.
-- See `Docs/PRODUCTION_DEPLOYMENT.md` for exact remediation steps.
+Important production note:
 
-## Project layout (high level)
+- The self-hosted runner account must be able to access Docker on the host.
+- If Actions fails with Docker pipe permission errors, fix runner account permissions first.
+- See `Docs/PRODUCTION_DEPLOYMENT.md` and `Docs/RUNBOOK.md` for the exact recovery steps.
 
-| Area               | Purpose                                                           |
-| ------------------ | ----------------------------------------------------------------- |
-| `Controllers/`     | MVC + `Api/` REST controllers                                     |
-| `Services/`        | Business logic (POS, invoices, loyalty, etc.)                     |
-| `Data/`            | EF Core context, entities, migrations                             |
-| `Infrastructure/`  | Startup composition (`AddRetailErp`, `UseRetailErpPipelineAsync`) |
-| `RetailERP.Tests/` | xUnit + in-memory EF integration and unit tests                   |
+## Project layout
 
-## Operations (short runbook)
+| Area | Purpose |
+| --- | --- |
+| `Controllers/` | MVC controllers plus `Api/` REST endpoints |
+| `Services/` | Business logic for POS, stock, invoicing, loyalty, sync, reports, and integrations |
+| `Data/` | EF Core context, entities, migrations, seeders |
+| `Infrastructure/` | Middleware, startup helpers, production validation |
+| `RetailERP.Tests/` | xUnit tests for services, integration, regression, and startup validation |
 
-1. **Deploy:** publish `RetailERP.csproj`, set `ASPNETCORE_ENVIRONMENT=Production`, configure connection string and secrets on the host.
-2. **Database:** run migrations (`dotnet ef database update`) against production DB from a controlled pipeline or maintenance window.
-3. **Logs:** file logs under `Logs/retailerp-*.log` (rolling daily); console in Development.
-4. **Smoke checks:** `GET /health` after deploy. See [Docs/RUNBOOK.md](Docs/RUNBOOK.md) for more.
+## Operations
 
-If you deploy through GitHub Actions self-hosted runner, ensure the runner account can run `docker version` and `docker build` without permission errors.
+1. Publish the app or deploy Docker image with `ASPNETCORE_ENVIRONMENT=Production`.
+2. Configure DB, JWT, and external-provider secrets outside git.
+3. Run EF migrations in a controlled step.
+4. Verify `/health`, `/health/ready`, logs, and metrics after deploy.
 
-## Roadmap / improvement phases (~80% complete)
+## Current maturity
 
-See [Docs/IMPROVEMENT_PHASES.md](Docs/IMPROVEMENT_PHASES.md) for what's done next (tests, security, performance).
-Overall tracker: [Docs/OVERALL_PROGRESS_TRACKER.md](Docs/OVERALL_PROGRESS_TRACKER.md).
-Viva / Real-World Demo guide: [Docs/REAL_WORLD_MAPPING.md](Docs/REAL_WORLD_MAPPING.md).
-Architecture overview: [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) - Caching notes: [Docs/CACHING_STRATEGY.md](Docs/CACHING_STRATEGY.md).
-Operational runbook: [Docs/RUNBOOK.md](Docs/RUNBOOK.md).
-Security before production: [Docs/SECURITY_CHECKLIST.md](Docs/SECURITY_CHECKLIST.md).
-**Production deploy:** [Docs/PRODUCTION_DEPLOYMENT.md](Docs/PRODUCTION_DEPLOYMENT.md) (env vars, Docker, health, proxy).
-**Post-onboarding summary:** [Docs/POST_ONBOARDING_UPDATE.md](Docs/POST_ONBOARDING_UPDATE.md).
+The project is now beyond the "college demo only" stage and is moving toward controlled production readiness. A realistic current maturity snapshot is about `82%` toward a fully polished professional rollout, with the biggest remaining gaps around operator workflows, coverage depth, and a few deployment/security cleanups.
+
+See:
+
+- [Docs/OVERALL_PROGRESS_TRACKER.md](Docs/OVERALL_PROGRESS_TRACKER.md)
+- [Docs/IMPROVEMENT_PHASES.md](Docs/IMPROVEMENT_PHASES.md)
+- [Docs/PROJECT_REVIEW_2026-04-25.md](Docs/PROJECT_REVIEW_2026-04-25.md)
+- [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md)
+- [Docs/REAL_WORLD_MAPPING.md](Docs/REAL_WORLD_MAPPING.md)
+- [Docs/SECURITY_CHECKLIST.md](Docs/SECURITY_CHECKLIST.md)
+- [Docs/CI_CD_Workflow_Guide.md](Docs/CI_CD_Workflow_Guide.md)
+- [Docs/PRODUCTION_DEPLOYMENT.md](Docs/PRODUCTION_DEPLOYMENT.md)
+- [Docs/RUNBOOK.md](Docs/RUNBOOK.md)
 
 ## Contributing
 
@@ -92,4 +105,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence
 
-Your project / institution - set as appropriate.
+Set according to your institution or distribution model.

@@ -1,122 +1,93 @@
-# RetailERP improvement phases (roadmap)
+# RetailERP Improvement Phases
 
-This tracks the **"path to production quality"** plan: what is done, what is next, and where to learn more.
+This file tracks the "path to production quality" for the current codebase.
 
-## Phase 1 — Reliable (tests + CI) · **78%**
-
-| Item | Status |
-|------|--------|
-| GitHub Actions `ci.yml` (build + test on push/PR) | Done |
-| Service/regression tests (POS, coupons, loyalty, returns, payments, security auth) | Done — 33 tests |
-| WebApplicationFactory integration tests (health, auth, correlation-id, swagger, benchmark) | Done — 6 tests |
-| **Total: 39 tests, 0 failures** | ✅ |
-| Coverage thresholds in CI | Future goal |
-
----
-
-## Phase 2 — Security · **100%**
+## Phase 1 - Reliable (tests + CI) - **88%**
 
 | Item | Status |
-|------|--------|
-| Identity + lockout + JWT for API | Done |
-| `ProductionStartupValidation` (fail-fast on weak secrets) | Done |
-| API `login` / `refresh` rate limited | Done |
-| Secure auth + antiforgery cookies in Production | Done |
-| HSTS + forwarded headers (non-Dev) | Done |
-| CORS policy (`ApiCors`) | Done |
-| API authorization audit (every endpoint) | Done |
-| Global MVC anti-forgery; API opt-out | Done |
-| Dependency vulnerability scan | Done (clean) |
-| Negative auth regression tests | Done |
-| Production secrets externalized | Done |
-| Tenant-isolation IDOR pen-test | Done |
-| Admin role bounded context verification | Done (Automated test) |
-| Log limits and folder ACL operations | Done |
+| --- | --- |
+| GitHub Actions CI on push/PR | Done |
+| Release build validation | Done |
+| Service and regression tests | Done |
+| Integration and startup validation tests | Done |
+| Current test snapshot | `88 passed, 1 skipped` |
+| Coverage artifact upload | Done |
+| Coverage threshold gate | Done, but still low at `2%` |
+| Missing | More critical end-to-end flows for billing, purchase receive, and stock reconciliation |
 
----
-
-## Phase 3 — Observable & operable · **75%**
+## Phase 2 - Security - **84%**
 
 | Item | Status |
-|------|--------|
-| `/health` endpoint (SQL + Redis) | Done |
-| `/health/ready` readiness JSON | Done |
-| Serilog file + console logging | Done |
-| End-to-end `X-Correlation-Id` | Done |
-| Runbook (`Docs/RUNBOOK.md`) | Done |
-| Centralized metrics / alerting | Future goal |
+| --- | --- |
+| Identity lockout and inactive-user handling | Done |
+| JWT auth for API | Done |
+| MVC antiforgery and API opt-out model | Done |
+| Rate limiting | Done |
+| CORS policy | Done |
+| HSTS and forwarded headers | Done |
+| Production startup validation | Done |
+| Tenant scoping and authorization regression tests | Done |
+| Remaining | Upgrade `MailKit`, final external-service secret audit, targeted pen-test pass |
 
----
-
-## Phase 4 — Performance · **100%**
-
-| Item | Status |
-|------|--------|
-| DB indexes on Item (SKU, Barcode per company) | Done |
-| AsNoTracking on all read paths | Done |
-| Projection-first `.Select()` on 8 endpoints | Done |
-| N+1 fix (admin users) + dashboard aggregation | Done |
-| Sales report DB-side totals | Done |
-| Caching strategy doc | Done |
-| Benchmark snapshot (446ms-1525ms baseline on 100k rows) | Done |
-| Production-volume profiling | Done |
-
----
-
-## Phase 5 — Maintainable codebase · **85%**
+## Phase 3 - Observable and operable - **80%**
 
 | Item | Status |
-|------|--------|
-| `Program.cs` → `Infrastructure/` extensions | Done |
-| Single `AddControllersWithViews` + localization | Done |
-| `CONTRIBUTING.md` | Done |
+| --- | --- |
+| `/health` | Done |
+| `/health/ready` | Done |
+| `/metrics` | Done |
+| Serilog logs | Done |
+| Correlation ID flow | Done |
+| Runbook and monitoring guides | Done |
+| Remaining | Live dashboard adoption, alert tuning, centralized log shipping |
 
----
-
-## Phase 6 — Demo & documentation · **85%**
+## Phase 4 - Performance - **81%**
 
 | Item | Status |
-|------|--------|
-| README.md | Done |
-| DEMO_SCRIPT.md | Done |
-| ARCHITECTURE.md (Mermaid) | Done |
-| REAL_WORLD_MAPPING.md (viva bridge) | Done |
-| SECURITY_CHECKLIST.md | Done |
-| PRODUCTION_DEPLOYMENT.md | Done |
-| RUNBOOK.md | Done |
-| CACHING_STRATEGY.md | Done |
-| **17 doc files in `Docs/`** | ✅ |
+| --- | --- |
+| Tenant-safe indexes on hot tables | Done |
+| `AsNoTracking()` on read-heavy paths | Done |
+| Projection-first query cleanup | Done |
+| Dashboard/report aggregation optimization | Done |
+| Optional Redis cache | Done |
+| Benchmark tooling | Done |
+| Remaining | More realistic POS load testing and search/catalog hot-path profiling |
 
----
+## Phase 5 - Maintainable codebase - **79%**
 
-## Work history (latest batch)
+| Item | Status |
+| --- | --- |
+| Clear controller/service/data separation | Done |
+| Infrastructure helper classes exist | Done |
+| Contributing guide | Done |
+| Remaining | Reduce startup duplication between `Program.cs` and `Infrastructure/*`, continue cleanup of older patterns and doc drift |
 
-- **Phase 1:** WebApplicationFactory integration tests (health, auth redirect, correlation-id echo, swagger JSON, benchmark latency) — 6 tests total.
-- **Phase 2:** API auth/CSRF cleanup; ops evidence tables for remaining checklist items.
-- **Phase 3:** End-to-end correlation ID support (`X-Correlation-Id`) → middleware → Serilog → response header.
-- **Phase 4:** Performance snapshot for `Api/ItemsController.GetAll` (1.2 ms avg raw latency via DB projection).
-- **Phase 4:** Lighthouse charset compatibility fix — enforced UTF-8 on HTML responses and hardened dashboard bootstrap to avoid noisy JSON-parse console errors.
-- **Phase 5:** Clone-safe UI asset loading fixed via CDN Bootstrap links (prevent unstyled UI on fresh clone).
-- **Phase 6:** Created `REAL_WORLD_MAPPING.md` bridging code features to real-world engineering practices.
+## Phase 6 - Demo and documentation - **89%**
 
-## Previous batch (reliability + ops)
+| Item | Status |
+| --- | --- |
+| README | Done |
+| Demo script | Done |
+| Architecture guide | Done |
+| Real-world mapping | Done |
+| Security checklist | Done |
+| Production deployment guide | Done |
+| Runbook | Done |
+| Project review and recommendations | Done |
+| Remaining | Business-user training docs and exportable polished manuals |
 
-- **Phase 1:** Regression tests for coupon removal, loyalty, payment edge cases, return/refund safeguards; async notification DI scope fix.
-- **Phase 4:** Projection-first optimization across 8 controller endpoints; N+1 fix; dashboard/forecast/sales aggregation pushed to DB.
-- **Phase 3:** `/health/ready` JSON readiness probe; `RUNBOOK.md`.
-- **Phase 6:** `ARCHITECTURE.md` (Mermaid); README links.
+## Latest verified baseline
 
-## Production-readiness batch (code + ops)
+- Release build passed on `2026-04-25`
+- Test run passed with `88 passed, 1 skipped`
+- Coverage run succeeded with current line coverage around `2.19%`
+- Build warns about `MailKit 4.15.1` vulnerability and should be upgraded
 
-- `ProductionStartupValidation` blocks dev sample keys in Production.
-- Secure cookies + HSTS in Production; forwarded headers behind reverse proxy.
-- Redis health check when enabled; rate limiting on JWT login/refresh.
-- `appsettings.Production.json` template, `.dockerignore`, `PRODUCTION_DEPLOYMENT.md`.
+## Recommended next execution order
 
----
-
-## Next steps for you
-
-1. Run **CI** on GitHub after a push; confirm the green checkmark.
-2. Walk through **SECURITY_CHECKLIST.md** — externalize secrets before any public demo.
-3. Add **one** regression test per future bug fix.
+1. Upgrade `MailKit` to `4.16.0+`.
+2. Add inventory count and cycle count workflows.
+3. Add purchase receiving and GRN-style partial receive flow.
+4. Add supplier-item mapping with preferred vendor and last purchase cost.
+5. Raise CI coverage threshold after each new test batch.
+6. Consolidate startup configuration to a single composition path.

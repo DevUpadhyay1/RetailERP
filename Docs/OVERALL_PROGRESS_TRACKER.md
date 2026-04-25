@@ -1,61 +1,57 @@
-# RetailERP overall progress tracker
+# RetailERP Overall Progress Tracker
 
-This document tracks what is completed, what is partially done, and what remains.
+This tracker summarizes the current engineering and product maturity of the repository.
 
-## Current phase completion (estimated)
+## Current phase completion
 
-**Last doc sync:** 2026-04-09
+**Last doc sync:** `2026-04-25`
 
-| Phase | Name                  | %        | Rationale                                                                                                                       |
-| ----- | --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | Reliable (tests + CI) | **84%**  | 51 automated tests (50 pass, 1 manual benchmark skipped), CI build+test+coverage artifact, baseline coverage threshold enforced |
-| 2     | Security              | **100%** | Auth/CSRF/rate-limit/CORS/headers, tenant authorization regression coverage, production validation guardrails                   |
-| 3     | Observable & operable | **82%**  | `/health`, `/health/ready`, correlation IDs, Serilog, `/metrics` endpoint, runbook alerting baseline                            |
-| 4     | Performance           | **100%** | AsNoTracking/projection passes, indexing work, benchmark tooling and 100k profile scripts                                       |
-| 5     | Maintainable codebase | **86%**  | Program split to infrastructure extensions, cleaner service registration and pipeline structure                                 |
-| 6     | Demo & documentation  | **90%**  | Architecture/demo/security/deployment/runbook docs are in place and updated with latest CI/metrics/staging flow                 |
+| Phase | Name | % | Rationale |
+| --- | --- | --- | --- |
+| 1 | Reliable (tests + CI) | **88%** | CI restore/build/test plus coverage artifact and threshold gate are active; current verified test snapshot is `88 passed, 1 skipped` |
+| 2 | Security | **84%** | Strong auth, JWT, rate limiting, antiforgery, tenant scoping, and production validation are in place, but dependency and final hardening items remain |
+| 3 | Observable and operable | **80%** | Health, readiness, metrics, Serilog, correlation IDs, monitoring docs, and runbook are present |
+| 4 | Performance | **81%** | Indexing, projection cleanup, optional Redis, and benchmark tooling exist, but realistic load baselines still need expansion |
+| 5 | Maintainable codebase | **79%** | Good service separation exists, but startup composition overlap and older patterns still create cleanup work |
+| 6 | Demo and documentation | **89%** | The repo now has a solid README, architecture, CI/CD, security, deployment, and review documentation set |
 
-**Overall completion: ~87%**
-
-Post-onboarding detail doc: **Docs/POST_ONBOARDING_UPDATE.md**
-
----
+**Overall completion toward a polished professional rollout: ~82%**
 
 ## Current status
 
-**Demo-ready:** Yes.  
-Core ERP flows are functional with automated tests, CI checks, and operational docs.
+**Demo-ready:** Yes.
 
-**Production-ready:** Close, but not fully closed.  
-Main remaining work is raising coverage targets, adding centralized dashboards/alerts, finalizing staged rollout operations, and resolving self-hosted runner Docker permission alignment for fully reliable auto production deploy.
+**Pilot-ready for controlled rollout:** Yes, with operational discipline.
 
----
+**Fully production-hardened at scale:** Not yet.
 
-## What's done recently (latest batch)
+Main remaining gaps are:
 
-1. Added customer/supplier/item migration onboarding with opening stock support and tests.
-2. Added CI coverage collection with threshold gate and artifact upload.
-3. Added production error/status pages and status-code re-execution flow.
-4. Added lightweight Prometheus-style `/metrics` endpoint.
-5. Added staging deployment workflow (`deploy-staging.yml`) and updated runbook/deployment docs.
-6. Stabilized CI with Node 24 compatible actions, robust coverage parsing, and integration-test DataProtection fix.
-7. Fixed clone-safe UI asset delivery by replacing local `/lib` Bootstrap/jQuery references with CDN-based links in shared layout/POS view.
-8. Isolated current production workflow blocker: runner service account lacks Docker engine pipe access (`npipe:////./pipe/docker_engine`).
+1. Operator-friendly inventory workflows
+2. Deeper automated coverage on money and stock journeys
+3. Final dependency/security cleanup
+4. Stronger production promotion and rollback mechanics
 
----
+## What is already strong
 
-## Remaining for production closure
+1. Core ERP modules are broad: POS, invoices, purchases, stock ledger, loyalty, coupons, GST, e-invoice, portals, forecasting, and multi-tenancy.
+2. Automated testing is now materially stronger than earlier docs reflected.
+3. CI/CD is real, not theoretical.
+4. Production operations documentation is present.
+5. Tenant scoping is built into both auth claims and EF Core filtering.
 
-1. Raise coverage threshold gradually each sprint (current baseline is intentionally low).
-2. Add centralized metrics/alerting stack (Prometheus + Grafana or Application Insights dashboards).
-3. Add stricter staging/prod promotion gates (manual approvals + smoke test checks + rollback script automation).
-4. Complete tenant-isolation verification and targeted security pen-test checklist.
-5. Keep eliminating obsolete warnings and tighten CI warning budgets.
+## High-value gaps
 
----
+1. Inventory count and cycle count workflow
+2. Purchase receive / GRN workflow with partial receive and damage handling
+3. Supplier-item mapping and vendor intelligence
+4. Startup configuration consolidation
+5. Dependency upgrade for `MailKit`
 
 ## Verification snapshot
 
-- Build: `dotnet build RetailERP.sln -c Release` passed.
-- Tests: `dotnet test RetailERP.sln -c Release --no-build` passed (`50 passed, 1 skipped`).
-- Coverage run: `dotnet test ... --collect:\"XPlat Code Coverage\"` generated Cobertura report (current line coverage ~2.3%).
+- Release build: `dotnet build RetailERP.csproj -c Release --no-restore -p:UseAppHost=false` passed
+- Tests: `dotnet test RetailERP.Tests\\RetailERP.Tests.csproj --no-build` passed with `88 passed, 1 skipped`
+- Coverage run: passed with current line coverage around `2.19%`
+- Current warning: `MailKit 4.15.1` triggers a moderate vulnerability warning during build
+- Local debug build caveat: a running app instance can lock `bin\\Debug\\net8.0\\RetailERP.dll`, so debug build may fail until the process is stopped

@@ -1,11 +1,28 @@
-# 5–10 minute demo script (viva / stakeholder)
+# RetailERP - 5 to 10 Minute Demo Script
 
-1. **Login** — Admin / Manager / Cashier (show role-based access).
-2. **Items** — Open an item with **Barcode** and **SKU**; mention POS scan uses either.
-3. **POS** — New bill → select store/warehouse → on bill screen, **Scan Item** box: type barcode or SKU + Enter (scanner behaves the same).
-4. **Line & totals** — Show qty, discounts if applicable; **Complete** bill with a payment method.
-5. **Receipt** — Open receipt / PDF if configured.
-6. **Stock / audit** — Show stock reduced (Stock Transactions or report) for credibility.
-7. **API (optional)** — `/swagger` → authenticate with JWT → call a simple GET (e.g. items) if time permits.
+Use this for quick demos, viva, or client walkthroughs.
 
-**Closing line:** Tests run in CI (`dotnet test`); health at `/health`; secrets via User Secrets in production.
+## Core walkthrough
+
+1. Login as Admin, Manager, or Cashier and mention role-based access.
+2. Open the item master and show that items support barcode, SKU, GST, MRP, stock, and category data.
+3. Open POS billing and create a new bill.
+4. Scan or type a barcode/SKU in the POS search box.
+5. Show that item lines, quantities, pricing, discounts, and tax totals update immediately.
+6. Attach a customer or loyalty card if needed.
+7. Complete the bill with a payment method.
+8. Open the receipt or PDF preview.
+9. Show stock impact in stock transactions, stock ledger, or related reports.
+
+## Optional advanced demo points
+
+1. Dashboard widgets and low-stock alerts
+2. Purchases and supplier management
+3. GST and e-invoice screens
+4. Offline/PWA sync concept
+5. Swagger and JWT-secured API example
+6. Bill/invoice template customization
+
+## Strong closing line
+
+"RetailERP is not only a billing screen. It connects billing, inventory, suppliers, reporting, compliance, notifications, and tenant/company isolation in one system."
