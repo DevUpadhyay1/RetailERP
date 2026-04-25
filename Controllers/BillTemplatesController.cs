@@ -286,6 +286,52 @@ public class BillTemplatesController : Controller
         return await UploadCompanyAssetAsync(stamp, "stamps", (company, path) => company.StampPath = path);
     }
 
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveLogo()
+    {
+        return await RemoveCompanyAssetAsync(c => c.LogoPath, (c, p) => c.LogoPath = p);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveSignature()
+    {
+        return await RemoveCompanyAssetAsync(c => c.SignaturePath, (c, p) => c.SignaturePath = p);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveStamp()
+    {
+        return await RemoveCompanyAssetAsync(c => c.StampPath, (c, p) => c.StampPath = p);
+    }
+
+    private async Task<IActionResult> RemoveCompanyAssetAsync(Func<Company, string?> getter, Action<Company, string?> setter)
+    {
+        try
+        {
+            var company = await _db.Companies.FirstOrDefaultAsync(c => c.CompanyId == GetCompanyId());
+            if (company is null) return Json(new { success = false, message = "Company not found." });
+
+            var oldPath = getter(company);
+            if (!string.IsNullOrWhiteSpace(oldPath))
+            {
+                var fullPath = Path.Combine(_env.WebRootPath, oldPath.TrimStart('/'));
+                if (System.IO.File.Exists(fullPath))
+                {
+                    System.IO.File.Delete(fullPath);
+                }
+            }
+
+            setter(company, null);
+            await _db.SaveChangesAsync();
+
+            return Json(new { success = true });
+        }
+        catch (Exception)
+        {
+            return Json(new { success = false, message = "Server error." });
+        }
+    }
+
     // ──────────────────────────────────────────────────────
     // Preview receipt PDF
     // ──────────────────────────────────────────────────────

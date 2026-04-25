@@ -22,6 +22,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using StackExchange.Redis;
 using RetailERP.Hubs;
 using RetailERP.Services.BackgroundJobs;
+using Microsoft.AspNetCore.DataProtection;
 
 // ──────────────────────────────────────────────────────
 // Serilog bootstrap (catches startup exceptions)
@@ -58,6 +59,15 @@ try
 
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddSingleton<AuditingSaveChangesInterceptor>();
+
+    // Production Fix: Configure Forwarded Headers for Cloudflare Tunnel
+    builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | 
+                                   Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
 
     builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
     {
@@ -307,25 +317,31 @@ try
     builder.Services.AddScoped<ITenantProvider, TenantProvider>();
     builder.Services.AddScoped<CacheService>();
 
-    // Sprint 4: Redis distributed cache (falls back to in-memory if Redis unavailable)
+    // Sprint 4: Redis distributed cache & Data Protection keys (falls back to in-memory if Redis unavailable)
     var redisConn = builder.Configuration.GetConnectionString("Redis");
     if (!string.IsNullOrEmpty(redisConn))
     {
         try
         {
-            // Test the connection at startup
+            // Keep the connection at startup open to persist keys and cache
             var redis = ConnectionMultiplexer.Connect(redisConn + ",abortConnect=false,connectTimeout=3000");
-            redis.Dispose();
+            
             builder.Services.AddStackExchangeRedisCache(options =>
             {
                 options.Configuration = redisConn;
-                options.InstanceName = "RetailERP:";
+                options.InstanceName = $"RetailERP:{builder.Environment.EnvironmentName}:";
             });
-            Log.Information("Sprint 4: Redis cache connected at {RedisConn}", redisConn);
+
+            // Production Fix: Persist Data Protection keys to Redis to prevent session invalidation
+            builder.Services.AddDataProtection()
+                .SetApplicationName($"RetailERP-{builder.Environment.EnvironmentName}")
+                .PersistKeysToStackExchangeRedis(redis, $"DataProtection-Keys-{builder.Environment.EnvironmentName}");
+
+            Log.Information("Sprint 4: Redis cache and Data Protection connected at {RedisConn}", redisConn);
         }
         catch
         {
-            Log.Warning("Sprint 4: Redis unavailable at {RedisConn} — falling back to in-memory cache", redisConn);
+            Log.Warning("Sprint 4: Redis unavailable at {RedisConn} — falling back to in-memory cache & ephemeral keys", redisConn);
             builder.Services.AddDistributedMemoryCache();
         }
     }
@@ -366,6 +382,10 @@ try
     {
         app.UseExceptionHandler("/Home/Error");
         app.UseHsts();
+
+        using var scope = app.Services.CreateScope();
+        var seeder = scope.ServiceProvider.GetRequiredService<DbSeeder>();
+        await seeder.SeedProductionAsync();
     }
 
     app.UseMiddleware<CorrelationIdMiddleware>();
@@ -391,6 +411,9 @@ try
         var durationMs = (long)Math.Max(0, (DateTime.UtcNow - startedAt).TotalMilliseconds);
         appMetrics.TrackCompletedRequest(context, durationMs);
     });
+
+    // Production Fix: Apply forwarded headers before any routing or HTTPS redirection happens
+    app.UseForwardedHeaders();
 
     app.UseHttpsRedirection();
     app.UseStaticFiles();

@@ -600,7 +600,7 @@ public class InvoicePdfService
                             {
                                 var stampFull = Path.Combine(_env.WebRootPath, company.StampPath.TrimStart('/'));
                                 if (File.Exists(stampFull))
-                                    c.Item().Height(36).Image(stampFull).FitHeight();
+                                    c.Item().Height(40).Image(stampFull).FitArea();
                             }
                         });
                     }
@@ -618,7 +618,7 @@ public class InvoicePdfService
                             {
                                 var signFull = Path.Combine(_env.WebRootPath, company.SignaturePath.TrimStart('/'));
                                 if (File.Exists(signFull))
-                                    c.Item().AlignRight().Height(36).Image(signFull).FitHeight();
+                                    c.Item().AlignRight().Height(40).Image(signFull).FitArea();
                             }
                         });
                     }

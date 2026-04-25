@@ -1115,6 +1115,7 @@ public class PosController : Controller
 
         // Prefer a store-specific receipt template, then the company default, then any company receipt template.
         var template = await _db.BillTemplates
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(t => t.CompanyId == company.CompanyId && t.TemplateType == 1)
             .OrderByDescending(t => t.StoreId.HasValue && t.StoreId == bill.StoreId)
@@ -1125,6 +1126,7 @@ public class PosController : Controller
         if (template is null)
         {
             template = await _db.BillTemplates
+                .IgnoreQueryFilters()
                 .AsNoTracking()
                 .Where(t => t.TemplateType == 1 && t.IsDefault)
                 .OrderByDescending(t => t.UpdatedAtUtc)
@@ -1133,7 +1135,13 @@ public class PosController : Controller
 
         if (template is null)
         {
-            return BadRequest("No default receipt template found. Please create one in Bill Templates and mark it as default.");
+            // Fallback to a standard receipt layout if no templates are configured at all
+            template = new BillTemplate 
+            { 
+                TemplateType = 1, 
+                PaperSize = "Thermal80mm", 
+                LayoutJson = "[]" 
+            };
         }
 
         var pdf = _receiptPdf.Generate(bill, template, company);

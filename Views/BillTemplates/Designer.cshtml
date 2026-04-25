@@ -57,7 +57,12 @@
                     <div id="logoImg" class="text-muted small text-center mb-2">No logo uploaded</div>
                 }
                 <input type="file" id="logoFile" accept=".png,.jpg,.jpeg,.webp" class="form-control form-control-sm mb-1" />
-                <button id="btnUploadLogo" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-upload me-1"></i>Upload</button>
+                <div class="d-flex gap-2">
+                    <button id="btnUploadLogo" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-upload me-1"></i>Upload</button>
+                    @if (!string.IsNullOrEmpty(company?.LogoPath)){
+                        <button id="btnRemoveLogo" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    }
+                </div>
             </div>
         </div>
         <div class="card shadow-sm mt-3">
@@ -69,7 +74,12 @@
                     <img src="~/@company.SignaturePath" class="img-fluid border rounded d-block mx-auto mb-2" style="max-height:55px;" />
                 }
                 <input type="file" id="signatureFile" accept=".png,.jpg,.jpeg,.webp" class="form-control form-control-sm mb-1" />
-                <button id="btnUploadSignature" class="btn btn-sm btn-outline-primary w-100 mb-2"><i class="bi bi-upload me-1"></i>Upload Signature</button>
+                <div class="d-flex gap-2 mb-2">
+                    <button id="btnUploadSignature" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-upload me-1"></i>Upload Signature</button>
+                    @if (!string.IsNullOrEmpty(company?.SignaturePath)){
+                        <button id="btnRemoveSignature" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    }
+                </div>
 
                 <label class="form-label small mb-1">Stamp</label>
                 @if (!string.IsNullOrEmpty(company?.StampPath))
@@ -77,7 +87,12 @@
                     <img src="~/@company.StampPath" class="img-fluid border rounded d-block mx-auto mb-2" style="max-height:55px;" />
                 }
                 <input type="file" id="stampFile" accept=".png,.jpg,.jpeg,.webp" class="form-control form-control-sm mb-1" />
-                <button id="btnUploadStamp" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-upload me-1"></i>Upload Stamp</button>
+                <div class="d-flex gap-2">
+                    <button id="btnUploadStamp" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-upload me-1"></i>Upload Stamp</button>
+                    @if (!string.IsNullOrEmpty(company?.StampPath)){
+                        <button id="btnRemoveStamp" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    }
+                </div>
             </div>
         </div>
     </div>
@@ -702,13 +717,6 @@ function renderProps(){
         ['has_customer_email','Customer Email Exists'],
         ['has_gst','Company GST Exists']
     ]);
-    h+=pRange('padding','Inner Padding (px)',comp.props.padding ?? 0,0,30);
-    h+=pColor('backgroundColor','Section Background',comp.props.backgroundColor||'#ffffff');
-    h+=pRange('borderWidth','Border Width (px)',comp.props.borderWidth ?? 0,0,6);
-    h+=pSel('borderStyle','Border Style',comp.props.borderStyle||'solid',[['solid','Solid'],['dashed','Dashed'],['dotted','Dotted']]);
-    h+=pColor('borderColor','Border Color',comp.props.borderColor||'#cccccc');
-    h+=pRange('marginTop','Top Spacing (px)',comp.props.marginTop ?? 0,0,40);
-    h+=pRange('marginBottom','Bottom Spacing (px)',comp.props.marginBottom ?? 0,0,40);
     h+=`</div>`;
 
     // Delete button
@@ -837,6 +845,20 @@ document.getElementById('btnUploadSignature')?.addEventListener('click', () =>
     uploadAsset('signatureFile', 'btnUploadSignature', '@Url.Action("UploadSignature")', 'Signature uploaded!'));
 document.getElementById('btnUploadStamp')?.addEventListener('click', () =>
     uploadAsset('stampFile', 'btnUploadStamp', '@Url.Action("UploadStamp")', 'Stamp uploaded!'));
+
+async function removeAsset(url) {
+    if(!confirm('Are you sure you want to remove this image?')) return;
+    try {
+        const res = await fetch(url, { method: 'POST', headers: { 'X-XSRF-TOKEN': XSRF, 'RequestVerificationToken': XSRF } });
+        const data = await res.json();
+        if(data.success) { toast('Removed successfully', 'success'); setTimeout(()=>location.reload(), 600); }
+        else toast(data.message || 'Remove failed', 'danger');
+    } catch(e) { toast('Network error', 'danger'); }
+}
+
+document.getElementById('btnRemoveLogo')?.addEventListener('click', () => removeAsset('@Url.Action("RemoveLogo")'));
+document.getElementById('btnRemoveSignature')?.addEventListener('click', () => removeAsset('@Url.Action("RemoveSignature")'));
+document.getElementById('btnRemoveStamp')?.addEventListener('click', () => removeAsset('@Url.Action("RemoveStamp")'));
 
 render();
 })();

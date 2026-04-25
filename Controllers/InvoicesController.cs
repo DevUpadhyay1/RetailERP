@@ -327,6 +327,7 @@ public class InvoicesController : Controller
         BillTemplate? template;
 
         var templateQuery = _db.BillTemplates
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(t =>
                 t.TemplateType == 2 &&
@@ -339,7 +340,13 @@ public class InvoicesController : Controller
 
         if (template is null)
         {
-            return BadRequest("No invoice template found. Please create one in Bill Templates and mark default.");
+            template = new BillTemplate 
+            { 
+                TemplateType = 2, 
+                DocumentType = invoice.DocumentType, 
+                PaperSize = "A4", 
+                LayoutJson = "[]" 
+            };
         }
 
         var pdf = _invoicePdf.Generate(invoice, template, company);
