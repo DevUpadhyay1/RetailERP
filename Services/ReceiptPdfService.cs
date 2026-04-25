@@ -28,6 +28,10 @@ public class ReceiptPdfService
         QuestPDF.Settings.CheckIfAllTextGlyphsAreAvailable = false;
 
         var components = JsonSerializer.Deserialize<List<LayoutComponent>>(template.LayoutJson, JsonOpts) ?? new();
+        if (components.Count == 0)
+        {
+            components = BuildFallbackLayout(template);
+        }
 
         var pageWidth = template.PaperSize switch
         {
@@ -119,6 +123,20 @@ public class ReceiptPdfService
         });
 
         return document.GeneratePdf();
+    }
+
+    private static List<LayoutComponent> BuildFallbackLayout(BillTemplate template)
+    {
+        return new List<LayoutComponent>
+        {
+            new() { Type = "logo", Props = new Dictionary<string, JsonElement>() },
+            new() { Type = "store_header", Props = new Dictionary<string, JsonElement>() },
+            new() { Type = "bill_info", Props = new Dictionary<string, JsonElement>() },
+            new() { Type = "items_table", Props = new Dictionary<string, JsonElement>() },
+            new() { Type = "totals", Props = new Dictionary<string, JsonElement>() },
+            new() { Type = "payments", Props = new Dictionary<string, JsonElement>() },
+            new() { Type = "footer", Props = new Dictionary<string, JsonElement>() }
+        };
     }
 
     // ── Logo ──

@@ -1113,11 +1113,23 @@ public class PosController : Controller
         var company = await _db.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.CompanyId == companyId);
         if (company is null) return NotFound();
 
-        // Find default POS receipt template for this company
+        // Prefer a store-specific receipt template, then the company default, then any company receipt template.
         var template = await _db.BillTemplates
             .AsNoTracking()
-            .Where(t => t.CompanyId == company.CompanyId && t.TemplateType == 1 && t.IsDefault)
+            .Where(t => t.CompanyId == company.CompanyId && t.TemplateType == 1)
+            .OrderByDescending(t => t.StoreId.HasValue && t.StoreId == bill.StoreId)
+            .ThenByDescending(t => t.IsDefault)
+            .ThenByDescending(t => t.UpdatedAtUtc)
             .FirstOrDefaultAsync();
+
+        if (template is null)
+        {
+            template = await _db.BillTemplates
+                .AsNoTracking()
+                .Where(t => t.TemplateType == 1 && t.IsDefault)
+                .OrderByDescending(t => t.UpdatedAtUtc)
+                .FirstOrDefaultAsync();
+        }
 
         if (template is null)
         {

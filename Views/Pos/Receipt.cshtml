@@ -63,8 +63,17 @@
         }, 5000);
 
         document.getElementById('btnPrintReceipt').addEventListener('click', function () {
-            try { frame.contentWindow.print(); }
-            catch (e) { window.open(pdfUrl, '_blank'); }
+            try {
+                if (frame.contentWindow) {
+                    frame.contentWindow.focus();
+                    setTimeout(function () {
+                        frame.contentWindow.print();
+                    }, 250);
+                    return;
+                }
+            } catch (e) { }
+
+            window.open(pdfUrl, '_blank');
         });
     })();
     </script>
