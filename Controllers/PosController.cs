@@ -130,6 +130,12 @@ public class PosController : Controller
     [HttpGet]
     public async Task<IActionResult> StartQuick()
     {
+        if (!await HasPosTemplateAsync())
+        {
+            TempData["Err"] = "You must create a POS Receipt Template before using the POS system.";
+            return RedirectToAction("Index", "BillTemplates");
+        }
+
         var user = await _userManager.GetUserAsync(User);
         if (user?.DefaultPosStoreId is null || user.DefaultPosWarehouseId is null)
         {
@@ -170,6 +176,12 @@ public class PosController : Controller
     [HttpGet]
     public async Task<IActionResult> NewBill()
     {
+        if (!await HasPosTemplateAsync())
+        {
+            TempData["Err"] = "You must create a POS Receipt Template before using the POS system.";
+            return RedirectToAction("Index", "BillTemplates");
+        }
+
         var user = await _userManager.GetUserAsync(User);
         Guid? selStore = null;
         Guid? selWarehouse = null;
@@ -194,6 +206,12 @@ public class PosController : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> NewBill(Guid storeId, Guid warehouseId, Guid? customerId, bool saveAsDefault = false)
     {
+        if (!await HasPosTemplateAsync())
+        {
+            TempData["Err"] = "You must create a POS Receipt Template before using the POS system.";
+            return RedirectToAction("Index", "BillTemplates");
+        }
+
         if (!await IsValidPosStoreAndWarehouseAsync(storeId, warehouseId))
         {
             TempData["Err"] = "That store and warehouse combination is not valid. Warehouses must belong to the selected store (or be company-wide).";
@@ -908,6 +926,18 @@ public class PosController : Controller
         companyId = default;
         var s = User.FindFirstValue("CompanyId");
         return !string.IsNullOrEmpty(s) && Guid.TryParse(s, out companyId) && companyId != Guid.Empty;
+    }
+
+    private async Task<bool> HasPosTemplateAsync()
+    {
+        var companyIdStr = User.FindFirstValue("CompanyId");
+        if (Guid.TryParse(companyIdStr, out var companyId))
+        {
+            return await _db.BillTemplates
+                .IgnoreQueryFilters()
+                .AnyAsync(t => t.CompanyId == companyId && t.TemplateType == 1);
+        }
+        return true;
     }
 
     private static bool IsValidEmail(string email)

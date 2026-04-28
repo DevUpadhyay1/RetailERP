@@ -92,6 +92,16 @@ public class BillTemplatesController : Controller
         template.CreatedAtUtc = DateTime.UtcNow;
         template.UpdatedAtUtc = DateTime.UtcNow;
 
+        // Forcefully set as default if it's the very first template of this type
+        var isFirst = !await _db.BillTemplates
+            .IgnoreQueryFilters()
+            .AnyAsync(t => t.CompanyId == template.CompanyId && t.TemplateType == template.TemplateType);
+        
+        if (isFirst)
+        {
+            template.IsDefault = true;
+        }
+
         // If marked default, unset other defaults of same type
         if (template.IsDefault)
             await UnsetOtherDefaults(template);
